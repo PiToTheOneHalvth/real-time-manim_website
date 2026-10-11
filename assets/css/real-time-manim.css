@@ -1,0 +1,239 @@
+:root {
+  color-scheme: dark;
+  --background: #000000;
+  --foreground: #F5F5F5;
+  --surface: #292929;
+  font-family: "Times New Roman", Times, serif;
+  background: var(--background);
+  color: var(--foreground);
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; }
+a { color: inherit; }
+button, code { font: inherit; }
+
+.hero {
+  position: relative;
+  z-index: 3;
+  height: 100svh;
+  padding: clamp(16px, 4svh, 48px) 6vw;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+  column-gap: 4vw;
+  row-gap: clamp(16px, 3svh, 32px);
+  align-items: center;
+}
+
+.hero-title {
+  margin: 0;
+  font-size: min(12vw, 19svh, calc((100svh - 260px) / 3), 220px);
+  font-weight: 400;
+  line-height: .92;
+  letter-spacing: -.045em;
+}
+.hero-title span {
+  display: block;
+  animation: title-enter 600ms ease-out both;
+}
+.hero-title span:nth-child(2) { animation-delay: 50ms; }
+.hero-title span:nth-child(3) { animation-delay: 100ms; }
+
+/* Start-time stagger: Manim + 150ms, then social links + 100ms. */
+.social-links { animation: title-enter 600ms ease-out 250ms both; }
+.installation { animation: controls-enter-right 600ms ease-out 350ms both; }
+.social-links.entrance-complete, .installation.entrance-complete {
+  animation: none;
+  opacity: 1;
+}
+
+@keyframes controls-enter-right {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes title-enter {
+  from {
+    opacity: 0;
+    transform: translateX(-24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+.hero-logo {
+  display: block;
+  width: 100%;
+  min-height: 0;
+  max-height: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: right center;
+  justify-self: center;
+}
+
+.social-slot {
+  justify-self: start;
+  align-self: start;
+  margin-top: 4px;
+}
+.installation-slot {
+  justify-self: end;
+  width: 280px;
+}
+.social-links {
+  display: flex;
+  align-items: center;
+  justify-self: start;
+  align-self: start;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--surface);
+}
+.social-links a {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+}
+.social-links img { display: block; }
+.social-links .wiki-icon {
+  /* The book occupies roughly 54% of its transparent image canvas. */
+  width: 36px;
+  height: 36px;
+}
+.social-links a, .download, #copy-command { transition: opacity 160ms ease; }
+.social-links a:hover, .download:hover, #copy-command:hover { opacity: .65; }
+a:focus-visible, button:focus-visible {
+  outline: 2px solid var(--foreground);
+  outline-offset: 5px;
+}
+
+.installation {
+  position: relative;
+  justify-self: end;
+  width: 280px;
+  display: grid;
+  height: 104px;
+  grid-template-rows: 44px 36px;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 20px;
+  background: var(--surface);
+}
+.install-command {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 0 0 12px;
+  font-size: 17px;
+  white-space: nowrap;
+}
+#copy-command {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  color: inherit;
+  background: transparent;
+  cursor: pointer;
+}
+.check-icon { display: none; }
+#copy-command[data-copied="true"] .copy-icon { display: none; }
+#copy-command[data-copied="true"] .check-icon { display: block; }
+.download {
+  position: relative;
+  justify-self: stretch;
+  display: grid;
+  place-items: center;
+  padding: 0 20px;
+  border-radius: 12px;
+  background: var(--foreground);
+  color: var(--background);
+  text-decoration: none;
+  text-align: center;
+  font-size: 22px;
+}
+.installation.is-banner .download {
+  position: absolute;
+  right: 12px;
+  top: var(--download-top);
+  width: var(--download-width);
+  height: var(--download-height);
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border-radius: var(--download-radius);
+  background: var(--foreground);
+  color: var(--background);
+  font-size: var(--download-font-size);
+}
+.installation.is-banner .install-command {
+  transform: translateY(var(--command-shift));
+}
+.copy-status {
+  position: absolute;
+  right: 0;
+  top: -26px;
+  font-size: 16px;
+}
+.slogan {
+  position: relative;
+  overflow-x: clip;
+  margin-top: var(--slogan-overlap, 0px);
+  /* JS supplies the hold and scrub distance from the actual control positions. */
+  height: var(--slogan-height, 200svh);
+  margin-bottom: var(--slogan-tail, 0px);
+}
+.social-links.is-pinned, .installation.is-banner {
+  position: fixed;
+  margin: 0;
+}
+.social-links.is-pinned { top: 0; }
+.social-links.is-banner, .installation.is-banner { background: transparent; }
+.banner-background {
+  position: fixed;
+  inset: 0 0 auto;
+  height: 104px;
+  z-index: 2;
+  pointer-events: none;
+}
+.banner-liquid {
+  display: block;
+  overflow: visible;
+  fill: var(--surface);
+}
+.slogan-pin {
+  position: sticky;
+  top: var(--slogan-top, 0px);
+  width: 120vw;
+  margin-left: calc(50% - 60vw);
+  aspect-ratio: 16 / 9;
+}
+.slogan-video {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  object-fit: contain;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-title span, .social-links, .installation { animation: none; }
+  .social-links a, .download, #copy-command { transition: none; }
+}
