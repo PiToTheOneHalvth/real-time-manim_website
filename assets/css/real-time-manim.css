@@ -114,9 +114,10 @@ button, code { font: inherit; }
   height: calc(20 * var(--unit));
 }
 .social-links .wiki-icon {
-  /* The book occupies roughly 54% of its transparent image canvas. */
+  /* Preserve the PSD export's proportions within the shared icon space. */
   width: calc(36 * var(--unit));
   height: calc(36 * var(--unit));
+  object-fit: contain;
 }
 .social-links a, .download, #copy-command { transition: opacity 160ms ease; }
 .social-links a:hover, .download:hover, #copy-command:hover { opacity: .65; }
