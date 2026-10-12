@@ -1,5 +1,11 @@
 # Website architecture
 
+Each return from the finale triggers a time-based 650ms fade-in and leftward
+slide from a 24px right offset, retaining the 100ms feature stagger. This
+animation completes independently of scroll direction and re-arms on reaching
+the finale again. The section's overall scroll fade remains reversible;
+reduced motion omits the individual feature animations.
+
 The feature section pins when its bottom reaches the viewport bottom (allowing
 all rows to be read first in short windows). Another 1.5 viewport heights of
 scroll slowly fades the title and eight features away while “Just you wait.”

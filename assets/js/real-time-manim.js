@@ -69,6 +69,8 @@ const futureSection = document.querySelector('.future-section');
 const futureFinale = document.querySelector('.future-finale');
 let futureStart = 0;
 let futureDistance = 1;
+let previousFutureProgress = 0;
+let featureReturnArmed = false;
 
 function measureFuture() {
   const viewport = window.innerHeight;
@@ -83,6 +85,17 @@ function measureFuture() {
 
 function updateFuture() {
   const progress = Math.max(0, Math.min(1, (window.scrollY - futureStart) / futureDistance));
+  // Re-arm after reaching the finale, then run a time-based animation on
+  // return. Scroll position never drives or reverses the animation itself.
+  if (progress >= .95) featureReturnArmed = true;
+  if (featureReturnArmed && progress < .95 && progress < previousFutureProgress) {
+    const list = document.querySelector('.future-features');
+    list.classList.remove('features-returning');
+    void list.offsetWidth;
+    list.classList.add('features-returning');
+    featureReturnArmed = false;
+  }
+  previousFutureProgress = progress;
   const smooth = value => value * value * (3 - 2 * value);
   const entrance = Math.max(0, Math.min(1, (progress - .25) / .75));
   futureScroll.style.setProperty('--future-opacity', 1 - smooth(progress));
