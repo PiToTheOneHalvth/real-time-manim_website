@@ -59,6 +59,8 @@ const textAnchorY = 539 / 1080;
 const textTopY = 414 / 1080;
 let scrubStart = 0;
 let scrubDistance = 1;
+let topicDistance = 1;
+let topicTravel = 0;
 let targetTime = 0;
 let scrollFrame = 0;
 const social = document.querySelector('.social-links');
@@ -73,6 +75,7 @@ const download = document.querySelector('.download');
 let controlGeometry;
 
 function drawLiquidBanner(g, progress, height) {
+  const scale = g.height / 52;
   const lerp = (a, b) => a + (b - a) * progress;
   const width = window.innerWidth;
   const middle = width / 2;
@@ -80,16 +83,16 @@ function drawLiquidBanner(g, progress, height) {
   // inset and rounding. Inner edges stretch farther to meet at the top first.
   const reach = Math.sin(Math.PI * progress) * width * .20;
   const left = {
-    start: lerp(g.left, 0), end: lerp(g.left + g.width, middle + 40) + reach,
+    start: lerp(g.left, 0), end: lerp(g.left + g.width, middle + 40 * scale) + reach,
     height: lerp(g.height, height), outer: lerp(g.height / 2, 0),
-    inner: lerp(g.height / 2, 0) + Math.sin(Math.PI * progress) * 60,
+    inner: lerp(g.height / 2, 0) + Math.sin(Math.PI * progress) * 60 * scale,
     top: g.height / 2 * Math.max(0, 1 - progress * 5) ** 2,
   };
   const right = {
-    start: lerp(g.right, middle - 40) - reach,
+    start: lerp(g.right, middle - 40 * scale) - reach,
     end: lerp(g.right + g.rightWidth, width),
-    height: lerp(g.rightHeight / 2, height), outer: lerp(20, 0),
-    inner: lerp(20, 0) + Math.sin(Math.PI * progress) * 60, top: 0,
+    height: lerp(g.rightHeight / 2, height), outer: lerp(20 * scale, 0),
+    inner: lerp(20 * scale, 0) + Math.sin(Math.PI * progress) * 60 * scale, top: 0,
   };
   function profile(x, shape, mirrored) {
     if (x < shape.start || x > shape.end) return null;
@@ -129,7 +132,7 @@ function drawLiquidBanner(g, progress, height) {
   const connected = left.end >= right.start;
   // Smooth union creates one new contour, with no internal splice. It always
   // encloses the source silhouettes; remove them only after this cover exists.
-  const softness = 8 * Math.sin(Math.PI * progress) ** 2;
+  const softness = 8 * scale * Math.sin(Math.PI * progress) ** 2;
   const smoothMax = (x, y) => {
     if (!softness) return Math.max(x, y);
     const overlap = Math.max(0, softness - Math.abs(x - y)) / softness;
@@ -156,6 +159,10 @@ function measureControls() {
   installation.style.left = '';
   installation.style.top = '';
   installation.style.height = '';
+  // Release old pixel measurements before measuring a resized layout.
+  socialSlot.style.width = '';
+  socialSlot.style.height = '';
+  installationSlot.style.height = '';
   const left = social.getBoundingClientRect();
   const right = installation.getBoundingClientRect();
   const button = download.getBoundingClientRect();
@@ -169,6 +176,7 @@ function measureControls() {
     mergeAt: right.top + window.scrollY + right.height / 2,
     bottom: Math.max(left.bottom, right.bottom) + window.scrollY,
     buttonTop: button.top - right.top, buttonWidth: button.width, buttonHeight: button.height,
+    scale: left.height / 52,
   };
 }
 
@@ -189,7 +197,7 @@ function updateBanner() {
   command.parentElement.inert = merged;
   banner.hidden = !merged;
   if (!merged) return;
-  const linear = Math.min(1, (window.scrollY - g.mergeAt) / 120);
+  const linear = Math.min(1, (window.scrollY - g.mergeAt) / (window.innerHeight * .15));
   const progress = reducedMotion.matches ? 1 : linear;
   if (progress === 1) {
     social.classList.add('entrance-complete');
@@ -198,14 +206,14 @@ function updateBanner() {
   const lerp = (a, b) => a + (b - a) * progress;
   // Move the shrinking button toward the right edge during the same morph.
   // Its 12px panel inset plus this endpoint leaves a 24px screen margin.
-  installation.style.left = `${lerp(g.right, window.innerWidth - g.rightWidth - 12)}px`;
-  const height = 36;
+  installation.style.left = `${lerp(g.right, window.innerWidth - g.rightWidth - 12 * g.scale)}px`;
+  const height = 36 * g.scale;
   social.style.top = `${lerp(0, (height - g.height) / 2)}px`;
-  installation.style.setProperty('--download-top', `${lerp(g.buttonTop, g.rightHeight / 2 + (height - 26) / 2)}px`);
-  installation.style.setProperty('--download-width', `${lerp(g.buttonWidth, 112)}px`);
-  installation.style.setProperty('--download-height', `${lerp(g.buttonHeight, 26)}px`);
-  installation.style.setProperty('--download-radius', `${lerp(12, 10)}px`);
-  installation.style.setProperty('--download-font-size', `${lerp(22, 16)}px`);
+  installation.style.setProperty('--download-top', `${lerp(g.buttonTop, g.rightHeight / 2 + (height - 26 * g.scale) / 2)}px`);
+  installation.style.setProperty('--download-width', `${lerp(g.buttonWidth, 112 * g.scale)}px`);
+  installation.style.setProperty('--download-height', `${lerp(g.buttonHeight, 26 * g.scale)}px`);
+  installation.style.setProperty('--download-radius', `${lerp(12, 10) * g.scale}px`);
+  installation.style.setProperty('--download-font-size', `${lerp(22, 16) * g.scale}px`);
   // Keep the command scrolling upward after the lower panel pins.
   installation.style.setProperty('--command-shift', `${-(window.scrollY - g.mergeAt)}px`);
   drawLiquidBanner(g, progress, height);
@@ -221,6 +229,9 @@ function seekSlogan() {
 function updateSlogan() {
   scrollFrame = 0;
   updateBanner();
+  const topicProgress = Math.max(0, Math.min(1,
+    (window.scrollY - scrubStart - scrubDistance) / topicDistance));
+  slogan.style.setProperty('--topic-offset', `${topicTravel * (1 - topicProgress)}px`);
   if (!Number.isFinite(sloganVideo.duration)) return;
   const progress = Math.max(0, Math.min(1, (window.scrollY - scrubStart) / scrubDistance));
   // Frame 59 is the final frame of this 60 fps clip; avoid seeking past it.
@@ -232,11 +243,12 @@ function updateSlogan() {
 function measureSlogan() {
   measureControls();
   const viewport = window.innerHeight;
-  const videoHeight = sloganPin.getBoundingClientRect().height;
+  const videoHeight = sloganVideo.getBoundingClientRect().height;
   const pinTop = viewport / 2 - videoHeight * textAnchorY;
-  // At scroll zero, the visible text starts 24px below the viewport edge.
+  // Keep the initial text just below the current viewport.
   const heroBottom = document.querySelector('.hero').getBoundingClientRect().bottom + window.scrollY;
-  const videoTop = viewport + 24 - videoHeight * textTopY;
+  const entranceGap = viewport * .03;
+  const videoTop = viewport + entranceGap - videoHeight * textTopY;
   slogan.style.setProperty('--slogan-overlap', `${videoTop - heroBottom}px`);
   const sectionTop = slogan.getBoundingClientRect().top + window.scrollY;
   const pinStart = sectionTop - pinTop;
@@ -244,10 +256,20 @@ function measureSlogan() {
   const controlsBottom = controlGeometry.bottom;
   scrubStart = Math.max(pinStart, controlsBottom);
   scrubDistance = viewport * scrubScreens;
+  topicDistance = viewport * .7;
+  const topicHeight = document.querySelector('.slogan-topic').getBoundingClientRect().height;
+  const stageHeight = viewport - pinTop;
+  // Anchor the heading to the visible screen, rather than the video's text.
+  const bottomInset = viewport * .08;
+  const topicTop = stageHeight - bottomInset - topicHeight;
+  topicTravel = Math.max(0, stageHeight + entranceGap - topicTop);
+  slogan.style.setProperty('--topic-top', `${topicTop}px`);
+  slogan.style.setProperty('--slogan-stage-height', `${stageHeight}px`);
   slogan.style.setProperty('--slogan-top', `${pinTop}px`);
-  slogan.style.setProperty('--slogan-height', `${videoHeight + scrubStart - pinStart + scrubDistance}px`);
-  // Leave enough document height to reach the last frame while still centered.
-  slogan.style.setProperty('--slogan-tail', `${Math.max(0, viewport - pinTop - videoHeight)}px`);
+  // Clip only excess black video padding so the page bottom coincides with
+  // the topic's arrival, even when the displayed video is taller than a screen.
+  slogan.style.setProperty('--slogan-height', `${stageHeight + scrubStart - pinStart + scrubDistance + topicDistance}px`);
+  slogan.style.setProperty('--slogan-tail', '0px');
   updateSlogan();
 }
 
@@ -255,6 +277,7 @@ window.addEventListener('scroll', () => {
   if (!scrollFrame) scrollFrame = requestAnimationFrame(updateSlogan);
 }, { passive: true });
 window.addEventListener('resize', measureSlogan);
+window.visualViewport?.addEventListener('resize', measureSlogan);
 window.addEventListener('load', measureSlogan);
 document.querySelector('.installation').addEventListener('animationend', measureSlogan);
 document.fonts.ready.then(measureSlogan);
@@ -264,3 +287,15 @@ sloganVideo.addEventListener('loadeddata', updateSlogan);
 sloganVideo.addEventListener('seeked', seekSlogan);
 reducedMotion.addEventListener('change', updateSlogan);
 measureSlogan();
+
+const details = document.querySelector('.real-life-details');
+if ('IntersectionObserver' in window && !reducedMotion.matches) {
+  details.classList.add('reveal-pending');
+  const detailsObserver = new IntersectionObserver(entries => {
+    if (!entries.some(entry => entry.isIntersecting)) return;
+    details.classList.remove('reveal-pending');
+    details.classList.add('reveal-visible');
+    detailsObserver.disconnect();
+  }, { rootMargin: '0px 0px -8% 0px', threshold: 0 });
+  detailsObserver.observe(details);
+}
