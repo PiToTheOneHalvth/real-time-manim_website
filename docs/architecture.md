@@ -1,7 +1,7 @@
 # Website architecture
 
-Each return from the finale triggers a time-based 650ms fade-in and leftward
-slide from a 24px right offset, retaining the 100ms feature stagger. This
+Each return from the finale triggers a time-based 650ms fade-in and rightward
+slide from a 24px left offset, retaining the 100ms feature stagger. This
 animation completes independently of scroll direction and re-arms on reaching
 the finale again. The section's overall scroll fade remains reversible;
 reduced motion omits the individual feature animations.
