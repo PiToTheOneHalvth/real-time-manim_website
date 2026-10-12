@@ -1,5 +1,10 @@
 # Website architecture
 
+The Manteraction introduction uses two responsive columns. The supplied
+manteraction_placeholder.png sits on the left, with its top edge aligned
+to the explanation paragraph itself. The title occupies a separate row above
+the paragraph on the right.
+
 Each return from the finale triggers a time-based 650ms fade-in and rightward
 slide from a 24px left offset, retaining the 100ms feature stagger. This
 animation completes independently of scroll direction and re-arms on reaching
