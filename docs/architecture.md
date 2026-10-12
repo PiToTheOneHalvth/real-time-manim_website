@@ -1,8 +1,34 @@
 # Website architecture
 
+The feature section pins when its bottom reaches the viewport bottom (allowing
+all rows to be read first in short windows). Another 1.5 viewport heights of
+scroll slowly fades the title and eight features away while “Just you wait.”
+slides upward from below the viewport to its exact center, without an opacity
+fade. Both effects are scroll-driven and reversible;
+the original one-time feature entrance animations remain independent.
+
+The heading now reads “Next generattion of Manim Animation” as supplied.
+reference_for_real_time_manim/real-time-manim-bessel-placeholder.png sits below
+it in the right column, scaling proportionally. The section remains unfinished.
+
+## Work-in-progress note
+
+**Next generation manim animation part unfinished.** Keep this status until
+the user supplies the remaining content/design. An HTML comment and horizontal
+separator mark the boundary after that section. The next section is the
+right-aligned “Basis of earth-shaking artifact” introduction, linking
+Manteraction to pages/manteraction.html and emphasizing “interactive.” Its HTML
+also retains the requested note about animating interactive elements.
+
+“Next generation manim animation” follows in the left column beneath the image
+row. It has its own once-per-load scroll reveal: 650ms fade and 24px upward
+slide, respecting reduced motion independently of the earlier image delay.
+
 The pipeline paragraph section reveals once per page load on entering view:
 a 650ms fade with a 24px upward slide. The observer disconnects after triggering,
-so scrolling upward does not reverse or replay it. Reduced motion skips it.
+so scrolling upward does not reverse or replay it. The supplied
+mac_interaction_placeholder.png sits in the left column and uses the same
+animation with a 500ms start delay after the copy. Reduced motion skips both.
 
 ## Organization
 
@@ -71,8 +97,10 @@ After the topic entrance completes, the slogan's sticky section releases into
 normal document scrolling. The supplied two-paragraph Vulkan/pipeline copy
 overlaps the section's trailing blank space by 4svh with no top padding,
 leaving approximately 4vh below the heading, right-aligned between the viewport midpoint and
-the existing 6vw right inset. Its left half remains empty. This content has no
-pinning or scroll animation; the top banner retains its existing behavior.
+the existing 6vw right inset. The supplied placeholder image occupies the left
+column, with a 4vw gap before the copy. The image scales proportionally and its
+intrinsic dimensions reserve space before loading. Both columns share the
+one-time reveal trigger; the section scrolls normally without pinning.
 
 After the video scrub completes, another 0.7 viewport of scrolling brings the
 bold right-aligned heading “Real-time, real-life.” upward from below the screen.

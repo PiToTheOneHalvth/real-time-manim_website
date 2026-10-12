@@ -63,6 +63,35 @@ let topicDistance = 1;
 let topicTravel = 0;
 let targetTime = 0;
 let scrollFrame = 0;
+const futureScroll = document.querySelector('.future-scroll');
+const futurePin = document.querySelector('.future-pin');
+const futureSection = document.querySelector('.future-section');
+const futureFinale = document.querySelector('.future-finale');
+let futureStart = 0;
+let futureDistance = 1;
+
+function measureFuture() {
+  const viewport = window.innerHeight;
+  const height = futureSection.getBoundingClientRect().height;
+  const top = Math.min(0, viewport - height);
+  futureStart = futureScroll.getBoundingClientRect().top + window.scrollY - top;
+  futureDistance = viewport * 1.5;
+  futureScroll.style.setProperty('--future-pin-top', `${top}px`);
+  futureScroll.style.setProperty('--future-scroll-height', `${height + futureDistance}px`);
+  futureScroll.style.setProperty('--future-center', `${viewport / 2 - top}px`);
+}
+
+function updateFuture() {
+  const progress = Math.max(0, Math.min(1, (window.scrollY - futureStart) / futureDistance));
+  const smooth = value => value * value * (3 - 2 * value);
+  const entrance = Math.max(0, Math.min(1, (progress - .25) / .75));
+  futureScroll.style.setProperty('--future-opacity', 1 - smooth(progress));
+  const travel = window.innerHeight / 2 + futureFinale.getBoundingClientRect().height / 2 + 1;
+  futureScroll.style.setProperty('--finale-offset', `${travel * (1 - entrance)}px`);
+  futureScroll.style.setProperty('--finale-visibility', entrance > 0 ? 'visible' : 'hidden');
+  futureSection.setAttribute('aria-hidden', progress === 1 ? 'true' : 'false');
+  futureFinale.setAttribute('aria-hidden', progress <= .25 ? 'true' : 'false');
+}
 const social = document.querySelector('.social-links');
 const installation = document.querySelector('.installation');
 const socialSlot = document.querySelector('.social-slot');
@@ -229,6 +258,7 @@ function seekSlogan() {
 function updateSlogan() {
   scrollFrame = 0;
   updateBanner();
+  updateFuture();
   const topicProgress = Math.max(0, Math.min(1,
     (window.scrollY - scrubStart - scrubDistance) / topicDistance));
   slogan.style.setProperty('--topic-offset', `${topicTravel * (1 - topicProgress)}px`);
@@ -270,6 +300,7 @@ function measureSlogan() {
   // the topic's arrival, even when the displayed video is taller than a screen.
   slogan.style.setProperty('--slogan-height', `${stageHeight + scrubStart - pinStart + scrubDistance + topicDistance}px`);
   slogan.style.setProperty('--slogan-tail', '0px');
+  measureFuture();
   updateSlogan();
 }
 
@@ -287,8 +318,38 @@ sloganVideo.addEventListener('loadeddata', updateSlogan);
 sloganVideo.addEventListener('seeked', seekSlogan);
 reducedMotion.addEventListener('change', updateSlogan);
 measureSlogan();
+const futureResizeObserver = new ResizeObserver(() => {
+  measureFuture();
+  updateFuture();
+});
+futureResizeObserver.observe(futureSection);
 
 const details = document.querySelector('.real-life-details');
+const features = document.querySelector('.future-features');
+if ('IntersectionObserver' in window && !reducedMotion.matches) {
+  features.querySelectorAll('li').forEach((item, index) => {
+    item.style.setProperty('--feature-delay', `${index * 100}ms`);
+  });
+  features.classList.add('reveal-pending');
+  const featuresObserver = new IntersectionObserver(entries => {
+    if (!entries.some(entry => entry.isIntersecting)) return;
+    features.classList.remove('reveal-pending');
+    features.classList.add('reveal-visible');
+    featuresObserver.disconnect();
+  }, { rootMargin: '0px 0px -8% 0px', threshold: 0 });
+  featuresObserver.observe(features);
+}
+const nextGeneration = document.querySelector('.next-generation');
+if ('IntersectionObserver' in window && !reducedMotion.matches) {
+  nextGeneration.classList.add('reveal-pending');
+  const headingObserver = new IntersectionObserver(entries => {
+    if (!entries.some(entry => entry.isIntersecting)) return;
+    nextGeneration.classList.remove('reveal-pending');
+    nextGeneration.classList.add('reveal-visible');
+    headingObserver.disconnect();
+  }, { rootMargin: '0px 0px -8% 0px', threshold: 0 });
+  headingObserver.observe(nextGeneration);
+}
 if ('IntersectionObserver' in window && !reducedMotion.matches) {
   details.classList.add('reveal-pending');
   const detailsObserver = new IntersectionObserver(entries => {
