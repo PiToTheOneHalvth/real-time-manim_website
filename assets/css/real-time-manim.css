@@ -3,6 +3,9 @@
   --background: #000000;
   --foreground: #F5F5F5;
   --surface: #292929;
+  --banner-fill: #44444a;
+  --band: rgba(245, 245, 245, .10);
+  --hairline: rgba(245, 245, 245, .18);
   --unit: clamp(.75px, .069444vw, 1.5px);
   --slogan-width: min(120vw, 160svh);
   font-family: "Times New Roman", Times, serif;
@@ -14,6 +17,25 @@
 body { margin: 0; }
 a { color: inherit; }
 button, code { font: inherit; }
+
+/* Scroll behavior: proximity snapping per industry practice (MDN scroll-snap-type:
+   proximity = gentle, UA decides; mandatory would make the tall scrub sections'
+   middles unreachable). scroll-padding-top clears the merged banner so snapped
+   sections are not hidden under it. */
+html {
+  scroll-snap-type: y proximity;
+  scroll-padding-top: calc(60 * var(--unit));
+}
+
+/* Dynamic background: starfield canvas, behind all content. */
+#starfield {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+}
 
 .hero {
   position: relative;
@@ -229,7 +251,7 @@ a:focus-visible, button:focus-visible {
 .banner-liquid {
   display: block;
   overflow: visible;
-  fill: var(--surface);
+  fill: var(--banner-fill);
 }
 .slogan-pin {
   position: sticky;
@@ -265,7 +287,7 @@ a:focus-visible, button:focus-visible {
   grid-template-columns: minmax(0, 40fr) minmax(0, 44fr);
   gap: 4vw;
   align-items: start;
-  padding: 0 6vw 12svh;
+  padding: 10svh 6vw 12svh;
   font-size: clamp(16px, 1.8vw, 40px);
   line-height: 1.5;
   text-align: right;
@@ -333,7 +355,7 @@ a:focus-visible, button:focus-visible {
   flex-direction: column;
 }
 .next-generation-copy {
-  padding: 0 6vw 12svh;
+  padding: 10svh 6vw 12svh;
   text-align: left;
   font-size: clamp(16px, 2vw, 40px);
   line-height: 1.5;
@@ -344,7 +366,7 @@ a:focus-visible, button:focus-visible {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 4vw;
-  padding: 0 6vw 12svh;
+  padding: 10svh 6vw 12svh;
   font-size: clamp(16px, 1.8vw, 40px);
   line-height: 1.5;
 }
@@ -480,6 +502,22 @@ a:focus-visible, button:focus-visible {
 }
 .manteraction-intro a:hover { opacity: .65; }
 
+/* Scroll snap targets: each "page" settles cleanly at the top (below the banner,
+   via scroll-padding-top on html). */
+.hero, .slogan, .real-life-details, .next-generation-fullscreen,
+.next-generation-copy, .starts-from-section, .manteraction-intro,
+.future-scroll {
+  scroll-snap-align: start;
+}
+
+/* Section boundaries: alternating light/dark shade bands with hairlines.
+   The shade is translucent so the starfield stays faintly visible behind it. */
+.band {
+  background: var(--band);
+  border-top: 1px solid var(--hairline);
+  border-bottom: 1px solid var(--hairline);
+}
+
 @media (max-width: 600px) {
   .hero {
     grid-template-rows: minmax(0, 1fr) auto auto;
@@ -492,6 +530,7 @@ a:focus-visible, button:focus-visible {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  html { scroll-snap-type: none; }
   .future-features { transform: none; }
   .future-features.reveal-pending li { opacity: 1; transform: none; }
   .future-features.reveal-visible li { animation: none; }

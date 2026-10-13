@@ -53,8 +53,10 @@ const slogan = document.querySelector('.slogan');
 const sloganPin = document.querySelector('.slogan-pin');
 const sloganVideo = document.querySelector('.slogan-video');
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
-// One viewport of scroll covers the clip; increase for a slower transition.
-const scrubScreens = 1;
+// Scroll budget per pinned stage, in viewports. Kept short so the page does not
+// eat extra swipes with "dead" scroll: the scrub covers the clip in half a
+// viewport of scrolling (faster scrub = fewer swipes to get through the page).
+const scrubScreens = 0.5;
 const textAnchorY = 539 / 1080;
 const textTopY = 414 / 1080;
 let scrubStart = 0;
@@ -77,7 +79,9 @@ function measureFuture() {
   const height = futureSection.getBoundingClientRect().height;
   const top = Math.min(0, viewport - height);
   futureStart = futureScroll.getBoundingClientRect().top + window.scrollY - top;
-  futureDistance = viewport * 1.5;
+  // One viewport: the feature list fades out and the finale settles within a
+  // single swipe instead of one and a half.
+  futureDistance = viewport * 1.0;
   futureScroll.style.setProperty('--future-pin-top', `${top}px`);
   futureScroll.style.setProperty('--future-scroll-height', `${height + futureDistance}px`);
   futureScroll.style.setProperty('--future-center', `${viewport / 2 - top}px`);
@@ -249,13 +253,15 @@ function updateBanner() {
   // Move the shrinking button toward the right edge during the same morph.
   // Its 12px panel inset plus this endpoint leaves a 24px screen margin.
   installation.style.left = `${lerp(g.right, window.innerWidth - g.rightWidth - 12 * g.scale)}px`;
-  const height = 36 * g.scale;
+  // Final merged bar height: taller than the 52-unit pill so the 44-unit icons
+  // sit inside with breathing room, and the bar reads as a real taskbar.
+  const height = 60 * g.scale;
   social.style.top = `${lerp(0, (height - g.height) / 2)}px`;
-  installation.style.setProperty('--download-top', `${lerp(g.buttonTop, g.rightHeight / 2 + (height - 26 * g.scale) / 2)}px`);
-  installation.style.setProperty('--download-width', `${lerp(g.buttonWidth, 112 * g.scale)}px`);
-  installation.style.setProperty('--download-height', `${lerp(g.buttonHeight, 26 * g.scale)}px`);
-  installation.style.setProperty('--download-radius', `${lerp(12, 10) * g.scale}px`);
-  installation.style.setProperty('--download-font-size', `${lerp(22, 16) * g.scale}px`);
+  installation.style.setProperty('--download-top', `${lerp(g.buttonTop, g.rightHeight / 2 + (height - 34 * g.scale) / 2)}px`);
+  installation.style.setProperty('--download-width', `${lerp(g.buttonWidth, 132 * g.scale)}px`);
+  installation.style.setProperty('--download-height', `${lerp(g.buttonHeight, 34 * g.scale)}px`);
+  installation.style.setProperty('--download-radius', `${lerp(12, 12) * g.scale}px`);
+  installation.style.setProperty('--download-font-size', `${lerp(22, 18) * g.scale}px`);
   // Keep the command scrolling upward after the lower panel pins.
   installation.style.setProperty('--command-shift', `${-(window.scrollY - g.mergeAt)}px`);
   drawLiquidBanner(g, progress, height);
@@ -299,7 +305,7 @@ function measureSlogan() {
   const controlsBottom = controlGeometry.bottom;
   scrubStart = Math.max(pinStart, controlsBottom);
   scrubDistance = viewport * scrubScreens;
-  topicDistance = viewport * .7;
+  topicDistance = viewport * .6;
   const topicHeight = document.querySelector('.slogan-topic').getBoundingClientRect().height;
   const stageHeight = viewport - pinTop;
   // Anchor the heading to the visible screen, rather than the video's text.

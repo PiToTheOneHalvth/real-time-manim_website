@@ -5,8 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#000000">
   <title>Real-Time Manim</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="../assets/images/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="64x64" href="../assets/images/favicon-64.png">
+  <link rel="icon" href="../assets/images/favicon.ico">
+  <link rel="apple-touch-icon" href="../assets/images/apple-touch-icon.png">
   <link rel="stylesheet" href="../assets/css/real-time-manim.css">
   <script src="../assets/js/real-time-manim.js" defer></script>
+  <script src="../assets/js/starfield.js" defer></script>
   <script src="../assets/js/vendor/mermaid.min.js" defer></script>
   <script src="../assets/js/diagram-panzoom.js" defer></script>
 </head>
@@ -65,7 +70,7 @@
        <h2 class="slogan-topic" id="real-life-heading">Real time, real life.</h2>
     </div>
   </section>
-  <section class="real-life-details" aria-labelledby="real-life-heading">
+  <section class="real-life-details band" aria-labelledby="real-life-heading">
     <img class="real-life-image" src="../reference_for_real_time_manim/mac_interaction_placeholder.png" alt="Placeholder sketch for a Real-Time Manim computer interaction" width="2732" height="2048" decoding="async">
     <div class="real-life-copy">
       <p>Real time, because rendering stops being a time limitation. Real life, because you watch your animation happen instead of waiting for it.</p>
@@ -103,7 +108,7 @@
       <div class="diagram-tooltip" role="tooltip" hidden></div>
     </div>
   </section>
-  <section class="next-generation-copy">
+  <section class="next-generation-copy band">
     <p class="ng-fade-item" style="--ng-delay: 0ms">We verified the trick that makes this work. Manim's own animations are pure functions of alpha: evaluate any alpha in any order and every state comes out identical. So a seek will be one evaluation and one draw. We measured it: two to four milliseconds, flat, no matter where you land.</p>
     <div class="diagram-card ng-fade-item" data-diagram="rtm" aria-label="real-time-manim Vulkan pipeline" style="--ng-delay: 500ms">
       <div class="diagram-title">real-time-manim Vulkan pipeline</div>
@@ -132,7 +137,7 @@
   <section class="next-generation-copy">
     <p class="ng-fade-item" style="--ng-delay: 0ms">Playback becomes a special case of seeking. You'll stop watching animations in sequence and start pointing at the moment you want.</p>
   </section>
-  <section class="starts-from-section" aria-labelledby="starts-from-heading">
+  <section class="starts-from-section band" aria-labelledby="starts-from-heading">
     <h2 class="starts-from" id="starts-from-heading"><span>Starts from Manim Community.</span><span>Surpasses Manim Community.</span></h2>
     <div class="starts-from-copy">
       <p>Start with the Manim code you already write. Zero API changes. End somewhere ManimCE can't reach: Vulkan, a deeper test suite, fewer bugs.</p>
@@ -153,7 +158,7 @@
   <hr class="section-separator">
   <div class="future-scroll">
   <div class="future-pin">
-  <section class="future-section" aria-labelledby="future-heading">
+  <section class="future-section band" aria-labelledby="future-heading">
     <h2 id="future-heading">What it will have</h2>
     <div class="future-features">
       <ul>
