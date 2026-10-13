@@ -226,40 +226,31 @@ function measureControls() {
   };
 }
 
-function updateBanner() {
-  if (!controlGeometry) return;
+// Banner morph is TIME-based, not scroll-based (issue #9, refined): crossing
+// mergeAt triggers a short animation that plays through to completion even if
+// scrolling stops immediately, so there is never a persistent middle state.
+// Scrolling back re-triggers the reverse the same way.
+const BANNER_MORPH_MS = 250;
+let bannerProgress = 0; // 0 = hero/pinned, 1 = merged bar
+let morphDir = -1;      // 1 = merged side, -1 = unmerged side
+let morphRaf = 0;
+let morphStart = 0;
+let morphFrom = 0;
+
+function easeOutCubic(t) {
+  return 1 - Math.pow(1 - t, 3);
+}
+
+function applyBannerState(progress) {
   const g = controlGeometry;
-  const pinned = window.scrollY >= g.pinAt;
-  const merged = window.scrollY >= g.mergeAt;
-  social.classList.toggle('is-pinned', pinned);
-  social.classList.toggle('is-banner', merged);
-  social.style.left = pinned ? `${g.left}px` : '';
-  social.style.top = pinned ? '0px' : '';
-  installation.classList.toggle('is-banner', merged);
-  installation.style.left = merged ? `${g.right}px` : '';
-  installation.style.top = merged ? `${-g.rightHeight / 2}px` : '';
-  installation.style.height = merged ? `${g.rightHeight}px` : '';
-  // The command has scrolled away; prevent keyboard focus behind the banner.
-  command.parentElement.inert = merged;
-  banner.hidden = !merged;
-  if (!merged) return;
-  // Instant, revocable transform (issue #9): crossing the merge point snaps the
-  // controls straight into the final bar (progress = 1, no scroll-linked ramp).
-  // Scrolling back above mergeAt re-enters the branch above and unsets the
-  // banner classes the same frame, so the revert is instant too. The liquid
-  // overshoots and smooth-union softness are zero at progress = 1, so the final
-  // contour is drawn directly with no intermediate frames.
-  const progress = 1;
-  social.classList.add('entrance-complete');
-  installation.classList.add('entrance-complete');
   const lerp = (a, b) => a + (b - a) * progress;
-  // Move the shrinking button toward the right edge during the same morph.
-  // Its 12px panel inset plus this endpoint leaves a 24px screen margin.
-  installation.style.left = `${lerp(g.right, window.innerWidth - g.rightWidth - 12 * g.scale)}px`;
-  // Final merged bar height: taller than the 52-unit pill so the 44-unit icons
-  // sit inside with breathing room, and the bar reads as a real taskbar.
   const height = 60 * g.scale;
+  banner.hidden = false;
+  social.style.left = `${g.left}px`;
   social.style.top = `${lerp(0, (height - g.height) / 2)}px`;
+  installation.style.left = `${lerp(g.right, window.innerWidth - g.rightWidth - 12 * g.scale)}px`;
+  installation.style.top = `${-g.rightHeight / 2}px`;
+  installation.style.height = `${g.rightHeight}px`;
   installation.style.setProperty('--download-top', `${lerp(g.buttonTop, g.rightHeight / 2 + (height - 34 * g.scale) / 2)}px`);
   installation.style.setProperty('--download-width', `${lerp(g.buttonWidth, 132 * g.scale)}px`);
   installation.style.setProperty('--download-height', `${lerp(g.buttonHeight, 34 * g.scale)}px`);
@@ -268,6 +259,85 @@ function updateBanner() {
   // Keep the command scrolling upward after the lower panel pins.
   installation.style.setProperty('--command-shift', `${-(window.scrollY - g.mergeAt)}px`);
   drawLiquidBanner(g, progress, height);
+}
+
+function clearBannerStyles() {
+  social.style.left = '';
+  social.style.top = '';
+  installation.style.left = '';
+  installation.style.top = '';
+  installation.style.height = '';
+}
+
+function startMorph() {
+  morphFrom = bannerProgress;
+  morphStart = performance.now();
+  cancelAnimationFrame(morphRaf);
+  morphRaf = requestAnimationFrame(morphStep);
+}
+
+function morphStep(now) {
+  const target = morphDir === 1 ? 1 : 0;
+  if (morphFrom === target) { morphRaf = 0; return; }
+  const t = reducedMotion.matches ? 1 : Math.min(1, (now - morphStart) / BANNER_MORPH_MS);
+  bannerProgress = morphFrom + (target - morphFrom) * easeOutCubic(t);
+  if (bannerProgress > 0) applyBannerState(bannerProgress);
+  if (t >= 1) {
+    morphRaf = 0;
+    if (bannerProgress >= 1) {
+      social.classList.add('entrance-complete');
+      installation.classList.add('entrance-complete');
+    } else {
+      clearBannerStyles();
+      banner.hidden = true;
+    }
+    return;
+  }
+  morphRaf = requestAnimationFrame(morphStep);
+}
+
+function updateBanner() {
+  if (!controlGeometry) return;
+  const g = controlGeometry;
+  const pinned = window.scrollY >= g.pinAt;
+  const merged = window.scrollY >= g.mergeAt;
+  social.classList.toggle('is-pinned', pinned);
+  social.classList.toggle('is-banner', merged);
+  installation.classList.toggle('is-banner', merged);
+  // The command has scrolled away; prevent keyboard focus behind the banner.
+  command.parentElement.inert = merged;
+
+  if (merged && morphDir !== 1) {
+    morphDir = 1;
+    if (bannerProgress < 1) startMorph();
+  } else if (!merged && morphDir !== -1) {
+    morphDir = -1;
+    if (bannerProgress > 0) startMorph();
+  }
+
+  if (merged) {
+    // Steady merged state; also heals inline styles cleared by
+    // measureControls() on resize. While a morph is running, morphStep owns
+    // the visuals.
+    if (!morphRaf) applyBannerState(bannerProgress);
+  } else if (bannerProgress === 0) {
+    // Idle hero/pinned state: instant pinning, clean inline styles.
+    cancelAnimationFrame(morphRaf);
+    morphRaf = 0;
+    social.style.left = pinned ? `${g.left}px` : '';
+    social.style.top = pinned ? '0px' : '';
+    installation.style.left = '';
+    installation.style.top = '';
+    installation.style.height = '';
+    banner.hidden = true;
+  } else if (!pinned) {
+    // Scrolled back above pinAt mid-reverse: abort straight to the hero slot.
+    cancelAnimationFrame(morphRaf);
+    morphRaf = 0;
+    bannerProgress = 0;
+    clearBannerStyles();
+    banner.hidden = true;
+  }
 }
 
 function seekSlogan() {
