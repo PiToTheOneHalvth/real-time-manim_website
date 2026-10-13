@@ -352,16 +352,28 @@ if ('IntersectionObserver' in window && !reducedMotion.matches) {
   }, { rootMargin: '0px 0px -8% 0px', threshold: 0 });
   featuresObserver.observe(features);
 }
-const nextGeneration = document.querySelector('.next-generation');
-if ('IntersectionObserver' in window && !reducedMotion.matches) {
-  nextGeneration.classList.add('reveal-pending');
-  const headingObserver = new IntersectionObserver(entries => {
+const nextGenerationFull = document.querySelector('.next-generation-fullscreen');
+if ('IntersectionObserver' in window && !reducedMotion.matches && nextGenerationFull) {
+  nextGenerationFull.classList.add('reveal-pending');
+  const ngObserver = new IntersectionObserver(entries => {
     if (!entries.some(entry => entry.isIntersecting)) return;
-    nextGeneration.classList.remove('reveal-pending');
-    nextGeneration.classList.add('reveal-visible');
-    headingObserver.disconnect();
+    nextGenerationFull.classList.remove('reveal-pending');
+    nextGenerationFull.classList.add('reveal-visible');
+    ngObserver.disconnect();
   }, { rootMargin: '0px 0px -8% 0px', threshold: 0 });
-  headingObserver.observe(nextGeneration);
+  ngObserver.observe(nextGenerationFull);
+}
+const nextGenerationCopy = document.querySelectorAll('.next-generation-copy');
+for (const section of nextGenerationCopy) {
+  if (!('IntersectionObserver' in window) || reducedMotion.matches) continue;
+  section.classList.add('reveal-pending');
+  const ngCopyObserver = new IntersectionObserver(entries => {
+    if (!entries.some(entry => entry.isIntersecting)) return;
+    section.classList.remove('reveal-pending');
+    section.classList.add('reveal-visible');
+    ngCopyObserver.disconnect();
+  }, { rootMargin: '0px 0px -8% 0px', threshold: 0 });
+  ngCopyObserver.observe(section);
 }
 if ('IntersectionObserver' in window && !reducedMotion.matches) {
   details.classList.add('reveal-pending');
