@@ -55,30 +55,41 @@
       <path class="banner-result"/>
     </svg>
   </div>
-  <section class="slogan" aria-label="We spent a long time making it real-time, just to stop time limitations from being a problem.">
+  <section class="slogan" aria-label="We spent a long time making it real time, just to stop time limitations from being a problem.">
     <div class="slogan-pin">
       <video class="slogan-video" muted playsinline preload="auto" aria-hidden="true" tabindex="-1">
         <source src="../reference_for_real_time_manim/slogan.mp4" type="video/mp4">
       </video>
-       <h2 class="slogan-topic" id="real-life-heading">Real-time, real-life.</h2>
+       <h2 class="slogan-topic" id="real-life-heading">Real time, real life.</h2>
     </div>
   </section>
   <section class="real-life-details" aria-labelledby="real-life-heading">
     <img class="real-life-image" src="../reference_for_real_time_manim/mac_interaction_placeholder.png" alt="Placeholder sketch for a Real-Time Manim computer interaction" width="2732" height="2048" decoding="async">
     <div class="real-life-copy">
-      <p>The most prominent advantage of real-time-manim is the implication of Vulkan, and the redesign of the pipeline.</p>
-      <p>with the reconstruction of pipeline, real-time-manim can show you every single frame it jsut rendered. It makes reconstruction and adjustments quick, easy, and highly navigable.</p>
+      <p>Real time, because rendering stops being a time limitation. Real life, because you watch your animation happen instead of waiting for it.</p>
+      <p>With the rebuilt pipeline, real-time-manim shows you every single frame as soon as it renders. Reworking and adjusting your scene is quick and easy, and you always know where you are.</p>
     </div>
-    <h2 class="next-generation">Next generattion of Manim Animation</h2>
+    <h2 class="next-generation">Next generation of Manim animation</h2>
+    <div class="next-generation-copy">
+      <p>Manim plays animations by walking forward. To reach frame N, you replay every frame from 0 to N. real-time-manim's next generation animation layer will address <strong>time</strong> directly: any frame, any moment, on demand.</p>
+      <p>We verified the trick that makes this work. Manim's own animations are pure functions of alpha: evaluate any alpha in any order and every state comes out identical. So a seek will be one evaluation and one draw. We measured it: two to four milliseconds, flat, no matter where you land.</p>
+      <p>Playback becomes a special case of seeking. You'll stop watching animations in sequence and start pointing at the moment you want.</p>
+    </div>
     <img class="next-generation-image" src="../reference_for_real_time_manim/real-time-manim-bessel-placeholder.png" alt="Real-Time Manim Bessel animation placeholder" width="2732" height="2048" decoding="async">
+    <h2 class="starts-from"><span>Starts from Manim Community.</span><span>Surpasses Manim Community.</span></h2>
+    <div class="starts-from-copy">
+      <p>Start with the Manim code you already write. Zero API changes. End somewhere ManimCE can't reach: Vulkan, a deeper test suite, fewer bugs.</p>
+      <p>real-time-manim is built on <strong>Vulkan</strong>, replacing ManimCE's OpenGL and Cairo renderers. Vulkan is newer and lower-level, which means faster, hardware-accelerated rendering, with native per-type senders for the shapes you draw.</p>
+      <p>We also test more than ManimCE does. Dozens of per-feature tests, plus scripts that verify real renders, catch bugs before you ever see them. Fewer bugs, smarter logic, more features.</p>
+    </div>
   </section>
-  <!-- Next generation manim animation part unfinished. -->
   <hr class="section-separator">
   <section class="manteraction-intro" aria-labelledby="manteraction-heading">
     <img class="manteraction-image" src="../reference_for_real_time_manim/manteraction_placeholder.png" alt="Manteraction placeholder" width="2732" height="2048" decoding="async">
     <div class="manteraction-copy">
-    <h2 id="manteraction-heading">Basis of earth-shaking artifact</h2>
-    <p><a href="manteraction.html">Manteraction</a>, a product that will make math animation <strong>interactive</strong>.</p>
+    <h2 id="manteraction-heading">The basis of an earth-shaking artifact.</h2>
+    <p>real-time-manim is the basis. <a href="manteraction.html">Manteraction</a> is the artifact: math animation you won't just watch. You'll <strong>touch</strong> it.</p>
+    <p>You'll drag the timeline, preview every change instantly, and view your scene from any camera angle. No coding needed, and a supplemental coding platform for custom behaviour. You'll publish what you build as a plugin and take in everyone else's.</p>
     </div>
     <!-- page note: interactive elements should have some animations -->
   </section>
@@ -86,7 +97,7 @@
   <div class="future-scroll">
   <div class="future-pin">
   <section class="future-section" aria-labelledby="future-heading">
-    <h2 id="future-heading">What will have</h2>
+    <h2 id="future-heading">What it will have</h2>
     <div class="future-features">
       <ul>
         <li>Godot node design</li>
@@ -95,14 +106,14 @@
         <li>free-camera mode</li>
       </ul>
       <ul>
-        <li>no coding, with supplemental coding platform</li>
+        <li>no coding, with a supplemental coding platform</li>
         <li>plugin package design</li>
-        <li>support original ManimCE/ManimGL code</li>
-        <li>prefessional parameter adjust interface</li>
+        <li>support for original ManimCE/ManimGL code</li>
+        <li>professional parameter adjustment interface</li>
       </ul>
     </div>
   </section>
-    <h2 class="future-finale">Just you wait.</h2>
+    <h2 class="future-finale">Just You Wait.</h2>
   </div>
   </div>
 </body>

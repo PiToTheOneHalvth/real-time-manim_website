@@ -18,7 +18,7 @@ slides upward from below the viewport to its exact center, without an opacity
 fade. Both effects are scroll-driven and reversible;
 the original one-time feature entrance animations remain independent.
 
-The heading now reads “Next generattion of Manim Animation” as supplied.
+The heading now reads “Next generation of Manim Animation” as supplied.
 reference_for_real_time_manim/real-time-manim-bessel-placeholder.png sits below
 it in the right column, scaling proportionally. The section remains unfinished.
 

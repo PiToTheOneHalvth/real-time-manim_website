@@ -304,12 +304,38 @@ a:focus-visible, button:focus-visible {
   line-height: 1.15;
   text-align: left;
 }
+.next-generation-copy {
+  grid-column: 1;
+  grid-row: 3;
+  text-align: left;
+}
 .next-generation-image {
   grid-column: 2;
   grid-row: 3;
   display: block;
   width: 100%;
   height: auto;
+}
+.starts-from {
+  grid-column: 2;
+  grid-row: 4;
+  margin: 4svh 0 0;
+  font-size: clamp(24px, 3.2vw, 64px);
+  font-weight: 700;
+  line-height: 1.15;
+  text-align: right;
+}
+.starts-from span {
+  display: block;
+  white-space: nowrap;
+}
+.starts-from {
+  font-size: min(2.6vw, 52px);
+}
+.starts-from-copy {
+  grid-column: 2;
+  grid-row: 5;
+  text-align: right;
 }
 .section-separator {
   margin: 0 6vw;
@@ -415,7 +441,6 @@ a:focus-visible, button:focus-visible {
 }
 .manteraction-intro p {
   grid-column: 2;
-  grid-row: 2;
   margin: 0;
   font-size: clamp(16px, 1.8vw, 40px);
   line-height: 1.5;
