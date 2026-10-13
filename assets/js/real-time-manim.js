@@ -243,12 +243,15 @@ function updateBanner() {
   command.parentElement.inert = merged;
   banner.hidden = !merged;
   if (!merged) return;
-  const linear = Math.min(1, (window.scrollY - g.mergeAt) / (window.innerHeight * .15));
-  const progress = reducedMotion.matches ? 1 : linear;
-  if (progress === 1) {
-    social.classList.add('entrance-complete');
-    installation.classList.add('entrance-complete');
-  }
+  // Instant, revocable transform (issue #9): crossing the merge point snaps the
+  // controls straight into the final bar (progress = 1, no scroll-linked ramp).
+  // Scrolling back above mergeAt re-enters the branch above and unsets the
+  // banner classes the same frame, so the revert is instant too. The liquid
+  // overshoots and smooth-union softness are zero at progress = 1, so the final
+  // contour is drawn directly with no intermediate frames.
+  const progress = 1;
+  social.classList.add('entrance-complete');
+  installation.classList.add('entrance-complete');
   const lerp = (a, b) => a + (b - a) * progress;
   // Move the shrinking button toward the right edge during the same morph.
   // Its 12px panel inset plus this endpoint leaves a 24px screen margin.
