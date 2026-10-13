@@ -1,32 +1,41 @@
 // Interactive mermaid diagrams: render, pan, zoom, per-node context tooltips.
 // Used by the next-generation section of real_time_manim.html.
-import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+// Mermaid is loaded locally (assets/js/vendor/mermaid.min.js) — no CDN — so
+// the diagrams render even where CDNs are unreachable.
+
+const mermaid = window.mermaid;
 
 const CONTEXT = {
   manimce: {
-    'Manim Scene': 'construct() builds the mobject scene; render() drives playback.',
-    'Renderer.play': 'Each play() call: begin() once per animation, then a time loop advancing alpha step by step.',
-    'Camera.get_frame': 'One camera frame captured per time step: the pixel source for the encoder.',
-    'renderer': 'Two backends: Cairo (pure CPU) or OpenGL (GPU draw plus readback).',
-    'Cairo rasterizer': 'Mobjects are rasterized to pixels on the CPU, one PIL image per frame.',
-    'moderngl framebuffer': 'Draws the frame to a moderngl framebuffer on the GPU.',
-    'software readback': 'The bottleneck: pixels copied back from GPU to CPU on every frame.',
-    'SceneFileWriter': 'write_frame() pipes each finished frame into a running ffmpeg process.',
-    'partial_movie_files': 'One partial segment per play() call; nothing is joined yet.',
-    'combine_to_movie': 'Runs only after ALL play() calls finish: concatenates the segments.',
-    'MP4': 'The final video file, written last.',
-    'user waits for the full render': 'No live preview: you see the result only when the whole render is done.',
+    'Manim Scene': 'Standard Manim code. Nothing live about it.',
+    'Renderer.play': 'Frame by frame, forward only.',
+    'Camera.get_frame': 'A full capture, every step.',
+    'backend': 'Into the offline grind.',
+    'renderer': 'Two backends. One rule: you wait.',
+    'Cairo mode': 'Pure CPU. Slow by design.',
+    'Cairo rasterizer': 'Pixels on the CPU, one by one.',
+    'moderngl framebuffer': 'GPU draw, then pixels handed back.',
+    'OpenGL mode': 'GPU work, given back to the CPU.',
+    'software readback': 'The bottleneck. Pixels dragged back to the CPU.',
+    'SceneFileWriter': 'Frames trickle into ffmpeg.',
+    'partial_movie_files': 'Your video in pieces. Unplayable till the end.',
+    'combine_to_movie': 'Joined only when every play() finishes.',
+    'MP4': 'Written last. Seen last.',
+    'user waits for the full render': 'No live preview. Wait it out.',
+    'no live preview': 'Nothing plays till the render ends.',
   },
   rtm: {
-    'Manim Scene': 'Standard Manim scene code: zero API changes.',
-    'MLWindow': 'The live Vulkan window: play() and animate() drive the scene in real time.',
-    'type-dispatch': 'Each mobject type is routed to its own native _send method.',
-    'vulkan_core.dll': 'Python reaches the native renderer through a ctypes FFI.',
-    'per-shape vertex builders': 'Native per-shape vertex builders: rect, circle, line, text, bezier.',
-    'Vulkan instance · device · swapchain': 'The Vulkan context: instance, device, and swapchain.',
-    'GPU pipeline': 'Frames are drawn directly by the GPU.',
-    'ffmpeg': 'Optional readback: frames can also stream to ffmpeg for offline video.',
-    'MP4': 'Offline recording output.',
+    'Manim Scene': 'Same Manim code. Zero changes.',
+    'MLWindow': 'Live. Watch it the moment it plays.',
+    'type-dispatch': 'A native fast path per mobject.',
+    'vulkan_core.dll': 'Native Vulkan core, built for speed.',
+    'ctypes FFI': 'Straight to the engine. No middleman.',
+    'per-shape vertex builders': 'Every shape gets its own builder.',
+    'Vulkan instance · device · swapchain': 'Hardware-accelerated, end to end.',
+    'GPU pipeline': 'Frames drawn by the GPU.',
+    'ffmpeg': 'Recording only when you ask.',
+    'optional readback': 'An MP4, straight from the stream.',
+    'MP4': 'Video on demand.',
   },
 };
 
@@ -68,7 +77,19 @@ function positionTooltip(tooltip, x, y) {
 }
 
 async function main() {
-  await mermaid.run({ querySelector: '.diagram-card .mermaid' });
+  if (!mermaid) {
+    document.querySelectorAll('.diagram-card .mermaid')
+      .forEach((el) => { el.textContent = 'Diagram library failed to load.'; });
+    return;
+  }
+  try {
+    await mermaid.run({ querySelector: '.diagram-card .mermaid' });
+  } catch (err) {
+    document.querySelectorAll('.diagram-card .mermaid')
+      .forEach((el) => { el.textContent = 'Diagram failed to render.'; });
+    console.error('diagram-panzoom: mermaid render failed', err);
+    return;
+  }
 
   // Shared fullscreen overlay: the card itself moves in and out, so all
   // pan/zoom/tooltip listeners survive.
@@ -110,6 +131,10 @@ async function main() {
     const canvas = viewport.querySelector('svg');
     if (!canvas) continue;
     const tooltip = card.querySelector('.diagram-tooltip');
+    // The reveal animation leaves a transform on the card, which turns it
+    // into the containing block for fixed descendants and breaks tooltip
+    // positioning. Relocate the tooltip to body so fixed = viewport.
+    document.body.appendChild(tooltip);
     const context = CONTEXT[card.dataset.diagram] || {};
 
     // mermaid leaves width="100%" on the svg, which collapses to a sliver
@@ -204,18 +229,18 @@ async function main() {
       requestAnimationFrame(() => { if (!touched) fit(); });
     });
 
-    // Hover: per-node context tooltip.
-    for (const node of canvas.querySelectorAll('g.node')) {
-      const text = context[firstLine(node)];
+    // Hover: context tooltip for nodes and mid-edge labels.
+    for (const label of canvas.querySelectorAll('g.node, g.edgeLabel')) {
+      const text = context[firstLine(label)];
       if (!text) continue;
-      node.style.cursor = 'help';
-      node.addEventListener('pointerenter', (e) => {
+      label.style.cursor = 'crosshair';
+      label.addEventListener('pointerenter', (e) => {
         tooltip.textContent = text;
         tooltip.hidden = false;
         positionTooltip(tooltip, e.clientX, e.clientY);
       });
-      node.addEventListener('pointermove', (e) => positionTooltip(tooltip, e.clientX, e.clientY));
-      node.addEventListener('pointerleave', () => { tooltip.hidden = true; });
+      label.addEventListener('pointermove', (e) => positionTooltip(tooltip, e.clientX, e.clientY));
+      label.addEventListener('pointerleave', () => { tooltip.hidden = true; });
       wired += 1;
     }
   }
