@@ -229,16 +229,23 @@ function measureControls() {
 // Banner morph is TIME-based, not scroll-based (issue #9, refined): crossing
 // mergeAt triggers a short animation that plays through to completion even if
 // scrolling stops immediately, so there is never a persistent middle state.
-// Scrolling back re-triggers the reverse the same way.
-const BANNER_MORPH_MS = 250;
+// Scrolling back re-triggers the reverse the same way. 400ms, sigmoid easing
+// (slow start, fast middle, slow settle).
+const BANNER_MORPH_MS = 400;
 let bannerProgress = 0; // 0 = hero/pinned, 1 = merged bar
 let morphDir = -1;      // 1 = merged side, -1 = unmerged side
 let morphRaf = 0;
 let morphStart = 0;
 let morphFrom = 0;
 
-function easeOutCubic(t) {
-  return 1 - Math.pow(1 - t, 3);
+// Logistic sigmoid, normalized to hit exactly 0 at t=0 and 1 at t=1:
+// slow start, fast middle, slow settle.
+function sigmoid(t) {
+  const k = 8;
+  const s = x => 1 / (1 + Math.exp(-k * (x - 0.5)));
+  const s0 = s(0);
+  const s1 = s(1);
+  return (s(t) - s0) / (s1 - s0);
 }
 
 function applyBannerState(progress) {
@@ -280,7 +287,7 @@ function morphStep(now) {
   const target = morphDir === 1 ? 1 : 0;
   if (morphFrom === target) { morphRaf = 0; return; }
   const t = reducedMotion.matches ? 1 : Math.min(1, (now - morphStart) / BANNER_MORPH_MS);
-  bannerProgress = morphFrom + (target - morphFrom) * easeOutCubic(t);
+  bannerProgress = morphFrom + (target - morphFrom) * sigmoid(t);
   if (bannerProgress > 0) applyBannerState(bannerProgress);
   if (t >= 1) {
     morphRaf = 0;
