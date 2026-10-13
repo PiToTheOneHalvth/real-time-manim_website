@@ -115,8 +115,8 @@ button, code { font: inherit; }
 }
 .social-links .wiki-icon {
   /* Preserve the PSD export's proportions within the shared icon space. */
-  width: calc(36 * var(--unit));
-  height: calc(36 * var(--unit));
+  width: calc(20 * var(--unit));
+  height: calc(20 * var(--unit));
   object-fit: contain;
 }
 .social-links a, .download, #copy-command { transition: opacity 160ms ease; }
