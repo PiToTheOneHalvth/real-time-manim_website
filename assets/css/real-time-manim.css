@@ -676,6 +676,7 @@ a:focus-visible, button:focus-visible {
   .hero-title span, .social-links, .installation { animation: none; }
   .social-links a, .download, #copy-command, .taskbar a { transition: none; }
   .center-title { transition: none; }
+  .diagram-recenter-btn { transition: none; }
 }
 
 /* Interactive diagram cards (next-generation section) */
@@ -701,7 +702,9 @@ a:focus-visible, button:focus-visible {
   background: #0d0d0d;
   padding: 0;
   touch-action: none;
+  cursor: grab;
 }
+.diagram-viewport.dragging { cursor: grabbing; }
 .diagram-viewport .mermaid { line-height: 0; }
 .diagram-viewport svg {
   display: block;
@@ -726,6 +729,26 @@ a:focus-visible, button:focus-visible {
   cursor: pointer;
 }
 .diagram-fullscreen-btn:hover { background: #1c1c1c; color: #fff; }
+.diagram-recenter-btn {
+  position: absolute;
+  top: 48px;
+  right: 10px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid rgba(245, 245, 245, .2);
+  border-radius: 8px;
+  background: #101010;
+  color: #f5f5f5;
+  cursor: pointer;
+  transition: opacity 160ms ease;
+}
+.diagram-recenter-btn:hover { background: #1c1c1c; color: #fff; }
+/* Hidden while the view already sits at the centered fit state. */
+.diagram-recenter-btn.is-centered { opacity: 0; pointer-events: none; }
 .diagram-overlay .diagram-fullscreen-btn { display: none; }
 .diagram-overlay {
   position: fixed;

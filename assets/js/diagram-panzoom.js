@@ -4,6 +4,9 @@
 // the diagrams render even where CDNs are unreachable.
 
 const mermaid = window.mermaid;
+// real-time-manim.js already declares `reducedMotion` globally (classic
+// scripts share scope) — use a distinct name here.
+const motionReduced = window.matchMedia('(prefers-reduced-motion: reduce)');
 
 const CONTEXT = {
   manimce: {
@@ -77,6 +80,11 @@ function positionTooltip(tooltip, x, y) {
 }
 
 async function main() {
+  // Guard against double execution (e.g. a live-preview server reloading the
+  // page mid-session): running twice would double-wire pan/zoom listeners.
+  // A window flag works even while mermaid's async render is still pending.
+  if (window.__diagramPanzoomWired) return;
+  window.__diagramPanzoomWired = true;
   if (!mermaid) {
     document.querySelectorAll('.diagram-card .mermaid')
       .forEach((el) => { el.textContent = 'Diagram library failed to load.'; });
@@ -155,37 +163,62 @@ async function main() {
     const base = canvas.getBoundingClientRect();
     const baseWidth = base.width;
     const baseHeight = base.height;
+    const recenterBtn = card.querySelector('.diagram-recenter-btn');
     let tx = 12, ty = 12, k = 1;
+    // Scale at which the whole diagram fits the viewport (the initial full
+    // view). Zooming out never goes past it: it snaps back to this state.
+    let fitK = 1;
     let touched = false;
-    const apply = () => {
-      canvas.style.transform = `translate(${tx}px, ${ty}px) scale(${k})`;
-    };
-    canvas.style.transformOrigin = '0 0';
     const pad = 12;
-    const fit = () => {
+    const computeFitK = () => {
       const vw = viewport.clientWidth;
       const vh = viewport.clientHeight;
-      if (baseWidth > 0 && baseHeight > 0 && vw > 0 && vh > 0) {
-        const cw = Math.max(1, vw - 2 * pad);
-        const ch = Math.max(1, vh - 2 * pad);
-        k = Math.min(cw / baseWidth, ch / baseHeight);
-        tx = (vw - baseWidth * k) / 2;
-        ty = (vh - baseHeight * k) / 2;
-      }
+      if (baseWidth <= 0 || baseHeight <= 0 || vw <= 0 || vh <= 0) return fitK;
+      const cw = Math.max(1, vw - 2 * pad);
+      const ch = Math.max(1, vh - 2 * pad);
+      return Math.min(cw / baseWidth, ch / baseHeight);
+    };
+    const fitTarget = () => {
+      const vw = viewport.clientWidth;
+      const vh = viewport.clientHeight;
+      const kk = computeFitK();
+      return { k: kk, tx: (vw - baseWidth * kk) / 2, ty: (vh - baseHeight * kk) / 2 };
+    };
+    // The recenter control hides while the view already sits at the centered
+    // fit state and reappears as soon as the diagram pans or zooms away.
+    const updateRecenterVisibility = () => {
+      const t = fitTarget();
+      const centered = Math.abs(k - t.k) < 0.005 && Math.abs(tx - t.tx) < 0.5 && Math.abs(ty - t.ty) < 0.5;
+      recenterBtn.classList.toggle('is-centered', centered);
+    };
+    const apply = () => {
+      canvas.style.transform = `translate(${tx}px, ${ty}px) scale(${k})`;
+      updateRecenterVisibility();
+    };
+    canvas.style.transformOrigin = '0 0';
+    const fit = () => {
+      const t = fitTarget();
+      fitK = t.k;
+      k = t.k; tx = t.tx; ty = t.ty;
       apply();
     };
     fit();
-    new ResizeObserver(() => { if (!touched) fit(); }).observe(viewport);
+    new ResizeObserver(() => {
+      fitK = computeFitK();
+      if (!touched) fit(); else apply();
+    }).observe(viewport);
 
-    // Pan: drag with pointer capture.
+    // Pan: drag anywhere in the diagram area — pointer capture on the
+    // viewport, so empty margins (fullscreen) pan too, not only the svg.
     let dragging = false, sx = 0, sy = 0, ox = 0, oy = 0;
-    canvas.addEventListener('pointerdown', (e) => {
+    viewport.addEventListener('pointerdown', (e) => {
+      cancelRecenterAnim();
       dragging = true;
-      canvas.setPointerCapture(e.pointerId);
+      viewport.setPointerCapture(e.pointerId);
       sx = e.clientX; sy = e.clientY; ox = tx; oy = ty;
       viewport.classList.add('dragging');
     });
-    canvas.addEventListener('pointermove', (e) => {
+    viewport.addEventListener('pointermove', (e) => {
       if (!dragging) return;
       touched = true;
       tx = ox + (e.clientX - sx);
@@ -196,28 +229,65 @@ async function main() {
       dragging = false;
       viewport.classList.remove('dragging');
     };
-    canvas.addEventListener('pointerup', endDrag);
-    canvas.addEventListener('pointercancel', endDrag);
+    viewport.addEventListener('pointerup', endDrag);
+    viewport.addEventListener('pointercancel', endDrag);
 
-    // Zoom: wheel around the cursor.
+    // Zoom: wheel around the cursor. Zooming out below the initial full view
+    // snaps back to it (centered), never smaller.
     viewport.addEventListener('wheel', (e) => {
       e.preventDefault();
-      touched = true;
+      cancelRecenterAnim();
       const rect = viewport.getBoundingClientRect();
       const px = e.clientX - rect.left;
       const py = e.clientY - rect.top;
-      const next = Math.min(4, Math.max(0.35, k * Math.exp(-e.deltaY * 0.0015)));
-      tx = px - (px - tx) * (next / k);
-      ty = py - (py - ty) * (next / k);
-      k = next;
+      const next = k * Math.exp(-e.deltaY * 0.0015);
+      if (next < fitK) {
+        touched = false;
+        fit();
+        return;
+      }
+      touched = true;
+      const clamped = Math.min(4, next);
+      tx = px - (px - tx) * (clamped / k);
+      ty = py - (py - ty) * (clamped / k);
+      k = clamped;
       apply();
     }, { passive: false });
 
-    // Double-click resets to the initial whole-diagram view.
-    canvas.addEventListener('dblclick', () => {
-      touched = false;
-      fit();
-    });
+    // Double-click or the recenter button glides back to the initial
+    // whole-diagram view (instant under prefers-reduced-motion). Interaction
+    // cancels a glide in progress.
+    let animFrame = 0;
+    const cancelRecenterAnim = () => {
+      if (animFrame) { cancelAnimationFrame(animFrame); animFrame = 0; }
+    };
+    const recenter = () => {
+      cancelRecenterAnim();
+      if (motionReduced.matches) { fit(); return; }
+      const start = { k, tx, ty };
+      const end = fitTarget();
+      fitK = end.k;
+      const duration = 320;
+      const startedAt = performance.now();
+      const ease = x => 1 - (1 - x) ** 3;
+      const step = (now) => {
+        const t = Math.min(1, (now - startedAt) / duration);
+        const e = ease(t);
+        k = start.k + (end.k - start.k) * e;
+        tx = start.tx + (end.tx - start.tx) * e;
+        ty = start.ty + (end.ty - start.ty) * e;
+        apply();
+        if (t < 1) {
+          animFrame = requestAnimationFrame(step);
+        } else {
+          animFrame = 0;
+          touched = false;
+        }
+      };
+      animFrame = requestAnimationFrame(step);
+    };
+    viewport.addEventListener('dblclick', recenter);
+    recenterBtn.addEventListener('click', recenter);
 
     // Fullscreen: move the whole card into the overlay; position preserved
     // on return via the sibling anchor.
@@ -230,7 +300,10 @@ async function main() {
       overlay.appendChild(card);
       overlay.hidden = false;
       document.body.classList.add('diagram-fullscreen-open');
-      requestAnimationFrame(() => { if (!touched) fit(); });
+      requestAnimationFrame(() => {
+        fitK = computeFitK();
+        if (!touched) fit(); else apply();
+      });
     });
 
     // Hover: context tooltip for nodes and mid-edge labels.
