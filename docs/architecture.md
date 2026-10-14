@@ -57,7 +57,8 @@ that scale. Installation height remains twice the social pill's height.
 Below 600px, hero controls occupy separate rows. Details remain on the right half
 and wrap long words. The topic scales to fit the available width and height.
 
-The video width is min(120vw, 160svh) to keep its text within short viewports.
+The video width is min(88vw, 120svh) to keep the slogan more compact while
+remaining responsive in short viewports.
 The topic retains its 6vw right inset and 8% bottom inset independently of the
 video width. Scroll geometry is remeasured on window and visual viewport resize;
 old slot sizes are cleared first. Banner morph distance is 15% of viewport

@@ -7,7 +7,7 @@
   --band: rgba(245, 245, 245, .10);
   --hairline: rgba(245, 245, 245, .18);
   --unit: clamp(.75px, .069444vw, 1.5px);
-  --slogan-width: min(120vw, 160svh);
+  --slogan-width: min(88vw, 120svh);
   font-family: "Times New Roman", Times, serif;
   background: var(--background);
   color: var(--foreground);
@@ -384,6 +384,32 @@ a:focus-visible, button:focus-visible {
 .starts-from-section .starts-from-copy {
   grid-column: 2;
   text-align: right;
+}
+.architecture-section {
+  padding: 10svh 6vw 12svh;
+  text-align: left;
+}
+.architecture-heading {
+  margin: 0 0 .8em;
+  font-size: clamp(28px, 4.5vw, 96px);
+  font-weight: 700;
+  line-height: 1.1;
+}
+.architecture-placeholder {
+  min-height: 40svh;
+  display: grid;
+  place-items: center;
+  padding: 6svh 4vw;
+  border: 1px solid rgba(245, 245, 245, .22);
+  border-radius: 12px;
+  background: #101010;
+}
+.architecture-placeholder p {
+  margin: 0;
+  font-size: clamp(24px, 3vw, 64px);
+  line-height: 1.4;
+  color: rgba(245, 245, 245, .7);
+  overflow-wrap: anywhere;
 }
 .section-separator {
   margin: 0 6vw;
