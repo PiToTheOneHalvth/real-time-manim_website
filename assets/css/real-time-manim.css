@@ -258,6 +258,12 @@ a:focus-visible, button:focus-visible {
   height: auto;
   aspect-ratio: 625 / 134;
   object-fit: contain;
+  /* The clip's background is pure black; screen blending drops black entirely,
+     so only the baked text shows and the starfield is visible through it.
+     (True alpha WebM was attempted but both local ffmpeg builds silently drop
+     the VP9 alpha plane; screen blend gives the same result in every browser
+     including Safari.) */
+  mix-blend-mode: screen;
 }
 .slogan-topic {
   position: absolute;
