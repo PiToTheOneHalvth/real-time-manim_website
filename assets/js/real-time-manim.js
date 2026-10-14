@@ -113,7 +113,9 @@ function updateFuture() {
 
 const manteractionScroll = document.querySelector('.manteraction-scroll');
 const manteractionStage = document.querySelector('.manteraction-stage');
+const manteractionFinaleBlock = document.querySelector('.manteraction-finale-block');
 const manteractionFinale = document.querySelector('.manteraction-finale');
+const manteractionDetails = document.querySelector('.manteraction-details');
 let manteractionStart = 0;
 let manteractionDistance = 1;
 
@@ -122,8 +124,9 @@ function measureManteraction() {
   const stage = manteractionStage.getBoundingClientRect().height;
   const pinTop = Math.min(0, viewport - stage);
   manteractionStart = manteractionScroll.getBoundingClientRect().top + window.scrollY - pinTop;
-  // One viewport: the trio fades out and the finale settles in a single swipe.
-  manteractionDistance = viewport * 1.0;
+  // Two viewports: the trio fades out and the finale settles in the first
+  // swipe, then the details paragraph rises to sit beneath it in the second.
+  manteractionDistance = viewport * 2.0;
   manteractionScroll.style.setProperty('--manteraction-pin-top', `${pinTop}px`);
   manteractionScroll.style.setProperty('--manteraction-scroll-height', `${stage + manteractionDistance}px`);
   manteractionScroll.style.setProperty('--manteraction-center', `${viewport / 2 - pinTop}px`);
@@ -132,13 +135,18 @@ function measureManteraction() {
 function updateManteraction() {
   const progress = Math.max(0, Math.min(1, (window.scrollY - manteractionStart) / manteractionDistance));
   const smooth = value => value * value * (3 - 2 * value);
-  const entrance = Math.max(0, Math.min(1, (progress - .25) / .75));
-  manteractionScroll.style.setProperty('--manteraction-opacity', 1 - smooth(progress));
+  const entrance = Math.max(0, Math.min(1, (progress - .125) / .5));
+  manteractionScroll.style.setProperty('--manteraction-opacity', 1 - smooth(Math.min(1, progress * 2)));
   const travel = window.innerHeight / 2 + manteractionFinale.getBoundingClientRect().height / 2 + 1;
   manteractionScroll.style.setProperty('--manteraction-offset', `${travel * (1 - entrance)}px`);
   manteractionScroll.style.setProperty('--manteraction-visibility', entrance > 0 ? 'visible' : 'hidden');
-  manteractionStage.setAttribute('aria-hidden', progress === 1 ? 'true' : 'false');
-  manteractionFinale.setAttribute('aria-hidden', entrance <= 0 ? 'true' : 'false');
+  const detailsEntrance = Math.max(0, Math.min(1, (progress - .5) / .5));
+  const detailsTravel = window.innerHeight / 2 + manteractionFinale.getBoundingClientRect().height / 2 + 56;
+  manteractionScroll.style.setProperty('--manteraction-details-offset', `${detailsTravel * (1 - detailsEntrance)}px`);
+  manteractionScroll.style.setProperty('--manteraction-details-visibility', detailsEntrance > 0 ? 'visible' : 'hidden');
+  manteractionStage.setAttribute('aria-hidden', progress >= .5 ? 'true' : 'false');
+  manteractionFinaleBlock.setAttribute('aria-hidden', entrance <= 0 ? 'true' : 'false');
+  manteractionDetails.setAttribute('aria-hidden', detailsEntrance <= 0 ? 'true' : 'false');
 }
 const social = document.querySelector('.social-links');
 const installation = document.querySelector('.installation');
@@ -256,6 +264,8 @@ function measureControls() {
     left: left.left, width: left.width, height: left.height,
     pinAt: left.top + window.scrollY,
     right: right.left, rightWidth: right.width, rightHeight: right.height,
+    installTop: right.top + window.scrollY,
+    installTop: right.top + window.scrollY,
     mergeAt: right.top + window.scrollY + right.height / 2,
     bottom: Math.max(left.bottom, right.bottom) + window.scrollY,
     buttonTop: button.top - right.top, buttonWidth: button.width, buttonHeight: button.height,
@@ -263,32 +273,20 @@ function measureControls() {
   };
 }
 
-// Banner morph is TIME-based, not scroll-based (issue #9, refined): crossing
-// mergeAt triggers a short animation that plays through to completion even if
-// scrolling stops immediately, so there is never a persistent middle state.
-// Scrolling back re-triggers the reverse the same way. 400ms, sigmoid easing
-// (slow start, fast middle, slow settle).
+let bannerProgress = 0;
 const BANNER_MORPH_MS = 400;
-let bannerProgress = 0; // 0 = hero/pinned, 1 = merged bar
-let morphDir = -1;      // 1 = merged side, -1 = unmerged side
-let morphRaf = 0;
-let morphStart = 0;
-let morphFrom = 0;
-
-// Logistic sigmoid, normalized to hit exactly 0 at t=0 and 1 at t=1:
-// slow start, fast middle, slow settle.
-function sigmoid(t) {
-  const k = 8;
-  const s = x => 1 / (1 + Math.exp(-k * (x - 0.5)));
-  const s0 = s(0);
-  const s1 = s(1);
-  return (s(t) - s0) / (s1 - s0);
-}
+let morphDirection = -1;
+let morphFrame = 0;
+let morphStartedAt = 0;
+let morphInitialProgress = 0;
 
 function applyBannerState(progress) {
   const g = controlGeometry;
   const lerp = (a, b) => a + (b - a) * progress;
   const height = 60 * g.scale;
+  const morphStart = Math.max(g.pinAt, g.mergeAt - window.innerHeight * .15);
+  const flowPanelTop = g.installTop - morphStart;
+  const flowPanelCenter = flowPanelTop + g.rightHeight / 2;
   const bannerTop = lerp(0, (height - g.height) / 2);
   banner.hidden = false;
   // The SVG paths already use viewport coordinates. Only share the vertical
@@ -297,11 +295,11 @@ function applyBannerState(progress) {
   banner.style.setProperty('--banner-top', `${bannerTop}px`);
   banner.style.setProperty('--banner-height', `${height}px`);
   // The center title rides the merged banner's vertical center line.
-  centerTitle.style.setProperty('--banner-center-y', `${bannerTop + height / 2}px`);
+  centerTitle.style.setProperty('--banner-center-y', `${height / 2}px`);
   social.style.left = `${g.left}px`;
   social.style.top = `${bannerTop}px`;
   installation.style.left = `${lerp(g.right, window.innerWidth - g.rightWidth - 12 * g.scale)}px`;
-  installation.style.top = `${-g.rightHeight / 2}px`;
+  installation.style.top = `${lerp(flowPanelTop, -g.rightHeight / 2)}px`;
   installation.style.height = `${g.rightHeight}px`;
   installation.style.setProperty('--download-top', `${lerp(g.buttonTop, g.rightHeight / 2 + (height - 34 * g.scale) / 2)}px`);
   installation.style.setProperty('--download-width', `${lerp(g.buttonWidth, 132 * g.scale)}px`);
@@ -324,41 +322,40 @@ function clearBannerStyles() {
   centerTitle.style.removeProperty('--banner-center-y');
 }
 
-function startMorph() {
-  morphFrom = bannerProgress;
-  morphStart = performance.now();
-  cancelAnimationFrame(morphRaf);
-  morphRaf = requestAnimationFrame(morphStep);
+function startBannerMorph(direction) {
+  morphDirection = direction;
+  morphInitialProgress = bannerProgress;
+  morphStartedAt = performance.now();
+  cancelAnimationFrame(morphFrame);
+  morphFrame = requestAnimationFrame(stepBannerMorph);
 }
 
-function morphStep(now) {
-  const target = morphDir === 1 ? 1 : 0;
-  if (morphFrom === target) { morphRaf = 0; return; }
-  const t = reducedMotion.matches ? 1 : Math.min(1, (now - morphStart) / BANNER_MORPH_MS);
-  bannerProgress = morphFrom + (target - morphFrom) * sigmoid(t);
-  // Keep the banner visible for every intermediate reverse frame, including
-  // the final frame just before the original controls are restored.
-  if (bannerProgress > 0 || morphFrom > 0) {
-    social.classList.add('is-banner');
-    installation.classList.add('is-banner');
-    applyBannerState(bannerProgress);
-  }
-  if (t >= 1) {
-    morphRaf = 0;
-    if (bannerProgress >= 1) {
-      social.classList.add('entrance-complete');
-      installation.classList.add('entrance-complete');
-      centerTitle.classList.add('is-visible');
-    } else {
-      clearBannerStyles();
-      social.classList.remove('is-banner');
-      installation.classList.remove('is-banner');
-      banner.hidden = true;
-      centerTitle.classList.remove('is-visible');
-    }
+function stepBannerMorph(now) {
+  const target = morphDirection === 1 ? 1 : 0;
+  const elapsed = Math.min(1, (now - morphStartedAt) / BANNER_MORPH_MS);
+  const t = reducedMotion.matches ? 1 : elapsed;
+  const eased = t * t * (3 - 2 * t);
+  bannerProgress = morphInitialProgress + (target - morphInitialProgress) * eased;
+  social.classList.add('is-banner');
+  installation.classList.add('is-banner');
+  applyBannerState(bannerProgress);
+  if (elapsed < 1) {
+    morphFrame = requestAnimationFrame(stepBannerMorph);
     return;
   }
-  morphRaf = requestAnimationFrame(morphStep);
+  morphFrame = 0;
+  bannerProgress = target;
+  if (target === 1) {
+    social.classList.add('entrance-complete');
+    installation.classList.add('entrance-complete');
+    centerTitle.classList.add('is-visible');
+  } else {
+    clearBannerStyles();
+    social.classList.remove('is-banner');
+    installation.classList.remove('is-banner');
+    centerTitle.classList.remove('is-visible');
+    banner.hidden = true;
+  }
 }
 
 function updateBanner() {
@@ -366,36 +363,20 @@ function updateBanner() {
   const g = controlGeometry;
   const pinned = window.scrollY >= g.pinAt;
   const merged = window.scrollY >= g.mergeAt;
-  const morphing = merged || morphRaf !== 0 || bannerProgress > 0;
-  social.classList.toggle('is-pinned', pinned);
-  social.classList.toggle('is-banner', morphing);
-  installation.classList.toggle('is-banner', morphing);
+  const morphing = morphFrame !== 0 || bannerProgress > 0;
+  social.classList.toggle('is-pinned', pinned && !morphing);
   // The command has scrolled away; prevent keyboard focus behind the banner.
   command.parentElement.inert = morphing;
 
-  if (merged && morphDir !== 1) {
-    morphDir = 1;
-    if (bannerProgress < 1) startMorph();
-  } else if (!merged && morphDir !== -1) {
-    morphDir = -1;
+  if (merged && morphDirection !== 1) {
+    startBannerMorph(1);
+  } else if (!merged && morphDirection !== -1 && (bannerProgress > 0 || morphFrame !== 0)) {
     centerTitle.classList.remove('is-visible');
-    if (bannerProgress > 0) startMorph();
-  }
-
-  if (merged) {
-    // Steady merged state; also heals inline styles cleared by
-    // measureControls() on resize. While a morph is running, morphStep owns
-    // the visuals.
-    if (!morphRaf) applyBannerState(bannerProgress);
-  } else if (bannerProgress === 0) {
-    // Idle hero/pinned state: instant pinning, clean inline styles.
-    cancelAnimationFrame(morphRaf);
-    morphRaf = 0;
+    startBannerMorph(-1);
+  } else if (!morphing && bannerProgress === 0) {
+    clearBannerStyles();
     social.style.left = pinned ? `${g.left}px` : '';
-  social.style.top = pinned ? '0px' : '';
-    installation.style.left = '';
-    installation.style.top = '';
-    installation.style.height = '';
+    social.style.top = pinned ? '0px' : '';
     banner.hidden = true;
   }
 }

@@ -270,7 +270,7 @@ a:focus-visible, button:focus-visible {
 .banner-background {
   position: fixed;
   left: 0;
-  top: var(--banner-top, 0px);
+  top: 0;
   width: 100vw;
   height: var(--banner-height, calc(104 * var(--unit)));
   z-index: 2;
@@ -572,7 +572,7 @@ a:focus-visible, button:focus-visible {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 4vw;
   align-items: start;
-  padding: 8svh 6vw 0;
+  padding: 8svh 6vw 4svh;
   text-align: right;
   overflow-wrap: anywhere;
   opacity: var(--manteraction-opacity, 1);
@@ -594,37 +594,48 @@ a:focus-visible, button:focus-visible {
   line-height: 1.15;
 }
 .manteraction-stage p {
-  grid-column: 2;
+  grid-column: 1 / -1;
+  grid-row: 3;
+  justify-self: end;
   margin: 0;
   font-size: clamp(16px, 1.8vw, 40px);
   line-height: 1.5;
+  white-space: nowrap;
 }
 .manteraction-stage a {
   text-underline-offset: .15em;
   transition: opacity 160ms ease;
 }
 .manteraction-stage a:hover { opacity: .65; }
-.manteraction-finale {
+.manteraction-finale-block {
   position: absolute;
   top: var(--manteraction-center, 50%);
   left: 6%;
   width: 88%;
   margin: 0;
   text-align: center;
-  font-size: clamp(36px, min(9vw, 15svh), 180px);
-  font-weight: 400;
-  line-height: 1.1;
   visibility: var(--manteraction-visibility, hidden);
   transform: translateY(calc(-50% + var(--manteraction-offset, 100vh)));
 }
+.manteraction-finale {
+  margin: 0;
+  font-size: clamp(36px, min(9vw, 15svh), 180px);
+  font-weight: 400;
+  line-height: 1.1;
+}
 .manteraction-finale strong { font-weight: 700; }
 .manteraction-details {
-  margin: 5svh 0 12svh calc(50% + 2vw);
-  padding: 0 6vw 0 0;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin: 1.5em 0 0;
   font-size: clamp(16px, 1.8vw, 40px);
   line-height: 1.5;
-  text-align: right;
+  text-align: center;
   overflow-wrap: anywhere;
+  visibility: var(--manteraction-details-visibility, hidden);
+  transform: translateY(var(--manteraction-details-offset, 0px));
 }
 
 /* Section boundaries: alternating light/dark shade bands with hairlines.
@@ -646,6 +657,7 @@ a:focus-visible, button:focus-visible {
   .taskbar { gap: 3vw; }
   .taskbar-nav { gap: calc(14 * var(--unit)); }
   .taskbar-nav a { font-size: calc(16 * var(--unit)); }
+  .manteraction-stage p { white-space: normal; }
 }
 
 @media (prefers-reduced-motion: reduce) {
