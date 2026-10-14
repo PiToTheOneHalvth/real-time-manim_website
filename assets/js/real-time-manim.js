@@ -57,8 +57,11 @@ const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 // eat extra swipes with "dead" scroll: the scrub covers the clip in half a
 // viewport of scrolling (faster scrub = fewer swipes to get through the page).
 const scrubScreens = 0.5;
-const textAnchorY = 539 / 1080;
-const textTopY = 414 / 1080;
+// Slogan video is cropped to its content (1250x268, black padding removed):
+// the baked text spans y=8..260 of the 268px frame. Anchors are fractions of
+// the cropped height (text center, text top).
+const textAnchorY = 133 / 268;
+const textTopY = 8 / 268;
 let scrubStart = 0;
 let scrubDistance = 1;
 let topicDistance = 1;

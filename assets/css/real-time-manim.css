@@ -256,7 +256,7 @@ a:focus-visible, button:focus-visible {
   display: block;
   width: 100%;
   height: auto;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: 625 / 134;
   object-fit: contain;
 }
 .slogan-topic {
