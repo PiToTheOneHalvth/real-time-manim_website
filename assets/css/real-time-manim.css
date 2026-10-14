@@ -18,15 +18,6 @@ body { margin: 0; }
 a { color: inherit; }
 button, code { font: inherit; }
 
-/* Scroll behavior: proximity snapping per industry practice (MDN scroll-snap-type:
-   proximity = gentle, UA decides; mandatory would make the tall scrub sections'
-   middles unreachable). scroll-padding-top clears the merged banner so snapped
-   sections are not hidden under it. */
-html {
-  scroll-snap-type: y proximity;
-  scroll-padding-top: calc(60 * var(--unit));
-}
-
 /* Dynamic background: starfield canvas, behind all content. */
 #starfield {
   position: fixed;
@@ -502,14 +493,6 @@ a:focus-visible, button:focus-visible {
 }
 .manteraction-intro a:hover { opacity: .65; }
 
-/* Scroll snap targets: each "page" settles cleanly at the top (below the banner,
-   via scroll-padding-top on html). */
-.hero, .slogan, .real-life-details, .next-generation-fullscreen,
-.next-generation-copy, .starts-from-section, .manteraction-intro,
-.future-scroll {
-  scroll-snap-align: start;
-}
-
 /* Section boundaries: alternating light/dark shade bands with hairlines.
    The shade is translucent so the starfield stays faintly visible behind it. */
 .band {
@@ -530,7 +513,6 @@ a:focus-visible, button:focus-visible {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  html { scroll-snap-type: none; }
   .future-features { transform: none; }
   .future-features.reveal-pending li { opacity: 1; transform: none; }
   .future-features.reveal-visible li { animation: none; }
