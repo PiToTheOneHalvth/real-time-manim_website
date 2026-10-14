@@ -22,6 +22,16 @@ The heading now reads “Next generation of Manim Animation” as supplied.
 reference_for_real_time_manim/real-time-manim-bessel-placeholder.png sits below
 it in the right column, scaling proportionally. The section remains unfinished.
 
+The next-generation section is split into two full-viewport screens
+(`.next-generation-screen`, `min-height: 100svh`): screen one holds the heading,
+the “Manim plays…” paragraph and the ManimCE pipeline mind map; screen two
+holds “We verified the trick…”, the Vulkan pipeline mind map and the closing
+line. Each mind-map card flexes to absorb all space the copy leaves, and the
+diagram cover-fits the card — scaled to fill the viewport height, anchored at
+the start of the left-to-right flow, pan/zoom to explore (double-click
+resets) — so heading, paragraph and a screen-filling mind map are visible at
+once, in the fullscreen overlay too. The old hug-to-content height is gone.
+
 ## Work-in-progress note
 
 **Next generation manim animation part unfinished.** Keep this status until
@@ -88,6 +98,9 @@ out of view. Download shrinks to a 112x26px white rounded rectangle, retaining
 its text and hover effect, and moves to a 24px inset from the right edge.
 The original entrance animation is disabled after a complete morph.
 Placeholder slots preserve the hero layout and original scroll measurements.
+During reverse playback, the social pill remains fixed for the whole morph,
+including the interval after its original pin threshold, so its container,
+icons, download control, and SVG background stay synchronized.
 
 ## Slogan video
 

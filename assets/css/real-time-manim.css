@@ -8,6 +8,7 @@
   --hairline: rgba(245, 245, 245, .18);
   --unit: clamp(.75px, .069444vw, 1.5px);
   --slogan-width: min(88vw, 120svh);
+  --taskbar-h: calc(72 * var(--unit) + 1px);
   font-family: "Times New Roman", Times, serif;
   background: var(--background);
   color: var(--foreground);
@@ -28,10 +29,44 @@ button, code { font: inherit; }
   pointer-events: none;
 }
 
+/* Top taskbar: site nav on the left, download on the right. Sits at the
+   very top of the page; once the page scrolls, the liquid banner takes
+   over the top edge. */
+.taskbar {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4vw;
+  height: var(--taskbar-h);
+  padding: 0 6vw;
+  background: var(--band);
+  border-bottom: 1px solid var(--hairline);
+}
+.taskbar-nav {
+  display: flex;
+  align-items: center;
+  gap: calc(24 * var(--unit));
+}
+.taskbar a {
+  text-decoration: none;
+  transition: opacity 160ms ease;
+}
+.taskbar a:hover { opacity: .65; }
+.taskbar-nav a { font-size: calc(19 * var(--unit)); }
+.taskbar-download {
+  padding: calc(7 * var(--unit)) calc(22 * var(--unit));
+  border-radius: 999px;
+  background: var(--foreground);
+  color: var(--background);
+  font-size: calc(17 * var(--unit));
+}
+
 .hero {
   position: relative;
   z-index: 3;
-  height: 100svh;
+  height: calc(100svh - var(--taskbar-h));
   padding: clamp(16px, 4svh, 48px) 6vw;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -226,7 +261,7 @@ a:focus-visible, button:focus-visible {
   height: var(--slogan-height, 200svh);
   margin-bottom: var(--slogan-tail, 0px);
 }
-.social-links.is-pinned, .installation.is-banner {
+.social-links.is-pinned, .social-links.is-banner, .installation.is-banner {
   position: fixed;
   margin: 0;
 }
@@ -234,8 +269,10 @@ a:focus-visible, button:focus-visible {
 .social-links.is-banner, .installation.is-banner { background: transparent; }
 .banner-background {
   position: fixed;
-  inset: 0 0 auto;
-  height: calc(104 * var(--unit));
+  left: 0;
+  top: var(--banner-top, 0px);
+  width: 100vw;
+  height: var(--banner-height, calc(104 * var(--unit)));
   z-index: 2;
   pointer-events: none;
 }
@@ -244,6 +281,39 @@ a:focus-visible, button:focus-visible {
   overflow: visible;
   fill: var(--banner-fill);
 }
+/* Center brand title: shift-down fade-in at the center of the merged top
+   banner once the hero controls merge into it; clicking returns to the top. */
+.center-title {
+  position: fixed;
+  top: var(--banner-center-y, calc(30 * var(--unit)));
+  left: 50%;
+  z-index: 4;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--foreground);
+  font-size: calc(24 * var(--unit));
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: -.045em;
+  white-space: nowrap;
+  cursor: pointer;
+  opacity: 0;
+  visibility: hidden;
+  transform: translate(-50%, calc(-50% - .6em));
+  transition:
+    opacity 600ms ease-out,
+    transform 600ms cubic-bezier(.22, .61, .36, 1),
+    visibility 0s linear 600ms;
+}
+.center-title.is-visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(-50%, -50%);
+  transition-delay: 0s;
+}
+.center-title:hover { opacity: .65; }
 .slogan-pin {
   position: sticky;
   top: var(--slogan-top, 0px);
@@ -265,19 +335,6 @@ a:focus-visible, button:focus-visible {
      including Safari.) */
   mix-blend-mode: screen;
 }
-.slogan-topic {
-  position: absolute;
-  top: var(--topic-top, 100%);
-  right: calc((var(--slogan-width) - 100vw) / 2 + 6vw);
-  margin: 0;
-  width: 88vw;
-  font-size: min(5.2vw, 10svh);
-  font-weight: 700;
-  line-height: 1.1;
-  text-align: right;
-  transform: translateY(var(--topic-offset, 100vh));
-}
-
 .real-life-details {
   margin-top: -4svh;
   display: grid;
@@ -290,6 +347,14 @@ a:focus-visible, button:focus-visible {
   text-align: right;
   overflow-wrap: anywhere;
 }
+.real-life-heading {
+  grid-column: 1 / -1;
+  margin: 0 0 .8em;
+  font-size: clamp(28px, 4.5vw, 96px);
+  font-weight: 700;
+  line-height: 1.1;
+  text-align: right;
+}
 .real-life-details p { margin: 0; }
 .real-life-image {
   display: block;
@@ -297,23 +362,23 @@ a:focus-visible, button:focus-visible {
   height: auto;
 }
 .real-life-details p + p { margin-top: 1.5em; }
+.real-life-details.reveal-pending > .real-life-heading,
 .real-life-details.reveal-pending > .real-life-image,
 .real-life-details.reveal-pending > .real-life-copy {
   opacity: 0;
   transform: translateY(24px);
 }
+.real-life-details.reveal-visible > .real-life-heading,
 .real-life-details.reveal-visible > .real-life-image,
 .real-life-details.reveal-visible > .real-life-copy {
   animation: details-enter 650ms ease-out both;
 }
 /* Next-generation sections: staggered fade-in + shift-up for their parts. */
-.next-generation-fullscreen.reveal-pending .ng-fade-item,
-.next-generation-copy.reveal-pending .ng-fade-item {
+.next-generation-section.reveal-pending .ng-fade-item {
   opacity: 0;
   transform: translateY(24px);
 }
-.next-generation-fullscreen.reveal-visible .ng-fade-item,
-.next-generation-copy.reveal-visible .ng-fade-item {
+.next-generation-section.reveal-visible .ng-fade-item {
   opacity: 1;
   transform: translateY(0);
   transition: opacity 650ms ease-out, transform 650ms ease-out;
@@ -333,32 +398,39 @@ a:focus-visible, button:focus-visible {
   line-height: 1.08;
   text-align: left;
 }
-.next-generation-fullscreen {
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  padding: 10svh 6vw 8svh;
-}
-.next-generation-lead {
-  margin: 0 0 3svh;
-  font-size: clamp(16px, 2vw, 40px);
-  line-height: 1.5;
-}
-.next-generation-fullscreen .diagram-card {
-  flex: 0 0 auto;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-}
-.next-generation-copy {
-  padding: 10svh 6vw 12svh;
+.next-generation-section {
+  padding: 0 6vw;
   text-align: left;
   font-size: clamp(16px, 2vw, 40px);
   line-height: 1.5;
 }
-.next-generation-copy p { margin: 0 0 1.5em; }
-.next-generation-copy .diagram-card { margin: 0 0 30px; }
+/* Each text + mind-map group owns one full viewport: the copy sits on top,
+   the diagram card absorbs all remaining space so heading, paragraph and
+   the whole mind map are visible together without scrolling. */
+.next-generation-screen {
+  min-height: 100svh;
+  padding: 6svh 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2.5svh;
+}
+.next-generation-screen h2.next-generation { margin: 0; }
+.next-generation-screen p { margin: 0; flex: none; }
+/* The card's caption overhangs 26px below the card; give a trailing
+   paragraph room so the caption never collides with it. */
+.next-generation-screen p:last-child { margin-top: 1svh; }
+.next-generation-screen .diagram-card {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+}
+.next-generation-screen .diagram-viewport {
+  flex: 1 1 auto;
+  min-height: 0;
+}
 .starts-from-section {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -488,14 +560,22 @@ a:focus-visible, button:focus-visible {
   visibility: var(--finale-visibility, hidden);
   transform: translateY(calc(-50% + var(--finale-offset, 100vh)));
 }
-.manteraction-intro {
+.manteraction-scroll {
+  height: var(--manteraction-scroll-height, auto);
+}
+.manteraction-pin {
+  position: sticky;
+  top: var(--manteraction-pin-top, 0px);
+}
+.manteraction-stage {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 4vw;
   align-items: start;
-  padding: 8svh 6vw 12svh;
+  padding: 8svh 6vw 0;
   text-align: right;
   overflow-wrap: anywhere;
+  opacity: var(--manteraction-opacity, 1);
 }
 .manteraction-image {
   grid-column: 1;
@@ -506,24 +586,46 @@ a:focus-visible, button:focus-visible {
   align-self: start;
 }
 .manteraction-copy { display: contents; }
-.manteraction-intro h2 {
+.manteraction-stage h2 {
   grid-column: 2;
   grid-row: 1;
   margin: 0 0 .6em;
   font-size: clamp(24px, 3.2vw, 64px);
   line-height: 1.15;
 }
-.manteraction-intro p {
+.manteraction-stage p {
   grid-column: 2;
   margin: 0;
   font-size: clamp(16px, 1.8vw, 40px);
   line-height: 1.5;
 }
-.manteraction-intro a {
+.manteraction-stage a {
   text-underline-offset: .15em;
   transition: opacity 160ms ease;
 }
-.manteraction-intro a:hover { opacity: .65; }
+.manteraction-stage a:hover { opacity: .65; }
+.manteraction-finale {
+  position: absolute;
+  top: var(--manteraction-center, 50%);
+  left: 6%;
+  width: 88%;
+  margin: 0;
+  text-align: center;
+  font-size: clamp(36px, min(9vw, 15svh), 180px);
+  font-weight: 400;
+  line-height: 1.1;
+  visibility: var(--manteraction-visibility, hidden);
+  transform: translateY(calc(-50% + var(--manteraction-offset, 100vh)));
+}
+.manteraction-finale strong { font-weight: 700; }
+.manteraction-details {
+  margin: 5svh 0 12svh calc(50% + 2vw);
+  padding: 0 6vw 0 0;
+  font-size: clamp(16px, 1.8vw, 40px);
+  line-height: 1.5;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
 
 /* Section boundaries: alternating light/dark shade bands with hairlines.
    The shade is translucent so the starfield stays faintly visible behind it. */
@@ -540,8 +642,10 @@ a:focus-visible, button:focus-visible {
   }
   .social-slot, .installation-slot { grid-column: 1 / -1; }
   .installation-slot { width: calc(280 * var(--unit)); }
-  .slogan-topic { font-size: min(8vw, 8svh); }
-  .next-generation-copy p { max-width: 100%; }
+  .next-generation-section p { max-width: 100%; }
+  .taskbar { gap: 3vw; }
+  .taskbar-nav { gap: calc(14 * var(--unit)); }
+  .taskbar-nav a { font-size: calc(16 * var(--unit)); }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -549,18 +653,17 @@ a:focus-visible, button:focus-visible {
   .future-features.reveal-pending li { opacity: 1; transform: none; }
   .future-features.reveal-visible li { animation: none; }
   .future-features.features-returning li { animation: none; }
-  .manteraction-intro a { transition: none; }
+  .manteraction-stage a { transition: none; }
   .real-life-details.reveal-pending > *, .next-generation.reveal-pending {
     opacity: 1;
     transform: none;
   }
   .real-life-details.reveal-visible > *, .next-generation.reveal-visible { animation: none; }
-  .next-generation-fullscreen.reveal-pending .ng-fade-item,
-  .next-generation-copy.reveal-pending .ng-fade-item { opacity: 1; transform: none; }
-  .next-generation-fullscreen.reveal-visible .ng-fade-item,
-  .next-generation-copy.reveal-visible .ng-fade-item { transition: none; }
+  .next-generation-section.reveal-pending .ng-fade-item { opacity: 1; transform: none; }
+  .next-generation-section.reveal-visible .ng-fade-item { transition: none; }
   .hero-title span, .social-links, .installation { animation: none; }
-  .social-links a, .download, #copy-command { transition: none; }
+  .social-links a, .download, #copy-command, .taskbar a { transition: none; }
+  .center-title { transition: none; }
 }
 
 /* Interactive diagram cards (next-generation section) */
@@ -570,7 +673,7 @@ a:focus-visible, button:focus-visible {
   border: 1px solid rgba(245, 245, 245, .22);
   border-radius: 12px;
   background: #101010;
-  padding: 14px 14px 12px;
+  padding: 0;
 }
 .diagram-title {
   position: absolute;
@@ -582,9 +685,9 @@ a:focus-visible, button:focus-visible {
 }
 .diagram-viewport {
   overflow: hidden;
-  border-radius: 8px;
+  border-radius: 11px;
   background: #0d0d0d;
-  padding: 10px;
+  padding: 0;
   touch-action: none;
 }
 .diagram-viewport .mermaid { line-height: 0; }
@@ -598,6 +701,7 @@ a:focus-visible, button:focus-visible {
   position: absolute;
   top: 10px;
   right: 10px;
+  z-index: 2;
   display: grid;
   place-items: center;
   width: 32px;
@@ -605,11 +709,12 @@ a:focus-visible, button:focus-visible {
   padding: 0;
   border: 1px solid rgba(245, 245, 245, .2);
   border-radius: 8px;
-  background: rgba(255, 255, 255, .06);
-  color: rgba(245, 245, 245, .75);
+  background: #101010;
+  color: #f5f5f5;
   cursor: pointer;
 }
-.diagram-fullscreen-btn:hover { background: rgba(255, 255, 255, .14); color: #fff; }
+.diagram-fullscreen-btn:hover { background: #1c1c1c; color: #fff; }
+.diagram-overlay .diagram-fullscreen-btn { display: none; }
 .diagram-overlay {
   position: fixed;
   inset: 0;

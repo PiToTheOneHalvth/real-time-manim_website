@@ -14,6 +14,14 @@
   <script src="../assets/js/diagram-panzoom.js" defer></script>
 </head>
 <body>
+  <header class="taskbar">
+    <nav class="taskbar-nav" aria-label="Site">
+      <a href="wiki.html">Wiki</a>
+      <a href="try.html">Try</a>
+      <a href="manteraction.html">Manteraction</a>
+    </nav>
+    <a class="taskbar-download" href="https://pypi.org/project/real-time-manim/">Download</a>
+  </header>
   <main class="hero">
     <h1 class="hero-title"><span>Real</span><span>Time</span><span>Manim</span></h1>
     <img class="hero-logo" src="../assets/images/real-time-manim.jpg" alt="Real-Time Manim logo" width="1053" height="989">
@@ -60,25 +68,27 @@
       <path class="banner-result"/>
     </svg>
   </div>
+  <button class="center-title" type="button" aria-label="Back to top" title="Back to top">real-time-manim</button>
   <section class="slogan" aria-label="We spent a long time making it real time, just to stop time limitations from being a problem.">
     <div class="slogan-pin">
       <video class="slogan-video" muted playsinline preload="auto" aria-hidden="true" tabindex="-1">
         <source src="../reference_for_real_time_manim/slogan.mp4" type="video/mp4">
       </video>
-       <h2 class="slogan-topic" id="real-life-heading">Real time, real life.</h2>
     </div>
   </section>
   <section class="real-life-details band" aria-labelledby="real-life-heading">
+    <h2 class="real-life-heading" id="real-life-heading">Real time, real life.</h2>
     <img class="real-life-image" src="../reference_for_real_time_manim/mac_interaction_placeholder.png" alt="Placeholder sketch for a Real-Time Manim computer interaction" width="2732" height="2048" decoding="async">
     <div class="real-life-copy">
       <p>Real time, because rendering stops being a time limitation. Real life, because you watch your animation happen instead of waiting for it.</p>
       <p>With the rebuilt pipeline, real-time-manim shows you every single frame as soon as it renders. Reworking and adjusting your scene is quick and easy, and you always know where you are.</p>
     </div>
   </section>
-  <section class="next-generation-fullscreen" aria-labelledby="next-generation-heading">
+  <section class="next-generation-section" aria-labelledby="next-generation-heading">
+    <div class="next-generation-screen">
     <h2 class="next-generation ng-fade-item" id="next-generation-heading" style="--ng-delay: 0ms">Next generation of Manim animation</h2>
-    <p class="next-generation-lead ng-fade-item" style="--ng-delay: 100ms">Manim plays animations by walking forward. To reach frame N, you replay every frame from 0 to N. real-time-manim's next generation animation layer will address <strong>time</strong> directly: any frame, any moment, on demand.</p>
-    <div class="diagram-card ng-fade-item" data-diagram="manimce" aria-label="ManimCE offline render pipeline" style="--ng-delay: 600ms">
+    <p class="ng-fade-item" style="--ng-delay: 100ms">Manim plays animations by walking forward. To reach frame N, you replay every frame from 0 to N. real-time-manim's next generation animation layer will address <strong>time</strong> directly: any frame, any moment, on demand.</p>
+    <div class="diagram-card ng-fade-item" data-diagram="manimce" aria-label="ManimCE offline render pipeline" style="--ng-delay: 200ms">
       <div class="diagram-title">ManimCE offline pipeline</div>
       <button class="diagram-fullscreen-btn" type="button" aria-label="Open fullscreen" title="Fullscreen">
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M9 3H3v6M15 3h6v6M9 21H3v-6M15 21h6v-6"/></svg>
@@ -105,10 +115,10 @@
       </div>
       <div class="diagram-tooltip" role="tooltip" hidden></div>
     </div>
-  </section>
-  <section class="next-generation-copy band">
-    <p class="ng-fade-item" style="--ng-delay: 0ms">We verified the trick that makes this work. Manim's own animations are pure functions of alpha: evaluate any alpha in any order and every state comes out identical. So a seek will be one evaluation and one draw. We measured it: two to four milliseconds, flat, no matter where you land.</p>
-    <div class="diagram-card ng-fade-item" data-diagram="rtm" aria-label="real-time-manim Vulkan pipeline" style="--ng-delay: 500ms">
+    </div>
+    <div class="next-generation-screen">
+    <p class="ng-fade-item" style="--ng-delay: 400ms">We verified the trick that makes this work. Manim's own animations are pure functions of alpha: evaluate any alpha in any order and every state comes out identical. So a seek will be one evaluation and one draw. We measured it: two to four milliseconds, flat, no matter where you land.</p>
+    <div class="diagram-card ng-fade-item" data-diagram="rtm" aria-label="real-time-manim Vulkan pipeline" style="--ng-delay: 600ms">
       <div class="diagram-title">real-time-manim Vulkan pipeline</div>
       <button class="diagram-fullscreen-btn" type="button" aria-label="Open fullscreen" title="Fullscreen">
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M9 3H3v6M15 3h6v6M9 21H3v-6M15 21h6v-6"/></svg>
@@ -131,16 +141,15 @@
       </div>
       <div class="diagram-tooltip" role="tooltip" hidden></div>
     </div>
-  </section>
-  <section class="next-generation-copy">
-    <p class="ng-fade-item" style="--ng-delay: 0ms">Playback becomes a special case of seeking. You'll stop watching animations in sequence and start pointing at the moment you want.</p>
+    <p class="ng-fade-item" style="--ng-delay: 800ms">Playback becomes a special case of seeking. You'll stop watching animations in sequence and start pointing at the moment you want.</p>
+    </div>
   </section>
   <section class="starts-from-section band" aria-labelledby="starts-from-heading">
-    <h2 class="starts-from" id="starts-from-heading"><span>Starts from Manim Community.</span><span>Surpasses Manim Community.</span></h2>
+    <h2 class="starts-from" id="starts-from-heading"><span>Starts from ManimCE.</span><span>Surpasses it in real time.</span></h2>
     <div class="starts-from-copy">
-      <p>Start with the Manim code you already write. Zero API changes. End somewhere ManimCE can't reach: Vulkan, a deeper test suite, fewer bugs.</p>
-      <p>real-time-manim is built on <strong>Vulkan</strong>, replacing ManimCE's OpenGL and Cairo renderers. Vulkan is newer and lower-level, which means faster, hardware-accelerated rendering, with native per-type senders for the shapes you draw.</p>
-      <p>We also test more than ManimCE does. Dozens of per-feature tests, plus scripts that verify real renders, catch bugs before you ever see them. Fewer bugs, smarter logic, more features.</p>
+      <p>Start with the Manim code you already write. Zero API changes. End somewhere ManimCE can't reach: Vulkan.</p>
+      <p>real-time-manim is built on <strong>Vulkan</strong>, replacing ManimCE's OpenGL and Cairo renderers. Vulkan is a modern, low-level GPU API — direct control of the hardware means faster, hardware-accelerated rendering, with native per-type senders: a dedicated pipeline for each shape you draw.</p>
+      <p>Per-feature tests and scripts that verify real renders will back it up. Bugs caught before you ever see them.</p>
     </div>
   </section>
   <section class="architecture-section" aria-labelledby="architecture-heading">
@@ -150,15 +159,20 @@
     </div>
   </section>
   <hr class="section-separator">
-  <section class="manteraction-intro" aria-labelledby="manteraction-heading">
-    <img class="manteraction-image" src="../reference_for_real_time_manim/manteraction_placeholder.png" alt="Manteraction placeholder" width="2732" height="2048" decoding="async">
-    <div class="manteraction-copy">
-    <h2 id="manteraction-heading">The basis of an earth-shaking artifact.</h2>
-    <p>real-time-manim is the basis. <a href="manteraction.html">Manteraction</a> is the artifact: math animation you won't just watch. You'll <strong>touch</strong> it.</p>
-    <p>You'll drag the timeline, preview every change instantly, and view your scene from any camera angle. No coding needed, and a supplemental coding platform for custom behaviour. You'll publish what you build as a plugin and take in everyone else's.</p>
+  <section class="manteraction-scroll" aria-labelledby="manteraction-heading">
+    <div class="manteraction-pin">
+      <div class="manteraction-stage">
+        <img class="manteraction-image" src="../reference_for_real_time_manim/manteraction_placeholder.png" alt="Manteraction placeholder" width="2732" height="2048" decoding="async">
+        <div class="manteraction-copy">
+          <h2 id="manteraction-heading">The basis of an earth-shaking artifact.</h2>
+          <p>real-time-manim is the basis. <a href="manteraction.html">Manteraction</a> is the artifact: math animation you won't just watch.</p>
+        </div>
+      </div>
+      <h2 class="manteraction-finale" aria-hidden="true">You'll <strong>touch</strong> it.</h2>
     </div>
-    <!-- page note: interactive elements should have some animations -->
   </section>
+  <!-- page note: interactive elements should have some animations -->
+  <p class="manteraction-details">You'll drag the timeline, preview every change instantly, and view your scene from any camera angle. No coding needed, and a supplemental coding platform for custom behaviour. You'll publish what you build as a plugin and take in everyone else's.</p>
   <hr class="section-separator">
   <div class="future-scroll">
   <div class="future-pin">

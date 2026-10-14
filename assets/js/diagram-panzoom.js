@@ -148,8 +148,10 @@ async function main() {
       canvas.style.maxWidth = 'none';
     }
 
-    // Initial view shows the whole diagram (contain-fit; small is fine).
-    // Wheel zoom and drag take over; resize refits only until the user
+    // Initial view fills the whole card (cover-fit): the map is scaled so it
+    // occupies the full viewport height, overflows horizontally, and anchors
+    // at the start of the left-to-right pipeline — drag to pan along the flow,
+    // wheel to zoom, double-click to reset. Resize refits only until the user
     // has interacted.
     const base = canvas.getBoundingClientRect();
     const baseWidth = base.width;
@@ -164,8 +166,8 @@ async function main() {
       const vw = viewport.clientWidth;
       const vh = viewport.clientHeight;
       if (baseWidth > 0 && baseHeight > 0 && vw > 0 && vh > 0) {
-        k = Math.min(1, (vw - 24) / baseWidth, (vh - 24) / baseHeight);
-        tx = (vw - baseWidth * k) / 2;
+        k = Math.max(vw / baseWidth, vh / baseHeight);
+        tx = 12;
         ty = (vh - baseHeight * k) / 2;
       }
       apply();
@@ -209,7 +211,7 @@ async function main() {
       apply();
     }, { passive: false });
 
-    // Double-click resets to the initial full-scope view.
+    // Double-click resets to the initial cover-fit view.
     canvas.addEventListener('dblclick', () => {
       touched = false;
       fit();

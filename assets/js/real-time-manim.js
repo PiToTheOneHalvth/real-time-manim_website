@@ -64,8 +64,6 @@ const textAnchorY = 133 / 268;
 const textTopY = 8 / 268;
 let scrubStart = 0;
 let scrubDistance = 1;
-let topicDistance = 1;
-let topicTravel = 0;
 let targetTime = 0;
 let scrollFrame = 0;
 const futureScroll = document.querySelector('.future-scroll');
@@ -112,6 +110,36 @@ function updateFuture() {
   futureSection.setAttribute('aria-hidden', progress === 1 ? 'true' : 'false');
   futureFinale.setAttribute('aria-hidden', progress <= .25 ? 'true' : 'false');
 }
+
+const manteractionScroll = document.querySelector('.manteraction-scroll');
+const manteractionStage = document.querySelector('.manteraction-stage');
+const manteractionFinale = document.querySelector('.manteraction-finale');
+let manteractionStart = 0;
+let manteractionDistance = 1;
+
+function measureManteraction() {
+  const viewport = window.innerHeight;
+  const stage = manteractionStage.getBoundingClientRect().height;
+  const pinTop = Math.min(0, viewport - stage);
+  manteractionStart = manteractionScroll.getBoundingClientRect().top + window.scrollY - pinTop;
+  // One viewport: the trio fades out and the finale settles in a single swipe.
+  manteractionDistance = viewport * 1.0;
+  manteractionScroll.style.setProperty('--manteraction-pin-top', `${pinTop}px`);
+  manteractionScroll.style.setProperty('--manteraction-scroll-height', `${stage + manteractionDistance}px`);
+  manteractionScroll.style.setProperty('--manteraction-center', `${viewport / 2 - pinTop}px`);
+}
+
+function updateManteraction() {
+  const progress = Math.max(0, Math.min(1, (window.scrollY - manteractionStart) / manteractionDistance));
+  const smooth = value => value * value * (3 - 2 * value);
+  const entrance = Math.max(0, Math.min(1, (progress - .25) / .75));
+  manteractionScroll.style.setProperty('--manteraction-opacity', 1 - smooth(progress));
+  const travel = window.innerHeight / 2 + manteractionFinale.getBoundingClientRect().height / 2 + 1;
+  manteractionScroll.style.setProperty('--manteraction-offset', `${travel * (1 - entrance)}px`);
+  manteractionScroll.style.setProperty('--manteraction-visibility', entrance > 0 ? 'visible' : 'hidden');
+  manteractionStage.setAttribute('aria-hidden', progress === 1 ? 'true' : 'false');
+  manteractionFinale.setAttribute('aria-hidden', entrance <= 0 ? 'true' : 'false');
+}
 const social = document.querySelector('.social-links');
 const installation = document.querySelector('.installation');
 const socialSlot = document.querySelector('.social-slot');
@@ -121,7 +149,13 @@ const bannerLeft = document.querySelector('.banner-left');
 const bannerRight = document.querySelector('.banner-right');
 const bannerResult = document.querySelector('.banner-result');
 const download = document.querySelector('.download');
+const centerTitle = document.querySelector('.center-title');
 let controlGeometry;
+
+// The merged-banner center title returns to the top of the page.
+centerTitle.addEventListener('click', () => {
+  window.scrollTo({ top: 0, behavior: reducedMotion.matches ? 'auto' : 'smooth' });
+});
 
 function drawLiquidBanner(g, progress, height) {
   const scale = g.height / 52;
@@ -255,9 +289,17 @@ function applyBannerState(progress) {
   const g = controlGeometry;
   const lerp = (a, b) => a + (b - a) * progress;
   const height = 60 * g.scale;
+  const bannerTop = lerp(0, (height - g.height) / 2);
   banner.hidden = false;
+  // The SVG paths already use viewport coordinates. Only share the vertical
+  // offset with the social pill; applying a second horizontal offset would
+  // make the background drift away from both controls during reversal.
+  banner.style.setProperty('--banner-top', `${bannerTop}px`);
+  banner.style.setProperty('--banner-height', `${height}px`);
+  // The center title rides the merged banner's vertical center line.
+  centerTitle.style.setProperty('--banner-center-y', `${bannerTop + height / 2}px`);
   social.style.left = `${g.left}px`;
-  social.style.top = `${lerp(0, (height - g.height) / 2)}px`;
+  social.style.top = `${bannerTop}px`;
   installation.style.left = `${lerp(g.right, window.innerWidth - g.rightWidth - 12 * g.scale)}px`;
   installation.style.top = `${-g.rightHeight / 2}px`;
   installation.style.height = `${g.rightHeight}px`;
@@ -277,6 +319,9 @@ function clearBannerStyles() {
   installation.style.left = '';
   installation.style.top = '';
   installation.style.height = '';
+  banner.style.removeProperty('--banner-top');
+  banner.style.removeProperty('--banner-height');
+  centerTitle.style.removeProperty('--banner-center-y');
 }
 
 function startMorph() {
@@ -291,15 +336,25 @@ function morphStep(now) {
   if (morphFrom === target) { morphRaf = 0; return; }
   const t = reducedMotion.matches ? 1 : Math.min(1, (now - morphStart) / BANNER_MORPH_MS);
   bannerProgress = morphFrom + (target - morphFrom) * sigmoid(t);
-  if (bannerProgress > 0) applyBannerState(bannerProgress);
+  // Keep the banner visible for every intermediate reverse frame, including
+  // the final frame just before the original controls are restored.
+  if (bannerProgress > 0 || morphFrom > 0) {
+    social.classList.add('is-banner');
+    installation.classList.add('is-banner');
+    applyBannerState(bannerProgress);
+  }
   if (t >= 1) {
     morphRaf = 0;
     if (bannerProgress >= 1) {
       social.classList.add('entrance-complete');
       installation.classList.add('entrance-complete');
+      centerTitle.classList.add('is-visible');
     } else {
       clearBannerStyles();
+      social.classList.remove('is-banner');
+      installation.classList.remove('is-banner');
       banner.hidden = true;
+      centerTitle.classList.remove('is-visible');
     }
     return;
   }
@@ -311,17 +366,19 @@ function updateBanner() {
   const g = controlGeometry;
   const pinned = window.scrollY >= g.pinAt;
   const merged = window.scrollY >= g.mergeAt;
+  const morphing = merged || morphRaf !== 0 || bannerProgress > 0;
   social.classList.toggle('is-pinned', pinned);
-  social.classList.toggle('is-banner', merged);
-  installation.classList.toggle('is-banner', merged);
+  social.classList.toggle('is-banner', morphing);
+  installation.classList.toggle('is-banner', morphing);
   // The command has scrolled away; prevent keyboard focus behind the banner.
-  command.parentElement.inert = merged;
+  command.parentElement.inert = morphing;
 
   if (merged && morphDir !== 1) {
     morphDir = 1;
     if (bannerProgress < 1) startMorph();
   } else if (!merged && morphDir !== -1) {
     morphDir = -1;
+    centerTitle.classList.remove('is-visible');
     if (bannerProgress > 0) startMorph();
   }
 
@@ -335,17 +392,10 @@ function updateBanner() {
     cancelAnimationFrame(morphRaf);
     morphRaf = 0;
     social.style.left = pinned ? `${g.left}px` : '';
-    social.style.top = pinned ? '0px' : '';
+  social.style.top = pinned ? '0px' : '';
     installation.style.left = '';
     installation.style.top = '';
     installation.style.height = '';
-    banner.hidden = true;
-  } else if (!pinned) {
-    // Scrolled back above pinAt mid-reverse: abort straight to the hero slot.
-    cancelAnimationFrame(morphRaf);
-    morphRaf = 0;
-    bannerProgress = 0;
-    clearBannerStyles();
     banner.hidden = true;
   }
 }
@@ -361,9 +411,7 @@ function updateSlogan() {
   scrollFrame = 0;
   updateBanner();
   updateFuture();
-  const topicProgress = Math.max(0, Math.min(1,
-    (window.scrollY - scrubStart - scrubDistance) / topicDistance));
-  slogan.style.setProperty('--topic-offset', `${topicTravel * (1 - topicProgress)}px`);
+  updateManteraction();
   if (!Number.isFinite(sloganVideo.duration)) return;
   const progress = Math.max(0, Math.min(1, (window.scrollY - scrubStart) / scrubDistance));
   // Frame 59 is the final frame of this 60 fps clip; avoid seeking past it.
@@ -388,20 +436,14 @@ function measureSlogan() {
   const controlsBottom = controlGeometry.bottom;
   scrubStart = Math.max(pinStart, controlsBottom);
   scrubDistance = viewport * scrubScreens;
-  topicDistance = viewport * .6;
-  const topicHeight = document.querySelector('.slogan-topic').getBoundingClientRect().height;
   const stageHeight = viewport - pinTop;
-  // Anchor the heading to the visible screen, rather than the video's text.
-  const bottomInset = viewport * .08;
-  const topicTop = stageHeight - bottomInset - topicHeight;
-  topicTravel = Math.max(0, stageHeight + entranceGap - topicTop);
-  slogan.style.setProperty('--topic-top', `${topicTop}px`);
   slogan.style.setProperty('--slogan-stage-height', `${stageHeight}px`);
   slogan.style.setProperty('--slogan-top', `${pinTop}px`);
-  // Clip only excess black video padding so the page bottom coincides with
-  // the topic's arrival, even when the displayed video is taller than a screen.
-  slogan.style.setProperty('--slogan-height', `${stageHeight + scrubStart - pinStart + scrubDistance + topicDistance}px`);
+  // The heading lives in the real-life band now; end the scrub section when
+  // the clip finishes so the page bottom coincides with its last frame.
+  slogan.style.setProperty('--slogan-height', `${stageHeight + scrubStart - pinStart + scrubDistance}px`);
   slogan.style.setProperty('--slogan-tail', '0px');
+  measureManteraction();
   measureFuture();
   updateSlogan();
 }
@@ -426,6 +468,16 @@ const futureResizeObserver = new ResizeObserver(() => {
 });
 futureResizeObserver.observe(futureSection);
 
+// The manteraction stage height drives the section's scroll height, which
+// shifts the future section below it — re-measure both together.
+const manteractionResizeObserver = new ResizeObserver(() => {
+  measureManteraction();
+  measureFuture();
+  updateFuture();
+  updateManteraction();
+});
+manteractionResizeObserver.observe(manteractionStage);
+
 const details = document.querySelector('.real-life-details');
 const features = document.querySelector('.future-features');
 if ('IntersectionObserver' in window && !reducedMotion.matches) {
@@ -441,28 +493,16 @@ if ('IntersectionObserver' in window && !reducedMotion.matches) {
   }, { rootMargin: '0px 0px -8% 0px', threshold: 0 });
   featuresObserver.observe(features);
 }
-const nextGenerationFull = document.querySelector('.next-generation-fullscreen');
-if ('IntersectionObserver' in window && !reducedMotion.matches && nextGenerationFull) {
-  nextGenerationFull.classList.add('reveal-pending');
+const nextGenerationSection = document.querySelector('.next-generation-section');
+if ('IntersectionObserver' in window && !reducedMotion.matches && nextGenerationSection) {
+  nextGenerationSection.classList.add('reveal-pending');
   const ngObserver = new IntersectionObserver(entries => {
     if (!entries.some(entry => entry.isIntersecting)) return;
-    nextGenerationFull.classList.remove('reveal-pending');
-    nextGenerationFull.classList.add('reveal-visible');
+    nextGenerationSection.classList.remove('reveal-pending');
+    nextGenerationSection.classList.add('reveal-visible');
     ngObserver.disconnect();
   }, { rootMargin: '0px 0px -8% 0px', threshold: 0 });
-  ngObserver.observe(nextGenerationFull);
-}
-const nextGenerationCopy = document.querySelectorAll('.next-generation-copy');
-for (const section of nextGenerationCopy) {
-  if (!('IntersectionObserver' in window) || reducedMotion.matches) continue;
-  section.classList.add('reveal-pending');
-  const ngCopyObserver = new IntersectionObserver(entries => {
-    if (!entries.some(entry => entry.isIntersecting)) return;
-    section.classList.remove('reveal-pending');
-    section.classList.add('reveal-visible');
-    ngCopyObserver.disconnect();
-  }, { rootMargin: '0px 0px -8% 0px', threshold: 0 });
-  ngCopyObserver.observe(section);
+  ngObserver.observe(nextGenerationSection);
 }
 if ('IntersectionObserver' in window && !reducedMotion.matches) {
   details.classList.add('reveal-pending');
