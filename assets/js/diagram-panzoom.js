@@ -169,8 +169,9 @@ async function main() {
     // view). Wheel-zoom below it stretches the diagram with resistance, and
     // a continuous monotonic pull eases it back to the centered full view.
     let fitK = 1;
-    // The uncompressed scale the wheel has dialed; below fitK it is mapped
-    // onto the visual scale with 30% resistance (see the wheel handler).
+    const ZOOM_MAX = 4;
+    // The uncompressed scale the wheel has dialed; below fitK or above
+    // ZOOM_MAX it is mapped onto a resisted visual scale.
     let rawK = 1;
     let touched = false;
     const pad = 12;
@@ -243,19 +244,25 @@ async function main() {
     viewport.addEventListener('pointerup', endDrag);
     viewport.addEventListener('pointercancel', endDrag);
 
-    // Zoom: wheel around the cursor. Zooming out below the initial full view
-    // stretches the diagram with resistance: the visual scale keeps following
-    // the wheel but only 30% of the way past the fit size, so it can never
-    // shrink below 0.7×fitK. Recovery to the centered full view starts
-    // immediately (no idle wait) and eases monotonically — the pull runs
-    // every frame while the wheel keeps pushing back.
+    // Zoom: pinch/modified wheel around the cursor. Plain two-finger wheel
+    // scrolling pans the map in both axes instead of changing its scale.
     viewport.addEventListener('wheel', (e) => {
       e.preventDefault();
       cancelAnim();
       const rect = viewport.getBoundingClientRect();
       const px = e.clientX - rect.left;
       const py = e.clientY - rect.top;
-      rawK = Math.min(4, rawK * Math.exp(-e.deltaY * 0.0015));
+      const isZoom = e.ctrlKey || e.metaKey;
+      if (!isZoom) {
+        cancelRecover();
+        touched = true;
+        tx -= e.deltaX;
+        ty -= e.deltaY;
+        apply();
+        return;
+      }
+      rawK *= Math.exp(-e.deltaY * 0.0015);
+      rawK = Math.min(ZOOM_MAX + ZOOM_MAX / 0.3, rawK);
       if (rawK < fitK) {
         const stretched = 0.7 * fitK + 0.3 * rawK;
         tx = px - (px - tx) * (stretched / k);
@@ -263,7 +270,17 @@ async function main() {
         k = stretched;
         touched = true;
         apply();
-        startRecover();
+        startRecover('fit');
+        return;
+      }
+      if (rawK > ZOOM_MAX) {
+        const stretched = ZOOM_MAX + 0.3 * (rawK - ZOOM_MAX);
+        tx = px - (px - tx) * (stretched / k);
+        ty = py - (py - ty) * (stretched / k);
+        k = stretched;
+        touched = true;
+        apply();
+        startRecover('max', tx, ty);
         return;
       }
       cancelRecover();
@@ -289,11 +306,17 @@ async function main() {
     // returns promptly while the recentering follows.
     let recoverFrame = 0;
     let recoverLast = 0;
+    let recoverMode = 'fit';
+    let recoverK = 0;
+    let recoverTx = 0;
+    let recoverTy = 0;
     const cancelRecover = () => {
       if (recoverFrame) { cancelAnimationFrame(recoverFrame); recoverFrame = 0; }
     };
     const recoverStep = (now) => {
-      const t = fitTarget();
+      const t = recoverMode === 'fit'
+        ? fitTarget()
+        : { k: recoverK, tx: recoverTx, ty: recoverTy };
       const dt = Math.min(64, now - recoverLast);
       recoverLast = now;
       const sk = 1 - Math.exp(-dt * 0.006);
@@ -312,8 +335,14 @@ async function main() {
       }
       recoverFrame = requestAnimationFrame(recoverStep);
     };
-    const startRecover = () => {
+    const startRecover = (mode = 'fit', targetTx = tx, targetTy = ty) => {
       if (motionReduced.matches) { fit(); touched = false; return; }
+      recoverMode = mode;
+      if (mode === 'max') {
+        recoverK = ZOOM_MAX;
+        recoverTx = targetTx;
+        recoverTy = targetTy;
+      }
       if (recoverFrame) return;
       recoverLast = performance.now();
       recoverFrame = requestAnimationFrame(recoverStep);

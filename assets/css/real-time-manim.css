@@ -454,8 +454,30 @@ a:focus-visible, button:focus-visible {
   font-size: min(2.6vw, 52px);
 }
 .starts-from-section .starts-from-copy {
+  display: contents;
+}
+.starts-from-section .starts-from-copy p {
   grid-column: 2;
   text-align: right;
+}
+.starts-from-section .starts-from-demo {
+  grid-column: 1 / -1;
+  justify-self: center;
+  display: block;
+  width: min(50%, 720px);
+  height: auto;
+}
+.starts-from-section .starts-from-copy .starts-from-left {
+  grid-column: 1;
+  text-align: left;
+}
+.starts-from-section .test-number {
+  grid-column: 1 / -1;
+  margin: 0;
+  text-align: center;
+  font-size: clamp(36px, min(9vw, 15svh), 180px);
+  font-weight: 700;
+  line-height: 1.1;
 }
 .architecture-section {
   padding: 10svh 6vw 12svh;
