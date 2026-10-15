@@ -678,6 +678,9 @@ a:focus-visible, button:focus-visible {
   .taskbar-nav { gap: calc(14 * var(--unit)); }
   .taskbar-nav a { font-size: calc(16 * var(--unit)); }
   .manteraction-stage p { white-space: normal; }
+  .real-life-heading {
+    font-size: clamp(18px, 10.8vw, 28px);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
