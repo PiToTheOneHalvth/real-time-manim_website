@@ -31,17 +31,6 @@ GitHub and PyPI SVGs come from Simple Icons v14 (CC0), with an off-white fill:
 https://cdn.jsdelivr.net/npm/simple-icons@v14/icons/github.svg and
 https://cdn.jsdelivr.net/npm/simple-icons@v14/icons/pypi.svg.
 
-## Preview
-
-From this directory, run:
-
-```sh
-python3 -m http.server 8000
-```
-
-Open http://localhost:8000/pages/en/real_time_manim.html or any of the other four
-pages under /pages/en/. Empty files display blank pages until implemented.
-
 ## Deployment
 
 Serve this directory as the static site root and link directly to the five HTML
