@@ -1,5 +1,10 @@
 # Website architecture
 
+The eight feature items now have `6vw` outer padding, a responsive center
+gutter (`clamp(24px, 6vw, 86px)`), and content-sized rows with at least
+`clamp(18px, 3svh, 32px)` between items. Remaining vertical room is distributed
+evenly inside the pinned section, and long labels wrap within the padded columns.
+
 The “What it will have” section pins with `position: sticky` at the viewport
 top (z-index 1) instead of riding the Manteraction scroll wrapper. A linear
 fade runs across the whole pinned span: it starts when the section is
@@ -11,8 +16,8 @@ section’s stacking context. `aria-hidden` flips on at completion.
 
 The eight feature items now play their staggered entrance on the first pass
 as well: `.reveal-pending` → `.reveal-visible` triggers the 650 ms fade-in
-plus 24 px shift-right (translateX(−24px) → 0, 100 ms stagger per item), and
-returning to the section replays the same entrance. Because the section stays
+plus 24 px shift-right (translateX(−24px) → 0, 100 ms stagger per item).
+Returning to the section replays the same entrance. Because the section stays
 sticky and intersecting while “Just You Wait.” is pinned, the scroll-back replay
 starts on the first upward reversal after the fade has begun; the observer still
 handles re-entry from above. On that return, the replayed leaf animation and the
