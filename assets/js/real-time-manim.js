@@ -73,6 +73,7 @@ let futureStart = 0;
 let futureDistance = 1;
 let futureFadeStart = 0;
 let futureFadeEnd = 1;
+let futureFaded = false;
 
 function measureFuture() {
   const viewport = window.innerHeight;
@@ -100,6 +101,13 @@ function updateFuture() {
   const windowScroll = Math.max(0, Math.min(1, (window.scrollY - futureFadeStart) / (futureFadeEnd - futureFadeStart)));
   futureSection.style.opacity = `${1 - windowScroll}`;
   futureSection.setAttribute('aria-hidden', windowScroll >= 1 ? 'true' : 'false');
+  // Each time the section fades back in (scroll-up from "Just You Wait."),
+  // replay the features' staggered entrance. The sticky pin keeps the list
+  // intersecting the viewport the whole time, so the IntersectionObserver's
+  // re-entry branch can never fire on this pass — the fade is the trigger.
+  const faded = windowScroll >= 0.5;
+  if (futureFaded && !faded) replayFeatures();
+  futureFaded = faded;
   // "Just You Wait." rises over the fading section.
   const entrance = Math.max(0, Math.min(1, (progress - .25) / .75));
   const travel = window.innerHeight / 2 + futureFinale.getBoundingClientRect().height / 2 + 1;
@@ -499,9 +507,20 @@ if ('IntersectionObserver' in window && !reducedMotion.matches) {
 }
 
 // Feature lists: the first pass plays a staggered fade-in + shift-right
-// entrance (`.reveal-pending` → `.reveal-visible`, 100ms stagger). Once the
-// section has scrolled past the top, returning to it replays the same
-// entrance. Scroll position never drives or reverses either animation.
+// entrance (`.reveal-pending` → `.reveal-visible`, 100ms stagger). Each
+// later visibility event replays the same entrance: scrolling the section
+// back into view from above (IntersectionObserver) or fading it back in
+// from "Just You Wait." (the fade-crossing in updateFuture). Scroll
+// position never drives or reverses either animation.
+const replayFeatures = () => {
+  if (reducedMotion.matches) return;
+  if (features.classList.contains('reveal-pending')) return;
+  // Remove the class, flush the style change, re-add: restarts the
+  // staggered entrance from frame zero.
+  features.classList.remove('features-returning');
+  void features.offsetWidth;
+  features.classList.add('features-returning');
+};
 if ('IntersectionObserver' in window && !reducedMotion.matches) {
   features.classList.add('reveal-pending');
   let featuresEnteredOnce = false;
@@ -514,9 +533,7 @@ if ('IntersectionObserver' in window && !reducedMotion.matches) {
           features.classList.add('reveal-visible');
           continue;
         }
-        features.classList.remove('features-returning');
-        void features.offsetWidth;
-        features.classList.add('features-returning');
+        replayFeatures();
       } else if (entry.boundingClientRect.bottom < 0) {
         featuresEnteredOnce = true;
       }
