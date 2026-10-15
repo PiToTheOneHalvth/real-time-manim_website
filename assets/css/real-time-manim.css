@@ -483,15 +483,12 @@ a:focus-visible, button:focus-visible {
   color: rgba(245, 245, 245, .7);
   overflow-wrap: anywhere;
 }
-.section-separator {
-  margin: 0 6vw;
-  border: 0;
-  border-top: 1px solid var(--surface);
-}
 .future-section {
-  opacity: var(--future-opacity, 1);
+  background: #000000;
+  opacity: 1;
+  transform: none;
   min-height: 100svh;
-  padding: 8svh 6vw 6svh;
+  padding: 8svh 0 6svh;
   display: grid;
   grid-template-rows: auto 1fr;
   gap: 6svh;
@@ -539,6 +536,7 @@ a:focus-visible, button:focus-visible {
   font-size: clamp(36px, 6vw, 120px);
   font-weight: 700;
   line-height: 1.1;
+  transform: none;
 }
 .future-scroll {
   height: var(--future-scroll-height, auto);
@@ -615,7 +613,7 @@ a:focus-visible, button:focus-visible {
   margin: 0;
   text-align: center;
   visibility: var(--manteraction-visibility, hidden);
-  transform: translateY(calc(-50% + var(--manteraction-offset, 100vh)));
+  transform: translateY(var(--manteraction-stack-y, 100vh));
 }
 .manteraction-finale {
   margin: 0;
@@ -625,17 +623,11 @@ a:focus-visible, button:focus-visible {
 }
 .manteraction-finale strong { font-weight: 700; }
 .manteraction-details {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
   margin: 1.5em 0 0;
   font-size: clamp(16px, 1.8vw, 40px);
   line-height: 1.5;
   text-align: center;
   overflow-wrap: anywhere;
-  visibility: var(--manteraction-details-visibility, hidden);
-  transform: translateY(var(--manteraction-details-offset, 0px));
 }
 
 /* Section boundaries: alternating light/dark shade bands with hairlines.

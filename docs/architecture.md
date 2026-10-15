@@ -1,5 +1,25 @@
 # Website architecture
 
+The “What it will have” section remains fixed during its finale transition.
+Its heading and eight-feature grid fade out quickly over the final 12% of the
+pinned stage against #000000, while “Just You Wait.” rises into the center.
+Scrolling upward reverses the fade.
+
+The fade and translation are also written directly to the feature section at
+runtime, because the feature section and final title use separate scroll
+wrappers. This prevents the effect from being lost through custom-property
+inheritance.
+
+The enclosing Manteraction stack supplies the final 12% exit phase without
+translating the feature section or its heading. During upward scrolling, the
+heading and features remain fixed and visible: the parent fade-out is disabled
+on that return path. The independent feature-entry animation may still run.
+
+The feature section is now outside the Manteraction parallax stack and follows
+normal document flow. On first downward arrival it is fully visible with no
+fade-in. Its later fade-out is controlled only by the separate “Just You Wait.”
+stage.
+
 The Manteraction introduction uses two responsive columns. The supplied
 manteraction_placeholder.png sits on the left, with its top edge aligned
 to the explanation paragraph itself. The title occupies a separate row above
@@ -38,7 +58,7 @@ once, in the fullscreen overlay too. The old hug-to-content height is gone.
 the user supplies the remaining content/design. An HTML comment and horizontal
 separator mark the boundary after that section. The next section is the
 right-aligned “Basis of earth-shaking artifact” introduction, linking
-Manteraction to pages/manteraction.html and emphasizing “interactive.” Its HTML
+Manteraction to pages/en/manteraction.html and emphasizing “interactive.” Its HTML
 also retains the requested note about animating interactive elements.
 
 “Next generation manim animation” follows in the left column beneath the image
@@ -53,10 +73,14 @@ animation with a 500ms start delay after the copy. Reduced motion skips both.
 
 ## Organization
 
-Five HTML files live in pages/. Only real_time_manim.html is implemented;
+Five HTML files live in pages/en/. Only real_time_manim.html is implemented;
 manteraction.html, try.html, wiki.html, and phormation.html remain empty until
 their designs are requested. There is no overall index or redirect.
 Runtime styles, scripts, and images live under assets/. No build step is needed.
+Because the pages sit one directory deeper than the repository root, their
+asset references climb two levels (../../assets/ and
+../../reference_for_real_time_manim/); moving a page between directories
+requires adjusting these prefixes.
 
 ## Responsive sizing
 

@@ -39,8 +39,8 @@ From this directory, run:
 python3 -m http.server 8000
 ```
 
-Open http://localhost:8000/pages/real_time_manim.html or any of the other four
-pages under /pages/. Empty files display blank pages until implemented.
+Open http://localhost:8000/pages/en/real_time_manim.html or any of the other four
+pages under /pages/en/. Empty files display blank pages until implemented.
 
 ## Deployment
 

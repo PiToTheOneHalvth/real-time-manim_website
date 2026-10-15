@@ -166,8 +166,12 @@ async function main() {
     const recenterBtn = card.querySelector('.diagram-recenter-btn');
     let tx = 12, ty = 12, k = 1;
     // Scale at which the whole diagram fits the viewport (the initial full
-    // view). Zooming out never goes past it: it snaps back to this state.
+    // view). Wheel-zoom below it stretches the diagram with resistance, and
+    // a continuous monotonic pull eases it back to the centered full view.
     let fitK = 1;
+    // The uncompressed scale the wheel has dialed; below fitK it is mapped
+    // onto the visual scale with 30% resistance (see the wheel handler).
+    let rawK = 1;
     let touched = false;
     const pad = 12;
     const computeFitK = () => {
@@ -199,20 +203,24 @@ async function main() {
     const fit = () => {
       const t = fitTarget();
       fitK = t.k;
+      rawK = t.k;
       k = t.k; tx = t.tx; ty = t.ty;
       apply();
     };
     fit();
     new ResizeObserver(() => {
       fitK = computeFitK();
-      if (!touched) fit(); else apply();
+      if (!touched) fit();
+      else if (k < fitK) startRecover();
+      else apply();
     }).observe(viewport);
 
     // Pan: drag anywhere in the diagram area — pointer capture on the
     // viewport, so empty margins (fullscreen) pan too, not only the svg.
     let dragging = false, sx = 0, sy = 0, ox = 0, oy = 0;
     viewport.addEventListener('pointerdown', (e) => {
-      cancelRecenterAnim();
+      cancelAnim();
+      cancelRecover();
       dragging = true;
       viewport.setPointerCapture(e.pointerId);
       sx = e.clientX; sy = e.clientY; ox = tx; oy = ty;
@@ -228,29 +236,41 @@ async function main() {
     const endDrag = () => {
       dragging = false;
       viewport.classList.remove('dragging');
+      // Released while stretched below the full view: resume the recovery
+      // instead of leaving the diagram stuck smaller than the viewport.
+      if (k < fitK) startRecover();
     };
     viewport.addEventListener('pointerup', endDrag);
     viewport.addEventListener('pointercancel', endDrag);
 
     // Zoom: wheel around the cursor. Zooming out below the initial full view
-    // snaps back to it (centered), never smaller.
+    // stretches the diagram with resistance: the visual scale keeps following
+    // the wheel but only 30% of the way past the fit size, so it can never
+    // shrink below 0.7×fitK. Recovery to the centered full view starts
+    // immediately (no idle wait) and eases monotonically — the pull runs
+    // every frame while the wheel keeps pushing back.
     viewport.addEventListener('wheel', (e) => {
       e.preventDefault();
-      cancelRecenterAnim();
+      cancelAnim();
       const rect = viewport.getBoundingClientRect();
       const px = e.clientX - rect.left;
       const py = e.clientY - rect.top;
-      const next = k * Math.exp(-e.deltaY * 0.0015);
-      if (next < fitK) {
-        touched = false;
-        fit();
+      rawK = Math.min(4, rawK * Math.exp(-e.deltaY * 0.0015));
+      if (rawK < fitK) {
+        const stretched = 0.7 * fitK + 0.3 * rawK;
+        tx = px - (px - tx) * (stretched / k);
+        ty = py - (py - ty) * (stretched / k);
+        k = stretched;
+        touched = true;
+        apply();
+        startRecover();
         return;
       }
+      cancelRecover();
       touched = true;
-      const clamped = Math.min(4, next);
-      tx = px - (px - tx) * (clamped / k);
-      ty = py - (py - ty) * (clamped / k);
-      k = clamped;
+      tx = px - (px - tx) * (rawK / k);
+      ty = py - (py - ty) * (rawK / k);
+      k = rawK;
       apply();
     }, { passive: false });
 
@@ -258,15 +278,54 @@ async function main() {
     // whole-diagram view (instant under prefers-reduced-motion). Interaction
     // cancels a glide in progress.
     let animFrame = 0;
-    const cancelRecenterAnim = () => {
+    const cancelAnim = () => {
       if (animFrame) { cancelAnimationFrame(animFrame); animFrame = 0; }
     };
+    // Continuous recovery: whenever the diagram sits below the full view,
+    // it eases back to the centered fit state. Exponential decay is
+    // monotonic — the scale rises toward fitK without ever overshooting it —
+    // and it starts on the first overshoot event, not when the gesture ends.
+    // Scale recovers slightly faster than position so the full-view size
+    // returns promptly while the recentering follows.
+    let recoverFrame = 0;
+    let recoverLast = 0;
+    const cancelRecover = () => {
+      if (recoverFrame) { cancelAnimationFrame(recoverFrame); recoverFrame = 0; }
+    };
+    const recoverStep = (now) => {
+      const t = fitTarget();
+      const dt = Math.min(64, now - recoverLast);
+      recoverLast = now;
+      const sk = 1 - Math.exp(-dt * 0.006);
+      const sp = 1 - Math.exp(-dt * 0.003);
+      k += (t.k - k) * sk;
+      tx += (t.tx - tx) * sp;
+      ty += (t.ty - ty) * sp;
+      apply();
+      if (Math.abs(k - t.k) < 0.0005 && Math.abs(tx - t.tx) < 0.5 && Math.abs(ty - t.ty) < 0.5) {
+        k = t.k; tx = t.tx; ty = t.ty;
+        rawK = t.k;
+        apply();
+        recoverFrame = 0;
+        touched = false;
+        return;
+      }
+      recoverFrame = requestAnimationFrame(recoverStep);
+    };
+    const startRecover = () => {
+      if (motionReduced.matches) { fit(); touched = false; return; }
+      if (recoverFrame) return;
+      recoverLast = performance.now();
+      recoverFrame = requestAnimationFrame(recoverStep);
+    };
     const recenter = () => {
-      cancelRecenterAnim();
+      cancelAnim();
+      cancelRecover();
       if (motionReduced.matches) { fit(); return; }
       const start = { k, tx, ty };
       const end = fitTarget();
       fitK = end.k;
+      rawK = fitK;
       const duration = 320;
       const startedAt = performance.now();
       const ease = x => 1 - (1 - x) ** 3;
@@ -302,7 +361,9 @@ async function main() {
       document.body.classList.add('diagram-fullscreen-open');
       requestAnimationFrame(() => {
         fitK = computeFitK();
-        if (!touched) fit(); else apply();
+        if (!touched) fit();
+        else if (k < fitK) startRecover();
+        else apply();
       });
     });
 

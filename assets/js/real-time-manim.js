@@ -67,47 +67,32 @@ let scrubDistance = 1;
 let targetTime = 0;
 let scrollFrame = 0;
 const futureScroll = document.querySelector('.future-scroll');
-const futurePin = document.querySelector('.future-pin');
 const futureSection = document.querySelector('.future-section');
 const futureFinale = document.querySelector('.future-finale');
 let futureStart = 0;
 let futureDistance = 1;
-let previousFutureProgress = 0;
-let featureReturnArmed = false;
 
 function measureFuture() {
   const viewport = window.innerHeight;
-  const height = futureSection.getBoundingClientRect().height;
-  const top = Math.min(0, viewport - height);
-  futureStart = futureScroll.getBoundingClientRect().top + window.scrollY - top;
-  // One viewport: the feature list fades out and the finale settles within a
-  // single swipe instead of one and a half.
+  futureStart = futureScroll.getBoundingClientRect().top + window.scrollY;
+  // One viewport: "Just You Wait." rises over a single swipe. The rest of the
+  // future content now lives in the manteraction finale stack. The container
+  // spans two viewports — one for the rise, one of pinned hold at the end —
+  // because the page ends here and needs that room to pin the finale at all.
   futureDistance = viewport * 1.0;
-  futureScroll.style.setProperty('--future-pin-top', `${top}px`);
-  futureScroll.style.setProperty('--future-scroll-height', `${height + futureDistance}px`);
-  futureScroll.style.setProperty('--future-center', `${viewport / 2 - top}px`);
+  futureScroll.style.setProperty('--future-pin-top', '0px');
+  futureScroll.style.setProperty('--future-scroll-height', `${viewport * 2.0}px`);
+  futureScroll.style.setProperty('--future-center', `${viewport / 2}px`);
 }
 
 function updateFuture() {
   const progress = Math.max(0, Math.min(1, (window.scrollY - futureStart) / futureDistance));
-  // Re-arm after reaching the finale, then run a time-based animation on
-  // return. Scroll position never drives or reverses the animation itself.
-  if (progress >= .95) featureReturnArmed = true;
-  if (featureReturnArmed && progress < .95 && progress < previousFutureProgress) {
-    const list = document.querySelector('.future-features');
-    list.classList.remove('features-returning');
-    void list.offsetWidth;
-    list.classList.add('features-returning');
-    featureReturnArmed = false;
-  }
-  previousFutureProgress = progress;
-  const smooth = value => value * value * (3 - 2 * value);
+  // "Just You Wait." only. The feature section above is plain document flow:
+  // it scrolls normally and no longer participates in any pinned phase.
   const entrance = Math.max(0, Math.min(1, (progress - .25) / .75));
-  futureScroll.style.setProperty('--future-opacity', 1 - smooth(progress));
   const travel = window.innerHeight / 2 + futureFinale.getBoundingClientRect().height / 2 + 1;
   futureScroll.style.setProperty('--finale-offset', `${travel * (1 - entrance)}px`);
   futureScroll.style.setProperty('--finale-visibility', entrance > 0 ? 'visible' : 'hidden');
-  futureSection.setAttribute('aria-hidden', progress === 1 ? 'true' : 'false');
   futureFinale.setAttribute('aria-hidden', progress <= .25 ? 'true' : 'false');
 }
 
@@ -115,7 +100,6 @@ const manteractionScroll = document.querySelector('.manteraction-scroll');
 const manteractionStage = document.querySelector('.manteraction-stage');
 const manteractionFinaleBlock = document.querySelector('.manteraction-finale-block');
 const manteractionFinale = document.querySelector('.manteraction-finale');
-const manteractionDetails = document.querySelector('.manteraction-details');
 let manteractionStart = 0;
 let manteractionDistance = 1;
 
@@ -124,29 +108,45 @@ function measureManteraction() {
   const stage = manteractionStage.getBoundingClientRect().height;
   const pinTop = Math.min(0, viewport - stage);
   manteractionStart = manteractionScroll.getBoundingClientRect().top + window.scrollY - pinTop;
-  // Two viewports: the trio fades out and the finale settles in the first
-  // swipe, then the details paragraph rises to sit beneath it in the second.
-  manteractionDistance = viewport * 2.0;
+  // The finale settles within the first half of the budget, then the pin
+  // releases right as "What it will have" scrolls in from below. That section
+  // is plain document flow — it never participates in this pinned phase.
+  manteractionDistance = viewport * 0.7;
   manteractionScroll.style.setProperty('--manteraction-pin-top', `${pinTop}px`);
   manteractionScroll.style.setProperty('--manteraction-scroll-height', `${stage + manteractionDistance}px`);
   manteractionScroll.style.setProperty('--manteraction-center', `${viewport / 2 - pinTop}px`);
+  // Stacked handoff: when the pin releases, the future section's top should
+  // sit 50px below the explanation text's bottom. Both then scroll 1:1, so a
+  // static margin correction pins that gap for the whole pass. The section
+  // stays plain flow — the margin is geometry, not a scroll coupling.
+  const touchHeight = manteractionFinale.getBoundingClientRect().height;
+  const blockHeight = manteractionFinaleBlock.getBoundingClientRect().height;
+  const settledBlockBottom = (viewport / 2 - pinTop) - touchHeight / 2 + blockHeight;
+  const releaseSectionTop = pinTop + stage;
+  // The visible handoff is the h2, which starts one top-padding below the
+  // section box — subtract that padding so the heading itself lands 50px
+  // under the explanation text.
+  const sectionPadding = parseFloat(getComputedStyle(futureSection).paddingTop) || 0;
+  futureSection.style.marginTop = `${50 - (releaseSectionTop - settledBlockBottom) - sectionPadding}px`;
 }
 
 function updateManteraction() {
   const progress = Math.max(0, Math.min(1, (window.scrollY - manteractionStart) / manteractionDistance));
   const smooth = value => value * value * (3 - 2 * value);
-  const entrance = Math.max(0, Math.min(1, (progress - .125) / .5));
-  manteractionScroll.style.setProperty('--manteraction-opacity', 1 - smooth(Math.min(1, progress * 2)));
-  const travel = window.innerHeight / 2 + manteractionFinale.getBoundingClientRect().height / 2 + 1;
-  manteractionScroll.style.setProperty('--manteraction-offset', `${travel * (1 - entrance)}px`);
-  manteractionScroll.style.setProperty('--manteraction-visibility', entrance > 0 ? 'visible' : 'hidden');
-  const detailsEntrance = Math.max(0, Math.min(1, (progress - .5) / .5));
-  const detailsTravel = window.innerHeight / 2 + manteractionFinale.getBoundingClientRect().height / 2 + 56;
-  manteractionScroll.style.setProperty('--manteraction-details-offset', `${detailsTravel * (1 - detailsEntrance)}px`);
-  manteractionScroll.style.setProperty('--manteraction-details-visibility', detailsEntrance > 0 ? 'visible' : 'hidden');
-  manteractionStage.setAttribute('aria-hidden', progress >= .5 ? 'true' : 'false');
-  manteractionFinaleBlock.setAttribute('aria-hidden', entrance <= 0 ? 'true' : 'false');
-  manteractionDetails.setAttribute('aria-hidden', detailsEntrance <= 0 ? 'true' : 'false');
+  const settle = Math.max(0, Math.min(1, (progress - .05) / .50));
+  const viewport = window.innerHeight;
+  const touchHeight = manteractionFinale.getBoundingClientRect().height;
+  // "You'll touch it." rises from below the viewport and settles centered with
+  // the details flush beneath it. That ends the pinned phase: the stack then
+  // scrolls off naturally and "What it will have" follows in normal flow.
+  const startY = viewport / 2 + touchHeight;
+  const settleY = -touchHeight / 2;
+  const y = startY + (settleY - startY) * smooth(settle);
+  manteractionScroll.style.setProperty('--manteraction-stack-y', `${y}px`);
+  manteractionScroll.style.setProperty('--manteraction-visibility', progress >= .1 ? 'visible' : 'hidden');
+  manteractionScroll.style.setProperty('--manteraction-opacity', 1 - smooth(Math.min(1, progress * 3)));
+  manteractionStage.setAttribute('aria-hidden', progress >= .4 ? 'true' : 'false');
+  manteractionFinaleBlock.setAttribute('aria-hidden', progress < .1 ? 'true' : 'false');
 }
 const social = document.querySelector('.social-links');
 const installation = document.querySelector('.installation');
@@ -461,19 +461,9 @@ manteractionResizeObserver.observe(manteractionStage);
 
 const details = document.querySelector('.real-life-details');
 const features = document.querySelector('.future-features');
-if ('IntersectionObserver' in window && !reducedMotion.matches) {
-  features.querySelectorAll('li').forEach((item, index) => {
-    item.style.setProperty('--feature-delay', `${index * 100}ms`);
-  });
-  features.classList.add('reveal-pending');
-  const featuresObserver = new IntersectionObserver(entries => {
-    if (!entries.some(entry => entry.isIntersecting)) return;
-    features.classList.remove('reveal-pending');
-    features.classList.add('reveal-visible');
-    featuresObserver.disconnect();
-  }, { rootMargin: '0px 0px -8% 0px', threshold: 0 });
-  featuresObserver.observe(features);
-}
+features.querySelectorAll('li').forEach((item, index) => {
+  item.style.setProperty('--feature-delay', `${index * 100}ms`);
+});
 const nextGenerationSection = document.querySelector('.next-generation-section');
 if ('IntersectionObserver' in window && !reducedMotion.matches && nextGenerationSection) {
   nextGenerationSection.classList.add('reveal-pending');
@@ -494,4 +484,24 @@ if ('IntersectionObserver' in window && !reducedMotion.matches) {
     detailsObserver.disconnect();
   }, { rootMargin: '0px 0px -8% 0px', threshold: 0 });
   detailsObserver.observe(details);
+}
+
+// Feature lists: no fade-in on the first pass — they are simply there. Once
+// the section has scrolled past the top, returning to it replays the
+// staggered entrance; scroll position never drives or reverses the replay.
+if ('IntersectionObserver' in window && !reducedMotion.matches) {
+  let featuresEnteredOnce = false;
+  const featuresObserver = new IntersectionObserver(entries => {
+    for (const entry of entries) {
+      if (entry.isIntersecting) {
+        if (!featuresEnteredOnce) continue;
+        features.classList.remove('features-returning');
+        void features.offsetWidth;
+        features.classList.add('features-returning');
+      } else if (entry.boundingClientRect.bottom < 0) {
+        featuresEnteredOnce = true;
+      }
+    }
+  }, { threshold: 0 });
+  featuresObserver.observe(features);
 }
