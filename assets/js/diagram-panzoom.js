@@ -261,9 +261,9 @@ async function main() {
         apply();
         return;
       }
-      // Pinch/ctrl-wheel zoom speed: 0.006 = 0.0015 × 4 (user-tuned).
+      // Pinch/ctrl-wheel zoom speed: 0.009 = 0.0015 × 6 (user-tuned).
       // Plain two-finger wheel pan is unaffected (adds deltas directly).
-      rawK *= Math.exp(-e.deltaY * 0.006);
+      rawK *= Math.exp(-e.deltaY * 0.009);
       rawK = Math.min(ZOOM_MAX + ZOOM_MAX / 0.3, rawK);
       if (rawK < fitK) {
         const stretched = 0.7 * fitK + 0.3 * rawK;
