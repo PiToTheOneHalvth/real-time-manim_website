@@ -1,5 +1,40 @@
 # Website architecture
 
+The “What it will have” section pins with `position: sticky` at the viewport
+top (z-index 1) instead of riding the Manteraction scroll wrapper. A linear
+fade runs across the whole pinned span: it starts when the section is
+centered (top = 0) and reaches opacity 0 exactly when “Just You Wait.” is
+centered, computed from the section height and the stage distance rather
+than a percentage window. The section holds its position through the fade,
+and the finale block carries z-index 1 so its text stays above the fading
+section’s stacking context. `aria-hidden` flips on at completion.
+
+The eight feature items now play their staggered entrance on the first pass
+as well: `.reveal-pending` → `.reveal-visible` triggers the 650 ms fade-in
+plus 24 px shift-right (translateX(−24px) → 0, 100 ms stagger per item), and
+returning to the section replays the same entrance. The observer margin is
+0 0 −15% 0 so the entrance starts slightly before full entry. Scroll
+position never drives or reverses either animation; reduced motion omits it.
+
+Mind-map navigation: the initial view contain-fits the whole diagram
+(centered, 12 px pad) so the full pipeline is visible first. A plain
+two-finger wheel now pans in both axes instead of zooming; zoom is
+ctrl/meta-wheel (or pinch) around the cursor with ZOOM_SPEED 0.009 — six
+times the original 0.0015 after repeated “faster” requests, reaching the
+ZOOM_MAX 4 cap in about five wheel events where it took twenty-five. Below
+fitK and above ZOOM_MAX the raw scale is visually resisted (0.7·floor +
+0.3·raw) and eases back with a recovery glide. A pinch that stops keeps
+gliding: after a 100 ms idle the EMA-smoothed log-space velocity continues
+with exponential decay (τ ≈ 159 ms) around the gesture’s last focal point,
+handing off to the recovery glides at the resisted zones; any input cancels
+it. All glides integrate real elapsed time, so throttled tabs animate
+identically to 60 fps ones.
+
+The Starts-from picture is centered across the full grid width
+(`display: contents` on the copy wrapper, grid-column 1 / −1,
+width min(50%, 720px)); the two follow-up paragraphs moved to the left
+column, left-aligned, while the first paragraph stays in the right column.
+
 The “What it will have” section remains fixed during its finale transition.
 Its heading and eight-feature grid fade out quickly over the final 12% of the
 pinned stage against #000000, while “Just You Wait.” rises into the center.
@@ -47,10 +82,10 @@ The next-generation section is split into two full-viewport screens
 the “Manim plays…” paragraph and the ManimCE pipeline mind map; screen two
 holds “We verified the trick…”, the Vulkan pipeline mind map and the closing
 line. Each mind-map card flexes to absorb all space the copy leaves, and the
-diagram cover-fits the card — scaled to fill the viewport height, anchored at
-the start of the left-to-right flow, pan/zoom to explore (double-click
-resets) — so heading, paragraph and a screen-filling mind map are visible at
-once, in the fullscreen overlay too. The old hug-to-content height is gone.
+diagram contain-fits the card — the whole map visible, centered with a small
+margin, pan/zoom to explore (double-click resets) — so heading, paragraph
+and the full mind map are visible at once, in the fullscreen overlay too.
+The old hug-to-content height is gone.
 
 ## Work-in-progress note
 
@@ -73,9 +108,11 @@ animation with a 500ms start delay after the copy. Reduced motion skips both.
 
 ## Organization
 
-Five HTML files live in pages/en/. Only real_time_manim.html is implemented;
-manteraction.html, try.html, wiki.html, and phormation.html remain empty until
-their designs are requested. There is no overall index or redirect.
+pages/ now holds en/ and cn/ subfolders; cn/ is empty until Chinese pages
+are requested. Five HTML files live in pages/en/. Only real_time_manim.html
+is implemented; manteraction.html, try.html, wiki.html, and phormation.html
+remain empty until their designs are requested. There is no overall index or
+redirect.
 Runtime styles, scripts, and images live under assets/. No build step is needed.
 Because the pages sit one directory deeper than the repository root, their
 asset references climb two levels (../../assets/ and
@@ -97,6 +134,13 @@ The topic retains its 6vw right inset and 8% bottom inset independently of the
 video width. Scroll geometry is remeasured on window and visual viewport resize;
 old slot sizes are cleared first. Banner morph distance is 15% of viewport
 height; the initial slogan gap is 3%. These override earlier fixed dimensions.
+
+## Top taskbar
+
+A taskbar strip sits at the very top of the page (z-index 3): nav links on
+the left, the download pill on the right, height var(--taskbar-h), hairline
+bottom border. Once the page scrolls, the liquid banner takes over the top
+edge.
 
 ## RTM hero
 
