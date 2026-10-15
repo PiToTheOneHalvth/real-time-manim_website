@@ -12,9 +12,12 @@ section’s stacking context. `aria-hidden` flips on at completion.
 The eight feature items now play their staggered entrance on the first pass
 as well: `.reveal-pending` → `.reveal-visible` triggers the 650 ms fade-in
 plus 24 px shift-right (translateX(−24px) → 0, 100 ms stagger per item), and
-returning to the section replays the same entrance. The observer margin is
-0 0 −15% 0 so the entrance starts slightly before full entry. Scroll
-position never drives or reverses either animation; reduced motion omits it.
+returning to the section replays the same entrance. Because the section stays
+sticky and intersecting while “Just You Wait.” is pinned, the scroll-back replay
+starts on the first upward reversal after the fade has begun; the observer still
+handles re-entry from above. On that return, the replayed leaf animation and the
+parent's scroll-linked opacity/parallax run independently, so neither effect
+suppresses the other. Reduced motion omits the leaf animation.
 
 Mind-map navigation: the initial view contain-fits the whole diagram
 (centered, 12 px pad) so the full pipeline is visible first. A plain
@@ -35,20 +38,23 @@ The Starts-from picture is centered across the full grid width
 width min(50%, 720px)); the two follow-up paragraphs moved to the left
 column, left-aligned, while the first paragraph stays in the right column.
 
-The “What it will have” section remains fixed during its finale transition.
-Its heading and eight-feature grid fade out quickly over the final 12% of the
-pinned stage against #000000, while “Just You Wait.” rises into the center.
-Scrolling upward reverses the fade.
+The “What it will have” section remains sticky during its finale transition.
+Its heading and eight-feature grid fade out through the full pinned handoff window
+from the section's centered position until “Just You Wait.” is centered, while the
+final title rises into the center. Scrolling upward keeps the same parent opacity
+fade active in reverse; once the section has begun fading, the feature items
+independently replay their 650 ms fade-in from 24 px left with a 100 ms stagger.
 
-The fade and translation are also written directly to the feature section at
-runtime, because the feature section and final title use separate scroll
-wrappers. This prevents the effect from being lost through custom-property
-inheritance.
+The parent fade and the leaf-item replay are deliberately separate: the parent
+keeps the sticky/parallax position and scroll-linked opacity, while the list items
+own the fade-and-shift keyframes. This prevents either animation from replacing
+the other during the upward return.
 
 The enclosing Manteraction stack supplies the final 12% exit phase without
 translating the feature section or its heading. During upward scrolling, the
-heading and features remain fixed and visible: the parent fade-out is disabled
-on that return path. The independent feature-entry animation may still run.
+heading and features remain sticky while the parent opacity reverses through the
+same scroll-linked fade; the independent feature-entry animation may run at the
+same time.
 
 The feature section is now outside the Manteraction parallax stack and follows
 normal document flow. On first downward arrival it is fully visible with no
@@ -66,12 +72,10 @@ animation completes independently of scroll direction and re-arms on reaching
 the finale again. The section's overall scroll fade remains reversible;
 reduced motion omits the individual feature animations.
 
-The feature section pins when its bottom reaches the viewport bottom (allowing
-all rows to be read first in short windows). Another 1.5 viewport heights of
-scroll slowly fades the title and eight features away while “Just you wait.”
-slides upward from below the viewport to its exact center, without an opacity
-fade. Both effects are scroll-driven and reversible;
-the original one-time feature entrance animations remain independent.
+The future handoff remains a two-viewport window: the section is sticky while
+its heading and feature grid fade across the full handoff, and “Just you wait.”
+rises from below to the center. The parent fade is reversible on upward scrolling;
+the independently staggered feature replay can run during that reversal.
 
 The heading now reads “Next generation of Manim Animation” as supplied.
 reference_for_real_time_manim/real-time-manim-bessel-placeholder.png sits below
@@ -153,22 +157,13 @@ Narrow windows use the responsive layout described above.
 
 ## Scroll banner
 
-The social pill pins at the top edge first. At the original installation panel
-midpoint, its lower half pins too. Over 120px of scrolling, one new solid gray
-SVG contour grows from the two solids with a smooth fluid union. Its outer edges
-travel from their initial inset positions to the screen edges, keeping the first
-frame visually stable. The original two shapes stay behind the new contour until
-it covers them completely, then are hidden. There is no splice, bridge, opacity
-fade, or shading fade; linear scroll progress controls the reversible transition.
-
-The social icons remain visible and clickable. The pip command continues upward
-out of view. Download shrinks to a 112x26px white rounded rectangle, retaining
-its text and hover effect, and moves to a 24px inset from the right edge.
-The original entrance animation is disabled after a complete morph.
-Placeholder slots preserve the hero layout and original scroll measurements.
-During reverse playback, the social pill remains fixed for the whole morph,
-including the interval after its original pin threshold, so its container,
-icons, download control, and SVG background stay synchronized.
+The social pill pins at its original top-edge threshold. At the installation panel's
+midpoint, the lower panel also becomes fixed at its exact current viewport position;
+over the next `15%` of viewport height (`135px` at a 900px viewport), shared linear
+progress moves the panel horizontally, shrinks/repositions Download, and grows the
+liquid contour. The command continues upward by the actual scroll delta, so stopping
+the page freezes every intermediate element; reverse dragging retraces the same
+mapping. The center title appears only at progress 1.
 
 ## Slogan video
 

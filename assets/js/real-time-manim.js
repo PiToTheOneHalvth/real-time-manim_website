@@ -75,8 +75,7 @@ let futureFadeStart = 0;
 let futureFadeEnd = 1;
 let futureFaded = false;
 let previousFutureFade = 0;
-let futureFadeReturning = false;
-let futureReturnVisible = false;
+let futureReturnReplayStarted = false;
 
 function measureFuture() {
   const viewport = window.innerHeight;
@@ -102,32 +101,22 @@ function updateFuture() {
   // moment the section is centered until "Just You Wait." is centered —
   // completely invisible exactly at that final state.
   const windowScroll = Math.max(0, Math.min(1, (window.scrollY - futureFadeStart) / (futureFadeEnd - futureFadeStart)));
-  // Each time the section fades back in (scroll-up from "Just You Wait."),
-  // replay the features' staggered entrance. The sticky pin keeps the list
-  // intersecting the viewport the whole time, so the IntersectionObserver's
-  // re-entry branch can never fire on this pass — the fade is the trigger.
-  const faded = windowScroll >= 0.5;
+  // Replay the item entrance as soon as the pinned section starts returning
+  // upward. The parent opacity remains scroll-linked, so the replay and the
+  // section's fade/parallax run independently instead of one hiding the other.
+  const fadePassed = windowScroll >= 0.5;
   const goingUp = windowScroll < previousFutureFade;
   const goingDown = windowScroll > previousFutureFade;
-  if (goingUp && futureFaded && !futureReturnVisible) {
-    // Keep the whole pinned section hidden while returning. This prevents
-    // the parent fade-in from showing static features before their replay.
-    futureFadeReturning = true;
+  if (goingDown) {
+    futureReturnReplayStarted = false;
   }
-  if (goingDown && futureFadeReturning) {
-    futureFadeReturning = false;
-    futureReturnVisible = false;
-  }
-  if (futureFadeReturning && !futureReturnVisible && windowScroll <= 0.5) {
+  if (goingUp && futureFaded && !futureReturnReplayStarted) {
     replayFeatures();
-    futureReturnVisible = true;
+    futureReturnReplayStarted = true;
   }
-  const sectionOpacity = futureFadeReturning
-    ? (futureReturnVisible ? 1 : 0)
-    : 1 - windowScroll;
-  futureSection.style.opacity = `${sectionOpacity}`;
-  futureSection.setAttribute('aria-hidden', sectionOpacity === 0 ? 'true' : 'false');
-  futureFaded = faded;
+  futureSection.style.opacity = `${1 - windowScroll}`;
+  futureSection.setAttribute('aria-hidden', windowScroll >= 1 ? 'true' : 'false');
+  futureFaded = fadePassed;
   previousFutureFade = windowScroll;
   // "Just You Wait." rises over the fading section.
   const entrance = Math.max(0, Math.min(1, (progress - .25) / .75));
@@ -314,25 +303,14 @@ function measureControls() {
   };
 }
 
-let bannerProgress = 0;
-const BANNER_MORPH_MS = 400;
-let morphDirection = -1;
-let morphFrame = 0;
-let morphStartedAt = 0;
-let morphInitialProgress = 0;
-
 function applyBannerState(progress) {
   const g = controlGeometry;
   const lerp = (a, b) => a + (b - a) * progress;
   const height = 60 * g.scale;
-  const morphStart = Math.max(g.pinAt, g.mergeAt - window.innerHeight * .15);
-  const flowPanelTop = g.installTop - morphStart;
-  const flowPanelCenter = flowPanelTop + g.rightHeight / 2;
   const bannerTop = lerp(0, (height - g.height) / 2);
   banner.hidden = false;
-  // The SVG paths already use viewport coordinates. Only share the vertical
-  // offset with the social pill; applying a second horizontal offset would
-  // make the background drift away from both controls during reversal.
+  // The SVG paths and both controls use the same scroll-derived progress, so
+  // dragging the page never leaves an element in a time-based middle state.
   banner.style.setProperty('--banner-top', `${bannerTop}px`);
   banner.style.setProperty('--banner-height', `${height}px`);
   // The center title rides the merged banner's vertical center line.
@@ -340,7 +318,10 @@ function applyBannerState(progress) {
   social.style.left = `${g.left}px`;
   social.style.top = `${bannerTop}px`;
   installation.style.left = `${lerp(g.right, window.innerWidth - g.rightWidth - 12 * g.scale)}px`;
-  installation.style.top = `${lerp(flowPanelTop, -g.rightHeight / 2)}px`;
+  // At progress 0, this is exactly the installation panel's natural viewport
+  // position when its midpoint reaches the top edge. Further scroll is carried
+  // by --command-shift while the panel itself stays in the banner.
+  installation.style.top = `${-g.rightHeight / 2}px`;
   installation.style.height = `${g.rightHeight}px`;
   installation.style.setProperty('--download-top', `${lerp(g.buttonTop, g.rightHeight / 2 + (height - 34 * g.scale) / 2)}px`);
   installation.style.setProperty('--download-width', `${lerp(g.buttonWidth, 132 * g.scale)}px`);
@@ -358,45 +339,15 @@ function clearBannerStyles() {
   installation.style.left = '';
   installation.style.top = '';
   installation.style.height = '';
+  installation.style.removeProperty('--download-top');
+  installation.style.removeProperty('--download-width');
+  installation.style.removeProperty('--download-height');
+  installation.style.removeProperty('--download-radius');
+  installation.style.removeProperty('--download-font-size');
+  installation.style.removeProperty('--command-shift');
   banner.style.removeProperty('--banner-top');
   banner.style.removeProperty('--banner-height');
   centerTitle.style.removeProperty('--banner-center-y');
-}
-
-function startBannerMorph(direction) {
-  morphDirection = direction;
-  morphInitialProgress = bannerProgress;
-  morphStartedAt = performance.now();
-  cancelAnimationFrame(morphFrame);
-  morphFrame = requestAnimationFrame(stepBannerMorph);
-}
-
-function stepBannerMorph(now) {
-  const target = morphDirection === 1 ? 1 : 0;
-  const elapsed = Math.min(1, (now - morphStartedAt) / BANNER_MORPH_MS);
-  const t = reducedMotion.matches ? 1 : elapsed;
-  const eased = t * t * (3 - 2 * t);
-  bannerProgress = morphInitialProgress + (target - morphInitialProgress) * eased;
-  social.classList.add('is-banner');
-  installation.classList.add('is-banner');
-  applyBannerState(bannerProgress);
-  if (elapsed < 1) {
-    morphFrame = requestAnimationFrame(stepBannerMorph);
-    return;
-  }
-  morphFrame = 0;
-  bannerProgress = target;
-  if (target === 1) {
-    social.classList.add('entrance-complete');
-    installation.classList.add('entrance-complete');
-    centerTitle.classList.add('is-visible');
-  } else {
-    clearBannerStyles();
-    social.classList.remove('is-banner');
-    installation.classList.remove('is-banner');
-    centerTitle.classList.remove('is-visible');
-    banner.hidden = true;
-  }
 }
 
 function updateBanner() {
@@ -404,22 +355,34 @@ function updateBanner() {
   const g = controlGeometry;
   const pinned = window.scrollY >= g.pinAt;
   const merged = window.scrollY >= g.mergeAt;
-  const morphing = morphFrame !== 0 || bannerProgress > 0;
-  social.classList.toggle('is-pinned', pinned && !morphing);
+  const morphDistance = window.innerHeight * .15;
+  const scrollProgress = Math.max(0, Math.min(1, (window.scrollY - g.mergeAt) / morphDistance));
+  const progress = reducedMotion.matches && merged ? 1 : scrollProgress;
+  social.classList.toggle('is-pinned', pinned);
+  social.classList.toggle('is-banner', merged);
+  installation.classList.toggle('is-banner', merged);
   // The command has scrolled away; prevent keyboard focus behind the banner.
-  command.parentElement.inert = morphing;
+  command.parentElement.inert = merged;
 
-  if (merged && morphDirection !== 1) {
-    startBannerMorph(1);
-  } else if (!merged && morphDirection !== -1 && (bannerProgress > 0 || morphFrame !== 0)) {
-    centerTitle.classList.remove('is-visible');
-    startBannerMorph(-1);
-  } else if (!morphing && bannerProgress === 0) {
-    clearBannerStyles();
-    social.style.left = pinned ? `${g.left}px` : '';
-    social.style.top = pinned ? '0px' : '';
-    banner.hidden = true;
+  if (merged) {
+    applyBannerState(progress);
+    if (progress >= 1) {
+      social.classList.add('entrance-complete');
+      installation.classList.add('entrance-complete');
+      centerTitle.classList.add('is-visible');
+    } else {
+      centerTitle.classList.remove('is-visible');
+    }
+    return;
   }
+
+  clearBannerStyles();
+  social.classList.remove('is-banner');
+  installation.classList.remove('is-banner');
+  centerTitle.classList.remove('is-visible');
+  social.style.left = pinned ? `${g.left}px` : '';
+  social.style.top = pinned ? '0px' : '';
+  banner.hidden = true;
 }
 
 function seekSlogan() {
