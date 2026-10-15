@@ -261,10 +261,9 @@ async function main() {
         apply();
         return;
       }
-      // Pinch/ctrl-wheel zoom speed: 0.004 ≈ 2.7× faster per unit of
-      // deltaY than the original 0.0015. Plain two-finger wheel pan is
-      // unaffected (it adds deltas directly, no coefficient).
-      rawK *= Math.exp(-e.deltaY * 0.004);
+      // Pinch/ctrl-wheel zoom speed: 0.006 = 0.0015 × 4 (user-tuned).
+      // Plain two-finger wheel pan is unaffected (adds deltas directly).
+      rawK *= Math.exp(-e.deltaY * 0.006);
       rawK = Math.min(ZOOM_MAX + ZOOM_MAX / 0.3, rawK);
       if (rawK < fitK) {
         const stretched = 0.7 * fitK + 0.3 * rawK;
