@@ -74,6 +74,9 @@ let futureDistance = 1;
 let futureFadeStart = 0;
 let futureFadeEnd = 1;
 let futureFaded = false;
+let previousFutureFade = 0;
+let futureFadeReturning = false;
+let futureReturnVisible = false;
 
 function measureFuture() {
   const viewport = window.innerHeight;
@@ -99,15 +102,33 @@ function updateFuture() {
   // moment the section is centered until "Just You Wait." is centered —
   // completely invisible exactly at that final state.
   const windowScroll = Math.max(0, Math.min(1, (window.scrollY - futureFadeStart) / (futureFadeEnd - futureFadeStart)));
-  futureSection.style.opacity = `${1 - windowScroll}`;
-  futureSection.setAttribute('aria-hidden', windowScroll >= 1 ? 'true' : 'false');
   // Each time the section fades back in (scroll-up from "Just You Wait."),
   // replay the features' staggered entrance. The sticky pin keeps the list
   // intersecting the viewport the whole time, so the IntersectionObserver's
   // re-entry branch can never fire on this pass — the fade is the trigger.
   const faded = windowScroll >= 0.5;
-  if (futureFaded && !faded) replayFeatures();
+  const goingUp = windowScroll < previousFutureFade;
+  const goingDown = windowScroll > previousFutureFade;
+  if (goingUp && futureFaded && !futureReturnVisible) {
+    // Keep the whole pinned section hidden while returning. This prevents
+    // the parent fade-in from showing static features before their replay.
+    futureFadeReturning = true;
+  }
+  if (goingDown && futureFadeReturning) {
+    futureFadeReturning = false;
+    futureReturnVisible = false;
+  }
+  if (futureFadeReturning && !futureReturnVisible && windowScroll <= 0.5) {
+    replayFeatures();
+    futureReturnVisible = true;
+  }
+  const sectionOpacity = futureFadeReturning
+    ? (futureReturnVisible ? 1 : 0)
+    : 1 - windowScroll;
+  futureSection.style.opacity = `${sectionOpacity}`;
+  futureSection.setAttribute('aria-hidden', sectionOpacity === 0 ? 'true' : 'false');
   futureFaded = faded;
+  previousFutureFade = windowScroll;
   // "Just You Wait." rises over the fading section.
   const entrance = Math.max(0, Math.min(1, (progress - .25) / .75));
   const travel = window.innerHeight / 2 + futureFinale.getBoundingClientRect().height / 2 + 1;
