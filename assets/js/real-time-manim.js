@@ -79,6 +79,9 @@ let futureReturnReplayStarted = false;
 
 function measureFuture() {
   const viewport = window.innerHeight;
+  // Start the finale wrapper where the future section reaches the viewport,
+  // while keeping its full scroll budget for the title's rise and hold.
+  futureScroll.style.marginTop = `${-futureSection.offsetHeight}px`;
   futureStart = futureScroll.getBoundingClientRect().top + window.scrollY;
   // One viewport: "Just You Wait." rises over a single swipe. The rest of the
   // future content now lives in the manteraction finale stack. The container
@@ -91,7 +94,7 @@ function measureFuture() {
   // Fade window for "What it will have": from the section centered (top = 0)
   // to "Just You Wait." centered (entrance = 1), linear across the whole
   // span. The section holds its position through the window.
-  futureFadeStart = futureStart - futureSection.offsetHeight;
+  futureFadeStart = futureStart;
   futureFadeEnd = futureStart + futureDistance;
 }
 
@@ -189,6 +192,31 @@ const bannerResult = document.querySelector('.banner-result');
 const download = document.querySelector('.download');
 const centerTitle = document.querySelector('.center-title');
 let controlGeometry;
+const CENTER_TITLE_FADE_MS = 600;
+let reverseTitleFadeActive = false;
+let reverseTitleFadeTimer = 0;
+let previousBannerProgress = 0;
+
+function cancelReverseTitleFade() {
+  clearTimeout(reverseTitleFadeTimer);
+  reverseTitleFadeTimer = 0;
+  reverseTitleFadeActive = false;
+}
+
+function startReverseTitleFade() {
+  if (reverseTitleFadeActive) return;
+  reverseTitleFadeActive = true;
+  centerTitle.classList.remove('is-visible');
+  if (reducedMotion.matches) {
+    reverseTitleFadeActive = false;
+    return;
+  }
+  reverseTitleFadeTimer = setTimeout(() => {
+    reverseTitleFadeTimer = 0;
+    reverseTitleFadeActive = false;
+    updateSlogan();
+  }, CENTER_TITLE_FADE_MS);
+}
 
 // The merged-banner center title returns to the top of the page.
 centerTitle.addEventListener('click', () => {
@@ -358,6 +386,24 @@ function updateBanner() {
   const morphDistance = window.innerHeight * .15;
   const scrollProgress = Math.max(0, Math.min(1, (window.scrollY - g.mergeAt) / morphDistance));
   const progress = reducedMotion.matches && merged ? 1 : scrollProgress;
+  const goingUp = scrollProgress < previousBannerProgress;
+  const goingDown = scrollProgress > previousBannerProgress;
+
+  // On the return path, finish fading out the centered brand before allowing
+  // the taskbar to morph back into the social/download controls. If the user
+  // reverses direction during that fade, cancel the hold and follow the drag.
+  if (goingDown) cancelReverseTitleFade();
+  if (goingUp && previousBannerProgress >= 1 && scrollProgress < 1) startReverseTitleFade();
+
+  if (reverseTitleFadeActive) {
+    social.classList.add('is-pinned', 'is-banner');
+    installation.classList.add('is-banner');
+    command.parentElement.inert = true;
+    applyBannerState(1);
+    previousBannerProgress = scrollProgress;
+    return;
+  }
+
   social.classList.toggle('is-pinned', pinned);
   social.classList.toggle('is-banner', merged);
   installation.classList.toggle('is-banner', merged);
@@ -373,6 +419,7 @@ function updateBanner() {
     } else {
       centerTitle.classList.remove('is-visible');
     }
+    previousBannerProgress = scrollProgress;
     return;
   }
 
@@ -383,6 +430,7 @@ function updateBanner() {
   social.style.left = pinned ? `${g.left}px` : '';
   social.style.top = pinned ? '0px' : '';
   banner.hidden = true;
+  previousBannerProgress = scrollProgress;
 }
 
 function seekSlogan() {

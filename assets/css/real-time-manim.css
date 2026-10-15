@@ -282,7 +282,8 @@ a:focus-visible, button:focus-visible {
   fill: var(--banner-fill);
 }
 /* Center brand title: shift-down fade-in at the center of the merged top
-   banner once the hero controls merge into it; clicking returns to the top. */
+   banner once the hero controls merge into it; on reverse, it fades out before
+   the taskbar morphs back to the social/download controls. */
 .center-title {
   position: fixed;
   top: var(--banner-center-y, calc(30 * var(--unit)));
@@ -404,9 +405,9 @@ a:focus-visible, button:focus-visible {
   font-size: clamp(16px, 2vw, 40px);
   line-height: 1.5;
 }
-/* Each text + mind-map group owns one full viewport: the copy sits on top,
-   the diagram card absorbs all remaining space so heading, paragraph and
-   the whole mind map are visible together without scrolling. */
+/* Each text + mind-map group owns one full viewport. The centered card
+   uses three quarters of the remaining height, keeping the whole map
+   visible with more breathing room around the copy and diagram. */
 .next-generation-screen {
   min-height: 100svh;
   padding: 6svh 0;
@@ -421,7 +422,9 @@ a:focus-visible, button:focus-visible {
    paragraph room so the caption never collides with it. */
 .next-generation-screen p:last-child { margin-top: 1svh; }
 .next-generation-screen .diagram-card {
-  flex: 1 1 auto;
+  flex: .75 1 0;
+  width: 80%;
+  align-self: center;
   min-height: 0;
   margin: 0;
   display: flex;
@@ -581,7 +584,7 @@ a:focus-visible, button:focus-visible {
   font-weight: 700;
   line-height: 1.1;
   visibility: var(--finale-visibility, hidden);
-  transform: translateY(calc(-50% + var(--finale-offset, 100vh)));
+  transform: translateY(calc(-50% + var(--finale-offset, 1px)));
 }
 .manteraction-scroll {
   height: var(--manteraction-scroll-height, auto);

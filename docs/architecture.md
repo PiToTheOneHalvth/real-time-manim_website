@@ -1,5 +1,19 @@
 # Website architecture
 
+Both next-generation mind-map cards were reduced from 90% to 80% of the available content width. Their flex sizing changed to `.75 1 0`, using three quarters of the remaining vertical space rather than filling it, while each group retained its `100svh` minimum height and centered alignment. At 1440×900 the ManimCE card changed from 1140.5×547.5px to 1013.8×411.1px, and the Vulkan card from 1140.5×522.1px to 1013.8×392.0px. Desktop, phone, narrow-screen, and short-viewport checks preserved the whole-diagram initial fit; fullscreen sizing, pan, pinch zoom, and recenter remained unchanged.
+
+The merged banner now keeps the centered `real-time-manim` title visible while the
+taskbar is fully formed. On upward return, the title fades out over 600 ms before
+the social/download reverse morph begins; the taskbar and Download geometry stay
+at their completed positions during that fade, and reversing direction cancels the
+hold.
+
+The “Just You Wait.” finale now starts just below the viewport when “What it will have” reaches the top: `measureFuture()` gives `.future-scroll` a `margin-top` of `-futureSection.offsetHeight`, so the overlapping two-viewport wrapper begins at the future section's document top. The initial CSS fallback is a `1px` finale offset, and the runtime entrance state places the title's top edge `1px` below the viewport before its one-viewport rise; the future-section fade origin is measured from the section itself.
+
+The Manteraction copy now describes the product as entirely UI-driven: the live product page says no coding is needed and removes the supplemental coding platform claim. The feature list uses “Manteraction is entirely UI-driven,” and the matching Manteraction and real-time-manim markdown drafts carry the same UI-only intent.
+
+Issue #17 keeps the full right-aligned real-life details heading `Real time, real life.` so the section topic is unchanged. At widths below `280px`, the heading scales with `clamp(18px, 10.8vw, 28px)`; at a 240px viewport it remains one line and moves the image up by 30.8px instead of reserving a wrapped row.
+
 The eight feature items now have `6vw` outer padding, a responsive center
 gutter (`clamp(24px, 6vw, 86px)`), and content-sized rows with at least
 `clamp(18px, 3svh, 32px)` between items. Remaining vertical room is distributed
@@ -90,11 +104,12 @@ The next-generation section is split into two full-viewport screens
 (`.next-generation-screen`, `min-height: 100svh`): screen one holds the heading,
 the “Manim plays…” paragraph and the ManimCE pipeline mind map; screen two
 holds “We verified the trick…”, the Vulkan pipeline mind map and the closing
-line. Each mind-map card flexes to absorb all space the copy leaves, and the
-diagram contain-fits the card — the whole map visible, centered with a small
-margin, pan/zoom to explore (double-click resets) — so heading, paragraph
-and the full mind map are visible at once, in the fullscreen overlay too.
-The old hug-to-content height is gone.
+line. Each mind-map card occupies 80% of the content width and flexes to
+use three quarters of the remaining height; the centered group leaves
+breathing room above and below. The diagram contain-fits the card — the
+whole map visible, centered with a small margin, pan/zoom to explore
+(double-click resets). Heading, paragraph and full map remain visible
+at once; the fullscreen overlay still uses its original full-size layout.
 
 ## Work-in-progress note
 
