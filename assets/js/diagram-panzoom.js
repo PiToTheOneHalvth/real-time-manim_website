@@ -170,6 +170,9 @@ async function main() {
     // a continuous monotonic pull eases it back to the centered full view.
     let fitK = 1;
     const ZOOM_MAX = 4;
+    // Pinch/ctrl-wheel zoom speed: log-step per deltaY unit (user-tuned,
+    // 0.0015 × 6). Plain two-finger wheel pan is unaffected.
+    const ZOOM_SPEED = 0.009;
     // The uncompressed scale the wheel has dialed; below fitK or above
     // ZOOM_MAX it is mapped onto a resisted visual scale.
     let rawK = 1;
@@ -222,6 +225,7 @@ async function main() {
     viewport.addEventListener('pointerdown', (e) => {
       cancelAnim();
       cancelRecover();
+      cancelMomentum();
       dragging = true;
       viewport.setPointerCapture(e.pointerId);
       sx = e.clientX; sy = e.clientY; ox = tx; oy = ty;
@@ -249,6 +253,7 @@ async function main() {
     viewport.addEventListener('wheel', (e) => {
       e.preventDefault();
       cancelAnim();
+      cancelMomentum();
       const rect = viewport.getBoundingClientRect();
       const px = e.clientX - rect.left;
       const py = e.clientY - rect.top;
@@ -261,10 +266,22 @@ async function main() {
         apply();
         return;
       }
-      // Pinch/ctrl-wheel zoom speed: 0.009 = 0.0015 × 6 (user-tuned).
-      // Plain two-finger wheel pan is unaffected (adds deltas directly).
-      rawK *= Math.exp(-e.deltaY * 0.009);
+      // Zoom velocity in log-space (log-rawK per ms), EMA-smoothed over
+      // the gesture — released as momentum when the pinch stops (see
+      // scheduleMomentum). Track the focal point so the glide continues
+      // around the same spot.
+      const now = performance.now();
+      const inst = -e.deltaY * ZOOM_SPEED;
+      const since = now - zoomLast;
+      zoomVel = since > 120
+        ? inst / Math.max(since, 8)
+        : zoomVel * 0.5 + (inst / Math.max(since, 8)) * 0.5;
+      zoomLast = now;
+      zoomPx = px;
+      zoomPy = py;
+      rawK *= Math.exp(inst);
       rawK = Math.min(ZOOM_MAX + ZOOM_MAX / 0.3, rawK);
+      scheduleMomentum();
       if (rawK < fitK) {
         const stretched = 0.7 * fitK + 0.3 * rawK;
         tx = px - (px - tx) * (stretched / k);
@@ -349,9 +366,82 @@ async function main() {
       recoverLast = performance.now();
       recoverFrame = requestAnimationFrame(recoverStep);
     };
+    // Zoom momentum: a pinch that stops keeps gliding and eases out — the
+    // same gradual stop a two-finger swipe gets from the trackpad's own
+    // inertia events. Wheel has no release event, so the glide starts
+    // after a short idle timeout; any further input cancels it. Velocity
+    // is log-space (log-rawK per ms), EMA-smoothed by the wheel handler;
+    // the glide decays exponentially around the gesture's last focal
+    // point, and hands off to the recover glides when it crosses the
+    // resisted zones.
+    let zoomVel = 0;
+    let zoomLast = 0;
+    let zoomPx = 0;
+    let zoomPy = 0;
+    let momentumTimer = 0;
+    let momentumFrame = 0;
+    let momentumLast = 0;
+    const cancelMomentum = () => {
+      if (momentumTimer) { clearTimeout(momentumTimer); momentumTimer = 0; }
+      if (momentumFrame) { cancelAnimationFrame(momentumFrame); momentumFrame = 0; }
+    };
+    const momentumStep = (now) => {
+      // Integrate the real elapsed time — exact at any frame rate, so a
+      // throttled tab (1 fps bursts) glides identically to a 60 fps one.
+      const dt = Math.max(0, now - momentumLast);
+      momentumLast = now;
+      zoomVel *= Math.exp(-dt / 158.6); // τ ≈ 159ms per-frame friction
+      const nextRaw = rawK * Math.exp(zoomVel * dt);
+      if (nextRaw < fitK) {
+        const stretched = 0.7 * fitK + 0.3 * nextRaw;
+        tx = zoomPx - (zoomPx - tx) * (stretched / k);
+        ty = zoomPy - (zoomPy - ty) * (stretched / k);
+        k = stretched;
+        touched = true;
+        apply();
+        momentumFrame = 0;
+        startRecover('fit');
+        return;
+      }
+      if (nextRaw > ZOOM_MAX) {
+        const stretched = ZOOM_MAX + 0.3 * (nextRaw - ZOOM_MAX);
+        tx = zoomPx - (zoomPx - tx) * (stretched / k);
+        ty = zoomPy - (zoomPy - ty) * (stretched / k);
+        k = stretched;
+        touched = true;
+        apply();
+        momentumFrame = 0;
+        startRecover('max', tx, ty);
+        return;
+      }
+      rawK = nextRaw;
+      tx = zoomPx - (zoomPx - tx) * (rawK / k);
+      ty = zoomPy - (zoomPy - ty) * (rawK / k);
+      k = rawK;
+      apply();
+      if (Math.abs(zoomVel) < 1e-5) { momentumFrame = 0; return; }
+      momentumFrame = requestAnimationFrame(momentumStep);
+    };
+    const scheduleMomentum = () => {
+      if (motionReduced.matches) return;
+      cancelMomentum();
+      momentumTimer = setTimeout(() => {
+        momentumTimer = 0;
+        zoomVel *= 0.15;
+        // Below/above the resisted zones the recover glides already give
+        // the gradual stop; skip momentum so the two never fight.
+        if (Math.abs(zoomVel) < 5e-6 || rawK <= fitK || rawK >= ZOOM_MAX) {
+          zoomVel = 0;
+          return;
+        }
+        momentumLast = performance.now();
+        momentumFrame = requestAnimationFrame(momentumStep);
+      }, 100);
+    };
     const recenter = () => {
       cancelAnim();
       cancelRecover();
+      cancelMomentum();
       if (motionReduced.matches) { fit(); return; }
       const start = { k, tx, ty };
       const end = fitTarget();
@@ -384,6 +474,7 @@ async function main() {
     const fullscreenBtn = card.querySelector('.diagram-fullscreen-btn');
     fullscreenBtn.addEventListener('click', () => {
       if (openCard) return;
+      cancelMomentum();
       openCard = card;
       openParent = card.parentElement;
       openAnchor = card.nextSibling;
