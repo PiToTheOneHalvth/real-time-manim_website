@@ -71,6 +71,8 @@ const futureSection = document.querySelector('.future-section');
 const futureFinale = document.querySelector('.future-finale');
 let futureStart = 0;
 let futureDistance = 1;
+let futureFadeStart = 0;
+let futureFadeEnd = 1;
 
 function measureFuture() {
   const viewport = window.innerHeight;
@@ -83,12 +85,22 @@ function measureFuture() {
   futureScroll.style.setProperty('--future-pin-top', '0px');
   futureScroll.style.setProperty('--future-scroll-height', `${viewport * 2.0}px`);
   futureScroll.style.setProperty('--future-center', `${viewport / 2}px`);
+  // Fade window for "What it will have": from the section centered (top = 0)
+  // to "Just You Wait." centered (entrance = 1), linear across the whole
+  // span. The section holds its position through the window.
+  futureFadeStart = futureStart - futureSection.offsetHeight;
+  futureFadeEnd = futureStart + futureDistance;
 }
 
 function updateFuture() {
   const progress = Math.max(0, Math.min(1, (window.scrollY - futureStart) / futureDistance));
-  // "Just You Wait." only. The feature section above is plain document flow:
-  // it scrolls normally and no longer participates in any pinned phase.
+  // "What it will have" stays fixed in place and fades out linearly from the
+  // moment the section is centered until "Just You Wait." is centered —
+  // completely invisible exactly at that final state.
+  const windowScroll = Math.max(0, Math.min(1, (window.scrollY - futureFadeStart) / (futureFadeEnd - futureFadeStart)));
+  futureSection.style.opacity = `${1 - windowScroll}`;
+  futureSection.setAttribute('aria-hidden', windowScroll >= 1 ? 'true' : 'false');
+  // "Just You Wait." rises over the fading section.
   const entrance = Math.max(0, Math.min(1, (progress - .25) / .75));
   const travel = window.innerHeight / 2 + futureFinale.getBoundingClientRect().height / 2 + 1;
   futureScroll.style.setProperty('--finale-offset', `${travel * (1 - entrance)}px`);
@@ -486,15 +498,22 @@ if ('IntersectionObserver' in window && !reducedMotion.matches) {
   detailsObserver.observe(details);
 }
 
-// Feature lists: no fade-in on the first pass — they are simply there. Once
-// the section has scrolled past the top, returning to it replays the
-// staggered entrance; scroll position never drives or reverses the replay.
+// Feature lists: the first pass plays a staggered fade-in + shift-right
+// entrance (`.reveal-pending` → `.reveal-visible`, 100ms stagger). Once the
+// section has scrolled past the top, returning to it replays the same
+// entrance. Scroll position never drives or reverses either animation.
 if ('IntersectionObserver' in window && !reducedMotion.matches) {
+  features.classList.add('reveal-pending');
   let featuresEnteredOnce = false;
   const featuresObserver = new IntersectionObserver(entries => {
     for (const entry of entries) {
       if (entry.isIntersecting) {
-        if (!featuresEnteredOnce) continue;
+        if (!featuresEnteredOnce) {
+          featuresEnteredOnce = true;
+          features.classList.remove('reveal-pending');
+          features.classList.add('reveal-visible');
+          continue;
+        }
         features.classList.remove('features-returning');
         void features.offsetWidth;
         features.classList.add('features-returning');
@@ -502,6 +521,6 @@ if ('IntersectionObserver' in window && !reducedMotion.matches) {
         featuresEnteredOnce = true;
       }
     }
-  }, { threshold: 0 });
+  }, { rootMargin: '0px 0px -15% 0px', threshold: 0 });
   featuresObserver.observe(features);
 }

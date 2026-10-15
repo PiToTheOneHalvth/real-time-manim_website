@@ -484,6 +484,9 @@ a:focus-visible, button:focus-visible {
   overflow-wrap: anywhere;
 }
 .future-section {
+  position: sticky;
+  top: 0;
+  z-index: 1;
   background: #000000;
   opacity: 1;
   transform: none;
@@ -513,23 +516,22 @@ a:focus-visible, button:focus-visible {
 }
 .future-features.reveal-pending li {
   opacity: 0;
-  transform: translateX(-24px);
 }
 .future-features.reveal-visible li {
   animation: feature-enter 650ms ease-out both;
   animation-delay: var(--feature-delay, 0ms);
 }
 @keyframes feature-enter {
-  from { opacity: 0; transform: translateX(-24px); }
-  to { opacity: 1; transform: translateX(0); }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 .future-features.features-returning li {
   animation: feature-return 650ms ease-out both;
   animation-delay: var(--feature-delay, 0ms);
 }
 @keyframes feature-return {
-  from { opacity: 0; transform: translateX(-24px); }
-  to { opacity: 1; transform: translateX(0); }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 .future-section h2 {
   margin: 0;
@@ -612,6 +614,9 @@ a:focus-visible, button:focus-visible {
   width: 88%;
   margin: 0;
   text-align: center;
+  /* The future section becomes a stacking context while it fades (transform +
+     opacity); keep this block above it so its text is never covered. */
+  z-index: 1;
   visibility: var(--manteraction-visibility, hidden);
   transform: translateY(var(--manteraction-stack-y, 100vh));
 }
