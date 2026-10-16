@@ -111,3 +111,19 @@ gantt
     Testing        :a4, after a3, 5d
 ```
 
+
+<!-- generated internal navigation -->
+
+## Related pages
+
+- [Wiki index](../index.md)
+- [Reference / Api](api/index.md)
+- [Reference / Cli](cli/index.md)
+- [Reference / Config Options](config-options/index.md)
+- [Reference / Glossary](glossary/index.md)
+- [Concepts](../concepts/index.md)
+- [Contributing](../contributing/index.md)
+- [Examples](../examples/index.md)
+- [Faq](../faq/index.md)
+- [Guide](../guide/index.md)
+- [Tutorial](../tutorial/index.md)

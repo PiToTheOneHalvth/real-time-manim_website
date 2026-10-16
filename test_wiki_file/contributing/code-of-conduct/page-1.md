@@ -89,3 +89,17 @@ Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor i
 | Beta    | wip    | sit amet consectetur |
 | Gamma   | todo   | adipiscing elit |
 
+
+<!-- generated internal navigation -->
+
+## Related pages
+
+- [Wiki index](../../index.md)
+- [Contributing / Code Of Conduct](index.md)
+- [Contributing](../index.md)
+- [Concepts](../../concepts/index.md)
+- [Examples](../../examples/index.md)
+- [Faq](../../faq/index.md)
+- [Guide](../../guide/index.md)
+- [Reference](../../reference/index.md)
+- [Tutorial](../../tutorial/index.md)

@@ -104,3 +104,18 @@ $$
 \int_{0}^{\infty} e^{-x^2} \, dx = \frac{\sqrt{\pi}}{2}
 $$
 
+
+<!-- generated internal navigation -->
+
+## Related pages
+
+- [Wiki index](../../index.md)
+- [Concepts / Interaction](index.md)
+- [Concepts](../index.md)
+- [Concepts / Interaction / Page 2](page-2.md)
+- [Contributing](../../contributing/index.md)
+- [Examples](../../examples/index.md)
+- [Faq](../../faq/index.md)
+- [Guide](../../guide/index.md)
+- [Reference](../../reference/index.md)
+- [Tutorial](../../tutorial/index.md)

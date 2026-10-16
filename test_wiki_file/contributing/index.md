@@ -76,3 +76,18 @@ sequenceDiagram
     R-->>U: present frame
 ```
 
+
+<!-- generated internal navigation -->
+
+## Related pages
+
+- [Wiki index](../index.md)
+- [Contributing / Code Of Conduct](code-of-conduct/index.md)
+- [Contributing / Style Guide](style-guide/index.md)
+- [Contributing / Workflow](workflow/index.md)
+- [Concepts](../concepts/index.md)
+- [Examples](../examples/index.md)
+- [Faq](../faq/index.md)
+- [Guide](../guide/index.md)
+- [Reference](../reference/index.md)
+- [Tutorial](../tutorial/index.md)

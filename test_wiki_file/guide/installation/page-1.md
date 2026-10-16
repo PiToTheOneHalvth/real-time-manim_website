@@ -134,3 +134,19 @@ Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor i
   2. Nested ordered two
 - Fourth item
 
+
+<!-- generated internal navigation -->
+
+## Related pages
+
+- [Wiki index](../../index.md)
+- [Guide / Installation](index.md)
+- [Guide](../index.md)
+- [Guide / Installation / Page 2](page-2.md)
+- [Guide / Installation / Page 3](page-3.md)
+- [Concepts](../../concepts/index.md)
+- [Contributing](../../contributing/index.md)
+- [Examples](../../examples/index.md)
+- [Faq](../../faq/index.md)
+- [Reference](../../reference/index.md)
+- [Tutorial](../../tutorial/index.md)

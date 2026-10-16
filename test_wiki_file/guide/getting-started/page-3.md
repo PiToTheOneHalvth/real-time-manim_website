@@ -103,3 +103,19 @@ Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor i
 | Beta    | wip    | sit amet consectetur |
 | Gamma   | todo   | adipiscing elit |
 
+
+<!-- generated internal navigation -->
+
+## Related pages
+
+- [Wiki index](../../index.md)
+- [Guide / Getting Started](index.md)
+- [Guide](../index.md)
+- [Guide / Getting Started / Page 1](page-1.md)
+- [Guide / Getting Started / Page 2](page-2.md)
+- [Concepts](../../concepts/index.md)
+- [Contributing](../../contributing/index.md)
+- [Examples](../../examples/index.md)
+- [Faq](../../faq/index.md)
+- [Reference](../../reference/index.md)
+- [Tutorial](../../tutorial/index.md)

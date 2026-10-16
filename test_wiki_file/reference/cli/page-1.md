@@ -112,3 +112,19 @@ Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor i
 | Beta    | wip    | sit amet consectetur |
 | Gamma   | todo   | adipiscing elit |
 
+
+<!-- generated internal navigation -->
+
+## Related pages
+
+- [Wiki index](../../index.md)
+- [Reference / Cli](index.md)
+- [Reference](../index.md)
+- [Reference / Cli / Page 2](page-2.md)
+- [Reference / Cli / Page 3](page-3.md)
+- [Concepts](../../concepts/index.md)
+- [Contributing](../../contributing/index.md)
+- [Examples](../../examples/index.md)
+- [Faq](../../faq/index.md)
+- [Guide](../../guide/index.md)
+- [Tutorial](../../tutorial/index.md)

@@ -115,3 +115,18 @@ def fib(n):
 print(fib(10))  # 55
 ```
 
+
+<!-- generated internal navigation -->
+
+## Related pages
+
+- [Wiki index](../index.md)
+- [Tutorial / Advanced](advanced/index.md)
+- [Tutorial / Beginner](beginner/index.md)
+- [Tutorial / Intermediate](intermediate/index.md)
+- [Concepts](../concepts/index.md)
+- [Contributing](../contributing/index.md)
+- [Examples](../examples/index.md)
+- [Faq](../faq/index.md)
+- [Guide](../guide/index.md)
+- [Reference](../reference/index.md)

@@ -120,3 +120,18 @@ Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor i
 | Beta    | wip    | sit amet consectetur |
 | Gamma   | todo   | adipiscing elit |
 
+
+<!-- generated internal navigation -->
+
+## Related pages
+
+- [Wiki index](../../index.md)
+- [Contributing / Style Guide](index.md)
+- [Contributing](../index.md)
+- [Contributing / Style Guide / Page 2](page-2.md)
+- [Concepts](../../concepts/index.md)
+- [Examples](../../examples/index.md)
+- [Faq](../../faq/index.md)
+- [Guide](../../guide/index.md)
+- [Reference](../../reference/index.md)
+- [Tutorial](../../tutorial/index.md)

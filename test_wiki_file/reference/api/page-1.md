@@ -70,3 +70,18 @@ Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor i
   2. Nested ordered two
 - Fourth item
 
+
+<!-- generated internal navigation -->
+
+## Related pages
+
+- [Wiki index](../../index.md)
+- [Reference / Api](index.md)
+- [Reference](../index.md)
+- [Reference / Api / Page 2](page-2.md)
+- [Concepts](../../concepts/index.md)
+- [Contributing](../../contributing/index.md)
+- [Examples](../../examples/index.md)
+- [Faq](../../faq/index.md)
+- [Guide](../../guide/index.md)
+- [Tutorial](../../tutorial/index.md)

@@ -60,3 +60,18 @@ Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor i
 - [ ] Open task
 - [ ] Another open task
 
+
+<!-- generated internal navigation -->
+
+## Related pages
+
+- [Wiki index](../index.md)
+- [Examples / Animated](animated/index.md)
+- [Examples / Basic](basic/index.md)
+- [Examples / Interactive](interactive/index.md)
+- [Concepts](../concepts/index.md)
+- [Contributing](../contributing/index.md)
+- [Faq](../faq/index.md)
+- [Guide](../guide/index.md)
+- [Reference](../reference/index.md)
+- [Tutorial](../tutorial/index.md)

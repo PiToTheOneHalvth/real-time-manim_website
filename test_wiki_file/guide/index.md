@@ -124,3 +124,19 @@ sequenceDiagram
     R-->>U: present frame
 ```
 
+
+<!-- generated internal navigation -->
+
+## Related pages
+
+- [Wiki index](../index.md)
+- [Guide / Configuration](configuration/index.md)
+- [Guide / Getting Started](getting-started/index.md)
+- [Guide / Installation](installation/index.md)
+- [Guide / Upgrading](upgrading/index.md)
+- [Concepts](../concepts/index.md)
+- [Contributing](../contributing/index.md)
+- [Examples](../examples/index.md)
+- [Faq](../faq/index.md)
+- [Reference](../reference/index.md)
+- [Tutorial](../tutorial/index.md)

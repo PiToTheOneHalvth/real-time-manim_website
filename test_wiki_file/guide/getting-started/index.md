@@ -87,3 +87,19 @@ Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor i
 - [ ] Open task
 - [ ] Another open task
 
+
+<!-- generated internal navigation -->
+
+## Related pages
+
+- [Wiki index](../../index.md)
+- [Guide](../index.md)
+- [Guide / Getting Started / Page 1](page-1.md)
+- [Guide / Getting Started / Page 2](page-2.md)
+- [Guide / Getting Started / Page 3](page-3.md)
+- [Concepts](../../concepts/index.md)
+- [Contributing](../../contributing/index.md)
+- [Examples](../../examples/index.md)
+- [Faq](../../faq/index.md)
+- [Reference](../../reference/index.md)
+- [Tutorial](../../tutorial/index.md)

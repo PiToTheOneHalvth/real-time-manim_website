@@ -104,3 +104,19 @@ flowchart TD
     D --> E
 ```
 
+
+<!-- generated internal navigation -->
+
+## Related pages
+
+- [Wiki index](../../index.md)
+- [Examples / Interactive](index.md)
+- [Examples](../index.md)
+- [Examples / Interactive / Page 1](page-1.md)
+- [Examples / Interactive / Page 3](page-3.md)
+- [Concepts](../../concepts/index.md)
+- [Contributing](../../contributing/index.md)
+- [Faq](../../faq/index.md)
+- [Guide](../../guide/index.md)
+- [Reference](../../reference/index.md)
+- [Tutorial](../../tutorial/index.md)

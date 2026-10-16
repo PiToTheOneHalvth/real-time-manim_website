@@ -90,3 +90,19 @@ Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor i
 >
 > Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
 
+
+<!-- generated internal navigation -->
+
+## Related pages
+
+- [Wiki index](../../index.md)
+- [Reference / Cli](index.md)
+- [Reference](../index.md)
+- [Reference / Cli / Page 1](page-1.md)
+- [Reference / Cli / Page 2](page-2.md)
+- [Concepts](../../concepts/index.md)
+- [Contributing](../../contributing/index.md)
+- [Examples](../../examples/index.md)
+- [Faq](../../faq/index.md)
+- [Guide](../../guide/index.md)
+- [Tutorial](../../tutorial/index.md)
