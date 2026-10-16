@@ -9,7 +9,7 @@ pages/
   real_time_manim.html             Real-Time Manim product page
   manteraction.html                Manteraction product page
   try.html                        Try Real-Time Manim placeholder
-  wiki.html                       Real-Time Manim wiki placeholder
+  wiki.html                       Dynamic Markdown wiki and note reader
   phormation.html                  Club PHormation page
 assets/
   css/main.css                    Shared minimal layout
@@ -21,8 +21,11 @@ reference_for_real_time_manim/
 
 The Real-Time Manim desktop page is implemented with its own stylesheet
 (`assets/css/real-time-manim.css`) and clipboard script
-(`assets/js/real-time-manim.js`). The other four HTML files remain empty until
-their designs are requested. Mobile layout is deferred.
+(`assets/js/real-time-manim.js`). The architecture section contains a live
+Obsidian-style graph sourced from `test_wiki_file/`; `pages/en/wiki.html`
+provides the same-origin dynamic Markdown reader for graph-node clicks. The
+other three HTML files remain empty until their designs are requested. Mobile
+layout is implemented for the product and wiki surfaces.
 
 The RTM page uses the supplied logo, Times New Roman, a black background,
 off-white foreground, and charcoal controls. Social icons are 20 px, based on

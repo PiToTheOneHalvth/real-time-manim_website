@@ -6,9 +6,11 @@ The `test_wiki_file` fixture now contains generated internal Markdown navigation
 
 ## NOTE: this architecture is fully-AI generated. scrintinize it as any other AI-generted content
 
+The architecture band now contains a live Obsidian-style graph backed directly by `test_wiki_file/`. `assets/js/architecture-graph.js` fetches the current `index.md` and recursively follows the fixture's relative Markdown links, then rebuilds the graph from the current note titles and connections on load and every five seconds on localhost. The graph currently renders 73 notes and 622 deduplicated undirected connections in a full-width `.architecture-graph-viewport`; its canvas selector is scoped to the viewport SVG so the toolbar icons are not used as the graph surface. D3 force layout supplies drag, pan, wheel zoom, hover-neighbor highlighting, search dimming, recenter, fullscreen, keyboard activation, and reduced-motion settling. Node clicks route to `pages/en/wiki.html?note=...`. `pages/en/wiki.html` and `assets/js/wiki.js` provide the same-origin destination route: the page discovers the linked Markdown tree at runtime, renders the current note content, rewrites internal Markdown links to wiki routes, and refreshes the current source on localhost. The fixture remains the content source; no generated graph snapshot is required. The architecture toolbar uses a two-row grid below 600px so the search field remains usable beside the icon controls. Browser checks at 1440x900 and 390x844 confirmed full-panel rendering, 73 nodes, 622 connections, no horizontal overflow, node-to-wiki navigation, and live title refresh from a changed Markdown response.
+
 The Manteraction finale and “What it will have” share one full-width `.manteraction-future-container`: it wraps `.manteraction-scroll`, `.future-section`, and `.future-scroll`, carries the single gray surface and outer hairlines, and fades that surface to transparent as “Just You Wait.” reaches center. The child future section is transparent so there is no inner boundary. Its static margin aligns the visible future heading 10px below the finale block at pin release, while a child-only relative offset keeps that same gap during the earlier entrance and settled hold; transparent section padding can overlap the preceding layout box without the text overlapping.
 
-The architecture and Manteraction basis areas now use two full-width sibling `band` sections, matching the existing “Real time, real life.” container treatment instead of small rounded outer cards. The architecture band is explicitly black (`var(--background)`), while the artifact band keeps the gray `var(--band)` surface; the architecture band keeps its diagram placeholder as an inner bordered work area, and the artifact band contains the existing sticky Manteraction stage with no extra horizontal card margin. At 1440×900 and 390×844, both bands span the viewport width, remain vertically separate, and have no browser errors. The “What it will have” sticky section now starts with the same gray `var(--band)` surface and uses its existing `opacity: 1 → 0` handoff to fade the whole viewport-sized section to black exactly as “Just You Wait.” reaches center.
+The architecture and Manteraction basis areas now use two full-width sibling `band` sections, matching the existing “Real time, real life.” container treatment instead of small rounded outer cards. The architecture band is explicitly black (`var(--background)`), while the artifact band keeps the gray `var(--band)` surface; the architecture band contains the live graph described above, and the artifact band contains the existing sticky Manteraction stage with no extra horizontal card margin. At 1440×900 and 390×844, both bands span the viewport width, remain vertically separate, and have no browser errors. The “What it will have” sticky section now starts with the same gray `var(--band)` surface and uses its existing `opacity: 1 → 0` handoff to fade the whole viewport-sized section to black exactly as “Just You Wait.” reaches center.
 
 Both next-generation mind-map cards were reduced from 90% to 80% of the available content width. Their flex sizing changed to `.75 1 0`, using three quarters of the remaining vertical space rather than filling it, while each group retained its `100svh` minimum height and centered alignment. At 1440×900 the ManimCE card changed from 1140.5×547.5px to 1013.8×411.1px, and the Vulkan card from 1140.5×522.1px to 1013.8×392.0px. Desktop, phone, narrow-screen, and short-viewport checks preserved the whole-diagram initial fit; fullscreen sizing, pan, pinch zoom, and recenter remained unchanged.
 
@@ -94,9 +96,6 @@ its heading and feature grid fade across the full handoff, and “Just you wait.
 rises from below to the center. The parent fade is reversible on upward scrolling;
 the independently staggered feature replay can run during that reversal.
 
-The heading now reads “Next generation of Manim Animation” as supplied.
-reference_for_real_time_manim/real-time-manim-bessel-placeholder.png sits below
-it in the right column, scaling proportionally. The section remains unfinished.
 
 The next-generation section is split into two full-viewport screens
 (`.next-generation-screen`, `min-height: 100svh`): screen one holds the heading,
@@ -132,9 +131,9 @@ animation with a 500ms start delay after the copy. Reduced motion skips both.
 
 pages/ now holds en/ and cn/ subfolders; cn/ is empty until Chinese pages
 are requested. Five HTML files live in pages/en/. Only real_time_manim.html
-is implemented; manteraction.html, try.html, wiki.html, and phormation.html
-remain empty until their designs are requested. There is no overall index or
-redirect.
+is implemented; the wiki route is now a dynamic Markdown reader at wiki.html.
+The remaining manteraction.html, try.html, and phormation.html files remain
+empty until their designs are requested. There is no overall index or redirect.
 Runtime styles, scripts, and images live under assets/. No build step is needed.
 Because the pages sit one directory deeper than the repository root, their
 asset references climb two levels (../../assets/ and
