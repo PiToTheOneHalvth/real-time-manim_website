@@ -512,7 +512,7 @@ a:focus-visible, button:focus-visible {
   position: sticky;
   top: 0;
   z-index: 1;
-  background: #000000;
+  background: transparent;
   opacity: 1;
   transform: none;
   min-height: 100svh;
@@ -585,6 +585,12 @@ a:focus-visible, button:focus-visible {
   line-height: 1.1;
   visibility: var(--finale-visibility, hidden);
   transform: translateY(calc(-50% + var(--finale-offset, 1px)));
+}
+.manteraction-future-container {
+  position: relative;
+  background: rgba(245, 245, 245, calc(.1 * var(--future-surface-opacity, 1)));
+  border-top: 1px solid var(--hairline);
+  border-bottom: 1px solid var(--hairline);
 }
 .manteraction-scroll {
   height: var(--manteraction-scroll-height, auto);
@@ -667,6 +673,9 @@ a:focus-visible, button:focus-visible {
   background: var(--band);
   border-top: 1px solid var(--hairline);
   border-bottom: 1px solid var(--hairline);
+}
+.architecture-section.band {
+  background: var(--background);
 }
 
 @media (max-width: 600px) {

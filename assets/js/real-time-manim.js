@@ -69,6 +69,7 @@ let scrollFrame = 0;
 const futureScroll = document.querySelector('.future-scroll');
 const futureSection = document.querySelector('.future-section');
 const futureFinale = document.querySelector('.future-finale');
+const manteractionFutureContainer = document.querySelector('.manteraction-future-container');
 let futureStart = 0;
 let futureDistance = 1;
 let futureFadeStart = 0;
@@ -84,9 +85,10 @@ function measureFuture() {
   futureScroll.style.marginTop = `${-futureSection.offsetHeight}px`;
   futureStart = futureScroll.getBoundingClientRect().top + window.scrollY;
   // One viewport: "Just You Wait." rises over a single swipe. The rest of the
-  // future content now lives in the manteraction finale stack. The container
-  // spans two viewports — one for the rise, one of pinned hold at the end —
-  // because the page ends here and needs that room to pin the finale at all.
+  // future content now lives in the shared manteraction/future container. The
+  // wrapper spans two viewports — one for the rise, one of pinned hold at the
+  // end — because the page ends here and needs that room to pin the finale at
+  // all.
   futureDistance = viewport * 1.0;
   futureScroll.style.setProperty('--future-pin-top', '0px');
   futureScroll.style.setProperty('--future-scroll-height', `${viewport * 2.0}px`);
@@ -118,6 +120,7 @@ function updateFuture() {
     futureReturnReplayStarted = true;
   }
   futureSection.style.opacity = `${1 - windowScroll}`;
+  manteractionFutureContainer.style.setProperty('--future-surface-opacity', `${1 - windowScroll}`);
   futureSection.setAttribute('aria-hidden', windowScroll >= 1 ? 'true' : 'false');
   futureFaded = fadePassed;
   previousFutureFade = windowScroll;
@@ -141,26 +144,26 @@ function measureManteraction() {
   const stage = manteractionStage.getBoundingClientRect().height;
   const pinTop = Math.min(0, viewport - stage);
   manteractionStart = manteractionScroll.getBoundingClientRect().top + window.scrollY - pinTop;
-  // The finale settles within the first half of the budget, then the pin
-  // releases right as "What it will have" scrolls in from below. That section
-  // is plain document flow — it never participates in this pinned phase.
+  // The finale settles within the first half of the manteraction budget, then
+  // the pin releases before the future feature phase begins. Both phases remain
+  // siblings inside the shared outer container; the measured clearance below
+  // prevents the absolutely positioned finale block from intruding into the
+  // future heading/list on narrow screens.
   manteractionDistance = viewport * 0.7;
-  manteractionScroll.style.setProperty('--manteraction-pin-top', `${pinTop}px`);
-  manteractionScroll.style.setProperty('--manteraction-scroll-height', `${stage + manteractionDistance}px`);
-  manteractionScroll.style.setProperty('--manteraction-center', `${viewport / 2 - pinTop}px`);
-  // Stacked handoff: when the pin releases, the future section's top should
-  // sit 50px below the explanation text's bottom. Both then scroll 1:1, so a
-  // static margin correction pins that gap for the whole pass. The section
-  // stays plain flow — the margin is geometry, not a scroll coupling.
+  const finaleHeight = manteractionFinaleBlock.getBoundingClientRect().height;
   const touchHeight = manteractionFinale.getBoundingClientRect().height;
-  const blockHeight = manteractionFinaleBlock.getBoundingClientRect().height;
-  const settledBlockBottom = (viewport / 2 - pinTop) - touchHeight / 2 + blockHeight;
-  const releaseSectionTop = pinTop + stage;
-  // The visible handoff is the h2, which starts one top-padding below the
-  // section box — subtract that padding so the heading itself lands 50px
-  // under the explanation text.
+  const finaleReserve = viewport - pinTop + touchHeight + finaleHeight + 24;
+  const settledY = -touchHeight / 2;
   const sectionPadding = parseFloat(getComputedStyle(futureSection).paddingTop) || 0;
-  futureSection.style.marginTop = `${50 - (releaseSectionTop - settledBlockBottom) - sectionPadding}px`;
+  // Place the visible heading 10px below the settled explanation, accounting
+  // for the sticky stage's height and the future section's existing padding.
+  const handoffClearance = (viewport / 2 - pinTop) + settledY + finaleHeight + 10 - stage - sectionPadding;
+  manteractionScroll.style.setProperty('--manteraction-pin-top', `${pinTop}px`);
+  manteractionScroll.style.setProperty('--manteraction-scroll-height', `${Math.max(stage + manteractionDistance, finaleReserve)}px`);
+  manteractionScroll.style.setProperty('--manteraction-center', `${viewport / 2 - pinTop}px`);
+  // Adjust only the static handoff spacing; preserve the scroll budget, pin,
+  // background, and both sections' animation settings.
+  futureSection.style.marginTop = `${handoffClearance}px`;
 }
 
 function updateManteraction() {

@@ -1,4 +1,12 @@
+The gap below the complete “You’ll touch it.” explanation was reduced from 50px to 10px by changing only the static handoff margin in `measureManteraction()`. Browser checks at 1440×900, 390×844, 240×700, and 1440×600 measured a 10px gap within subpixel rounding, with no visible content overlap or horizontal overflow. All eight feature items replayed, and the existing finale fade and centered endpoint passed. Background, CSS, HTML, starfield, pan/zoom, animation timing, and scroll budgets remained unchanged.
+
 # Website architecture
+
+## NOTE: this architecture is fully-AI generated. scrintinize it as any other AI-generted content
+
+The Manteraction finale and “What it will have” share one full-width `.manteraction-future-container`: it wraps `.manteraction-scroll`, `.future-section`, and `.future-scroll`, carries the single gray surface and outer hairlines, and fades that surface to transparent as “Just You Wait.” reaches center. The child future section is transparent so there is no inner boundary. Its static margin is measured from the settled finale block to the visible future heading, leaving a 10px content gap; transparent section padding can overlap the preceding layout box without the text overlapping.
+
+The architecture and Manteraction basis areas now use two full-width sibling `band` sections, matching the existing “Real time, real life.” container treatment instead of small rounded outer cards. The architecture band is explicitly black (`var(--background)`), while the artifact band keeps the gray `var(--band)` surface; the architecture band keeps its diagram placeholder as an inner bordered work area, and the artifact band contains the existing sticky Manteraction stage with no extra horizontal card margin. At 1440×900 and 390×844, both bands span the viewport width, remain vertically separate, and have no browser errors. The “What it will have” sticky section now starts with the same gray `var(--band)` surface and uses its existing `opacity: 1 → 0` handoff to fade the whole viewport-sized section to black exactly as “Just You Wait.” reaches center.
 
 Both next-generation mind-map cards were reduced from 90% to 80% of the available content width. Their flex sizing changed to `.75 1 0`, using three quarters of the remaining vertical space rather than filling it, while each group retained its `100svh` minimum height and centered alignment. At 1440×900 the ManimCE card changed from 1140.5×547.5px to 1013.8×411.1px, and the Vulkan card from 1140.5×522.1px to 1013.8×392.0px. Desktop, phone, narrow-screen, and short-viewport checks preserved the whole-diagram initial fit; fullscreen sizing, pan, pinch zoom, and recenter remained unchanged.
 
@@ -8,7 +16,7 @@ the social/download reverse morph begins; the taskbar and Download geometry stay
 at their completed positions during that fade, and reversing direction cancels the
 hold.
 
-The “Just You Wait.” finale now starts just below the viewport when “What it will have” reaches the top: `measureFuture()` gives `.future-scroll` a `margin-top` of `-futureSection.offsetHeight`, so the overlapping two-viewport wrapper begins at the future section's document top. The initial CSS fallback is a `1px` finale offset, and the runtime entrance state places the title's top edge `1px` below the viewport before its one-viewport rise; the future-section fade origin is measured from the section itself.
+The “Just You Wait.” finale now starts after the shared Manteraction/future container's feature phase: `measureFuture()` gives `.future-scroll` a `margin-top` of `-futureSection.offsetHeight`, so the two-viewport finale wrapper begins at the future section's document top inside the same outer container. The initial CSS fallback is a `1px` finale offset, and the runtime entrance state places the title's top edge `1px` below the viewport before its one-viewport rise; the future-section fade origin is measured from the section itself.
 
 The Manteraction copy now describes the product as entirely UI-driven: the live product page says no coding is needed and removes the supplemental coding platform claim. The feature list uses “Manteraction is entirely UI-driven,” and the matching Manteraction and real-time-manim markdown drafts carry the same UI-only intent.
 
@@ -57,28 +65,16 @@ The Starts-from picture is centered across the full grid width
 width min(50%, 720px)); the two follow-up paragraphs moved to the left
 column, left-aligned, while the first paragraph stays in the right column.
 
-The “What it will have” section remains sticky during its finale transition.
-Its heading and eight-feature grid fade out through the full pinned handoff window
-from the section's centered position until “Just You Wait.” is centered, while the
-final title rises into the center. Scrolling upward keeps the same parent opacity
-fade active in reverse; once the section has begun fading, the feature items
-independently replay their 650 ms fade-in from 24 px left with a 100 ms stagger.
+The “What it will have” section remains sticky during its finale transition. Its heading and eight-feature grid fade out through the full pinned handoff window from the section's centered position until “Just You Wait.” is centered, while the final title rises into the center. The section itself is transparent inside the shared gray outer container, whose surface opacity follows the same handoff and reaches zero with the finale. Scrolling upward keeps the same parent opacity fade active in reverse; once the section has begun fading, the feature items independently replay their 650 ms fade-in from 24 px left with a 100 ms stagger.
 
 The parent fade and the leaf-item replay are deliberately separate: the parent
 keeps the sticky/parallax position and scroll-linked opacity, while the list items
 own the fade-and-shift keyframes. This prevents either animation from replacing
 the other during the upward return.
 
-The enclosing Manteraction stack supplies the final 12% exit phase without
-translating the feature section or its heading. During upward scrolling, the
-heading and features remain sticky while the parent opacity reverses through the
-same scroll-linked fade; the independent feature-entry animation may run at the
-same time.
+The shared `.manteraction-future-container` owns the continuous gray surface and outer hairlines. `.manteraction-scroll` retains its 0.7 viewport pinned budget and existing finale reserve. `measureManteraction()` computes the separate future-section margin from the settled explanation bottom, stage height, and section padding to leave 10px before the next visible heading. The future heading/features remain sticky through their own fade, and the independent feature-entry animation may run at the same time.
 
-The feature section is now outside the Manteraction parallax stack and follows
-normal document flow. On first downward arrival it is fully visible with no
-fade-in. Its later fade-out is controlled only by the separate “Just You Wait.”
-stage.
+The feature section remains outside the Manteraction pin, follows normal document flow, and now sits inside the same full-width outer container as the finale. On first downward arrival it is fully visible with no fade-in. Its later fade-out is controlled by the shared-container handoff as the “Just You Wait.” stage rises.
 
 The Manteraction introduction uses two responsive columns. The supplied
 manteraction_placeholder.png sits on the left, with its top edge aligned
