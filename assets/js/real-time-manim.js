@@ -172,9 +172,8 @@ function updateManteraction() {
   const settle = Math.max(0, Math.min(1, (progress - .05) / .50));
   const viewport = window.innerHeight;
   const touchHeight = manteractionFinale.getBoundingClientRect().height;
-  // "You'll touch it." rises from below the viewport and settles centered with
-  // the details flush beneath it. That ends the pinned phase: the stack then
-  // scrolls off naturally and "What it will have" follows in normal flow.
+  // The heading settles centered with the explanation beneath it, holds until
+  // the pin releases, and then scrolls off with the following future content.
   const startY = viewport / 2 + touchHeight;
   const settleY = -touchHeight / 2;
   const y = startY + (settleY - startY) * smooth(settle);
@@ -183,6 +182,16 @@ function updateManteraction() {
   manteractionScroll.style.setProperty('--manteraction-opacity', 1 - smooth(Math.min(1, progress * 3)));
   manteractionStage.setAttribute('aria-hidden', progress >= .4 ? 'true' : 'false');
   manteractionFinaleBlock.setAttribute('aria-hidden', progress < .1 ? 'true' : 'false');
+  // Give the future content its own entrance after the touch block settles:
+  // start below the viewport, then rise to 10px beneath the explanation.
+  // Move only the content: the measured section and finale fade stay untouched.
+  const sectionPadding = parseFloat(getComputedStyle(futureSection).paddingTop) || 0;
+  const contentTop = Math.max(0, manteractionFinaleBlock.getBoundingClientRect().bottom + 10 - sectionPadding);
+  const entrance = Math.max(0, Math.min(1, (progress - .55) / .45));
+  const belowScreen = Math.max(contentTop, viewport + 1 - sectionPadding);
+  const entranceTop = belowScreen + (contentTop - belowScreen) * smooth(entrance);
+  const sectionTop = Math.max(0, futureSection.getBoundingClientRect().top);
+  futureSection.style.setProperty('--future-handoff-offset', `${entranceTop - sectionTop}px`);
 }
 const social = document.querySelector('.social-links');
 const installation = document.querySelector('.installation');
