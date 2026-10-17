@@ -4,6 +4,7 @@
 
   const sourceRoot = new URL(shell.dataset.sourceRoot || '../../test_wiki_file/', document.baseURI);
   const entryPath = shell.dataset.entryPath || 'index.md';
+  const manifestPath = shell.dataset.manifestPath || 'manifest.json';
   const article = document.getElementById('wiki-article');
   const search = document.getElementById('wiki-search');
   const status = document.getElementById('wiki-status');
@@ -83,8 +84,11 @@
   }
 
   async function discover() {
+    const manifest = JSON.parse(await fetchText(new URL(manifestPath, sourceRoot)));
+    if (!Array.isArray(manifest.files)) throw new Error('Wiki manifest must contain a files array.');
+    const manifestPaths = manifest.files.filter(path => typeof path === 'string' && path.toLowerCase().endsWith('.md'));
     const found = new Map();
-    const queue = [entryPath];
+    const queue = [entryPath, ...manifestPaths];
     while (queue.length) {
       const path = normalizePath(queue.shift());
       if (found.has(path)) continue;

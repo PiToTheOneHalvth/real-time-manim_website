@@ -5,6 +5,7 @@
   const d3 = window.d3;
   const sourceRoot = new URL(root.dataset.sourceRoot || '../../test_wiki_file/', document.baseURI);
   const entryPath = root.dataset.entryPath || 'index.md';
+  const manifestPath = root.dataset.manifestPath || 'manifest.json';
   const viewport = root.querySelector('.architecture-graph-viewport');
   const svg = d3.select(root.querySelector('.architecture-graph-viewport > svg'));
   const world = svg.append('g');
@@ -20,6 +21,21 @@
   let lastSignature = '';
   let reloadTimer;
   let suppressClick = false;
+  let draggedNode = null;
+  const LABEL_ZOOM_THRESHOLD = 1.2;
+  const LINK_DISTANCE_MIN = 230;
+  const LINK_DISTANCE_MAX = 270;
+  const LINE_TENSION_MULTIPLIER = 4;
+  const MAX_LINK_TENSION_STRENGTH = 0.7;
+  const DRAG_LINK_TENSION_BOOST = 4;
+  const DRAG_MAX_LINK_STRENGTH = 0.95;
+  const DRAG_ALPHA_TARGET = 0.35;
+  const OBSIDIAN_REPEL_STRENGTH = -1000;
+  const OBSIDIAN_REPEL_MIN_DISTANCE = 30;
+  const OBSIDIAN_CENTER_STRENGTH = 0.1;
+  const OBSIDIAN_COLLISION_RADIUS = 60;
+  const OBSIDIAN_COLLISION_STRENGTH = 0.5;
+  const SETTLE_TICKS = 420;
 
   const escapeHTML = value => String(value).replace(/[&<>"']/g, character => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
@@ -81,8 +97,11 @@
   }
 
   async function readGraphSource() {
+    const manifest = JSON.parse(await text(new URL(manifestPath, sourceRoot)));
+    if (!Array.isArray(manifest.files)) throw new Error('Wiki manifest must contain a files array.');
+    const manifestPaths = manifest.files.filter(path => typeof path === 'string' && path.toLowerCase().endsWith('.md'));
     const documentsByPath = new Map();
-    const queue = [entryPath];
+    const queue = [entryPath, ...manifestPaths];
     while (queue.length) {
       const path = queue.shift();
       if (documentsByPath.has(path)) continue;
@@ -102,50 +121,54 @@
     }
     const documents = [...documentsByPath.values()];
     const files = new Set(documents.map(document => document.path));
-    const edgeCounts = new Map();
+    const outgoing = new Map(documents.map(document => [noteID(document.path), new Set()]));
+    const incoming = new Map(documents.map(document => [noteID(document.path), new Set()]));
     const neighbors = new Map(documents.map(document => [noteID(document.path), new Set()]));
-    const signatureParts = [];
+    const related = new Map(documents.map(document => [noteID(document.path), new Set()]));
+    const edgeMap = new Map();
+    const signatures = [];
 
     for (const document of documents) {
       const source = noteID(document.path);
-      signatureParts.push(`${document.path}:${document.markdown}`);
+      signatures.push(`${document.path}:${document.markdown}`);
       for (const link of markdownLinks(document.markdown)) {
         const targetPath = resolve(document.path, link, files);
         if (!targetPath) continue;
         const target = noteID(targetPath);
-        if (source === target) continue;
-        const [first, second] = [source, target].sort();
-        const key = `${first}\u0000${second}`;
-        edgeCounts.set(key, {
-          source: first,
-          target: second,
-          weight: (edgeCounts.get(key)?.weight || 0) + 1,
-        });
+        if (source === target || outgoing.get(source).has(target)) continue;
+        outgoing.get(source).add(target);
+        incoming.get(target).add(source);
         neighbors.get(source).add(target);
         neighbors.get(target).add(source);
+        related.get(source).add(target);
+        related.get(target).add(source);
+        const [first, second] = [source, target].sort();
+        const key = `${first}:${second}`;
+        if (!edgeMap.has(key)) edgeMap.set(key, { source: first, target: second, weight: 0 });
+        edgeMap.get(key).weight += 1;
       }
     }
 
-    const nodes = documents.map((document, index) => {
+    const positions = seedPositions(documents, related);
+    const nodes = documents.map(document => {
       const id = noteID(document.path);
-      const angle = index * Math.PI * (3 - Math.sqrt(5));
-      const radius = 60 + Math.sqrt(index + 1) * 14;
+      const weight = incoming.get(id).size + outgoing.get(id).size;
       return {
         id,
         title: noteTitle(document.markdown, id),
         path: document.path,
         href: `wiki.html?note=${encodeURIComponent(id)}`,
         degree: neighbors.get(id).size,
-        x: Math.cos(angle) * radius,
-        y: Math.sin(angle) * radius,
+        weight,
+        ...positions.get(id),
       };
     });
 
     return {
       nodes,
-      edges: [...edgeCounts.values()],
+      edges: [...edgeMap.values()],
       neighbors,
-      signature: signatureParts.join('\u0001'),
+      signature: signatures.join('\u0001'),
     };
   }
 
@@ -155,7 +178,52 @@
   }
 
   function radius(node) {
-    return 3.4 + Math.min(8.4, Math.sqrt(node.degree + 1) * 1.25);
+    return Math.max(8, Math.min(3 * Math.sqrt(node.weight + 1), 30));
+  }
+
+  function seededRandom(seedText) {
+    let seed = 2166136261;
+    for (let index = 0; index < seedText.length; index += 1) {
+      seed = Math.imul(seed ^ seedText.charCodeAt(index), 16777619);
+    }
+    return () => {
+      seed += 0x6d2b79f5;
+      let value = seed;
+      value = Math.imul(value ^ (value >>> 15), value | 1);
+      value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
+      return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function seedPositions(documents, related) {
+    const positions = new Map((graph?.nodes || [])
+      .filter(node => Number.isFinite(node.x) && Number.isFinite(node.y))
+      .map(node => [node.id, { x: node.x, y: node.y }]));
+    const newDocuments = documents.filter(document => !positions.has(noteID(document.path)));
+    const existingRadius = Math.max(0, ...[...positions.values()].map(point => Math.hypot(point.x, point.y)));
+    const spread = Math.sqrt(60 * newDocuments.length * 60 / Math.PI + existingRadius ** 2) - existingRadius;
+    const jitterRadius = 60 * Math.sqrt(newDocuments.length);
+
+    for (const document of newDocuments) {
+      const id = noteID(document.path);
+      const random = seededRandom(id);
+      const linkedPositions = [...(related.get(id) || [])]
+        .map(linkedID => positions.get(linkedID))
+        .filter(Boolean);
+      let x;
+      let y;
+      if (linkedPositions.length) {
+        x = linkedPositions.reduce((sum, point) => sum + point.x, 0) / linkedPositions.length + (random() - .5) * jitterRadius;
+        y = linkedPositions.reduce((sum, point) => sum + point.y, 0) / linkedPositions.length + (random() - .5) * jitterRadius;
+      } else {
+        const angle = random() * 2 * Math.PI;
+        const distance = existingRadius + Math.sqrt(random()) * spread;
+        x = distance * Math.cos(angle);
+        y = distance * Math.sin(angle);
+      }
+      positions.set(id, { x, y });
+    }
+    return positions;
   }
 
   function setStatus(message, error = false) {
@@ -171,6 +239,7 @@
       .classed('is-dimmed', node => Boolean(query) && !matches(node))
       .classed('is-match', node => matches(node))
       .classed('is-connected', node => Boolean(active) && connected.has(node.id))
+      .classed('is-neighbor', node => Boolean(active) && node.id !== active.id && connected.has(node.id))
       .classed('is-active', node => active?.id === node.id);
     edgeLayer.selectAll('.architecture-graph-edge')
       .classed('is-connected', edge => Boolean(active) && connected.has(edge.source.id) && connected.has(edge.target.id))
@@ -178,7 +247,7 @@
   }
 
   function tooltipAt(event, node) {
-    tooltip.innerHTML = `<strong>${escapeHTML(node.title)}</strong><span>${node.degree} connections</span>`;
+    tooltip.innerHTML = `<strong>${escapeHTML(node.title)}</strong><span>${node.weight} connections</span>`;
     tooltip.hidden = false;
     const bounds = root.getBoundingClientRect();
     tooltip.style.left = `${Math.max(10, Math.min(event.clientX - bounds.left + 14, bounds.width - tooltip.offsetWidth - 12))}px`;
@@ -212,17 +281,34 @@
     nodeLayer.selectAll('*').remove();
     const { width, height } = dimensions();
     svg.attr('viewBox', `0 0 ${width} ${height}`);
-    zoom = d3.zoom().scaleExtent([.25, 5]).on('zoom', event => world.attr('transform', event.transform));
+    zoom = d3.zoom().scaleExtent([.25, 5]).on('zoom', event => {
+      world.attr('transform', event.transform);
+      root.classList.toggle('labels-hidden', event.transform.k < LABEL_ZOOM_THRESHOLD);
+    });
     svg.call(zoom).on('dblclick.zoom', null);
 
-    const links = edgeLayer.selectAll('line').data(graph.edges).join('line')
+    const nodeByID = new Map(graph.nodes.map(node => [node.id, node]));
+    const visibleEdges = graph.edges
+      .map(edge => {
+        const source = nodeByID.get(edge.source);
+        const target = nodeByID.get(edge.target);
+        const random = seededRandom(`${edge.source}|${edge.target}`);
+        return {
+          ...edge,
+          source,
+          target,
+          restDistance: LINK_DISTANCE_MIN + random() * (LINK_DISTANCE_MAX - LINK_DISTANCE_MIN),
+        };
+      })
+      .filter(edge => edge.source && edge.target);
+    const links = edgeLayer.selectAll('line').data(visibleEdges).join('line')
       .attr('class', 'architecture-graph-edge')
-      .attr('stroke-width', edge => Math.min(2.4, .62 + edge.weight * .18));
+      .attr('stroke-width', 1);
     const nodes = nodeLayer.selectAll('g').data(graph.nodes).join('g')
       .attr('class', 'architecture-graph-node')
       .attr('tabindex', 0)
       .attr('role', 'link')
-      .attr('aria-label', node => `${node.title}, ${node.degree} connections`)
+      .attr('aria-label', node => `${node.title}, ${node.weight} connections`)
       .on('pointerenter', (event, node) => { highlight(node); tooltipAt(event, node); })
       .on('pointermove', tooltipAt)
       .on('pointerleave', () => { highlight(); hideTooltip(); })
@@ -241,11 +327,26 @@
     nodes.append('circle').attr('class', 'architecture-graph-dot').attr('r', radius);
     nodes.append('text').attr('class', 'architecture-graph-label').attr('x', node => radius(node) + 4).attr('dy', '.35em').text(node => node.title);
 
+    const linkStrength = edge => {
+      const baseStrength = LINE_TENSION_MULTIPLIER * edge.weight / Math.min(edge.source.weight, edge.target.weight);
+      const isDraggedLink = draggedNode && (edge.source.id === draggedNode.id || edge.target.id === draggedNode.id);
+      return isDraggedLink
+        ? Math.min(DRAG_MAX_LINK_STRENGTH, baseStrength * DRAG_LINK_TENSION_BOOST)
+        : Math.min(MAX_LINK_TENSION_STRENGTH, baseStrength);
+    };
+    const forceTension = d3.forceLink(visibleEdges)
+      .id(node => node.id)
+      .distance(edge => edge.restDistance)
+      .strength(linkStrength);
     simulation = d3.forceSimulation(graph.nodes)
-      .force('link', d3.forceLink(graph.edges).id(node => node.id).distance(edge => 40 + Math.min(24, edge.weight * 5)).strength(.28))
-      .force('charge', d3.forceManyBody().strength(-58))
-      .force('center', d3.forceCenter(width / 2, height / 2).strength(.22))
-      .force('collision', d3.forceCollide().radius(node => radius(node) + 4).strength(.75));
+      .force('line-tension', forceTension)
+      .force('charge', d3.forceManyBody()
+        .strength(OBSIDIAN_REPEL_STRENGTH)
+        .distanceMin(OBSIDIAN_REPEL_MIN_DISTANCE))
+      .force('x', d3.forceX(0).strength(OBSIDIAN_CENTER_STRENGTH))
+      .force('y', d3.forceY(0).strength(OBSIDIAN_CENTER_STRENGTH))
+      .force('collision', d3.forceCollide(OBSIDIAN_COLLISION_RADIUS).strength(OBSIDIAN_COLLISION_STRENGTH))
+      .stop();
     const tick = () => {
       links.attr('x1', edge => edge.source.x).attr('y1', edge => edge.source.y).attr('x2', edge => edge.target.x).attr('y2', edge => edge.target.y);
       nodes.attr('transform', node => `translate(${node.x}, ${node.y})`);
@@ -254,12 +355,14 @@
 
     nodes.call(d3.drag()
       .on('start', (event, node) => {
+        draggedNode = node;
+        forceTension.strength(linkStrength);
         node.__startX = event.x;
         node.__startY = event.y;
         node.__moved = false;
         node.fx = node.x;
         node.fy = node.y;
-        simulation.alphaTarget(.12).restart();
+        simulation.alphaTarget(DRAG_ALPHA_TARGET).restart();
       })
       .on('drag', (event, node) => {
         if (Math.hypot(event.x - node.__startX, event.y - node.__startY) > 4) {
@@ -272,16 +375,22 @@
       .on('end', (event, node) => {
         node.fx = node.x;
         node.fy = node.y;
+        draggedNode = null;
+        forceTension.strength(linkStrength);
         simulation.alphaTarget(0);
       }));
 
     if (reducedMotion.matches) {
-      simulation.tick(240);
-      simulation.stop();
+      simulation.tick(SETTLE_TICKS);
       tick();
       fit(false);
     } else {
-      window.setTimeout(() => { simulation?.stop(); fit(false); }, 1000);
+      simulation.alpha(.28);
+      for (let index = 0; index < SETTLE_TICKS; index += 1) simulation.tick();
+      tick();
+      simulation.alpha(0).restart();
+      window.setTimeout(() => simulation?.stop(), 250);
+      fit(false);
     }
     highlight();
   }

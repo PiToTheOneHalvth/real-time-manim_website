@@ -582,26 +582,31 @@ a:focus-visible, button:focus-visible {
 .architecture-graph-edge.is-dimmed { opacity: .08; }
 .architecture-graph-node { cursor: pointer; outline: none; }
 .architecture-graph-dot {
-  fill: #f5f5f5;
-  stroke: #101010;
-  stroke-width: 1.5px;
-  transition: fill 140ms ease, opacity 140ms ease, stroke-width 140ms ease;
+  fill: #858585;
+  stroke: none;
+  stroke-width: 0;
+  transition: fill 140ms ease, opacity 140ms ease;
+}
+.architecture-graph-node.is-neighbor .architecture-graph-dot {
+  fill: #c7c7c7;
+  stroke: none;
 }
 .architecture-graph-node:hover .architecture-graph-dot,
-.architecture-graph-node.is-active .architecture-graph-dot,
-.architecture-graph-node.is-connected .architecture-graph-dot {
+.architecture-graph-node.is-active .architecture-graph-dot {
   fill: #ffffff;
-  stroke: #ffffff;
-  stroke-width: 3px;
+  stroke: none;
+  stroke-width: 0;
 }
 .architecture-graph-node.is-dimmed { opacity: .13; }
 .architecture-graph-label {
   fill: rgba(245, 245, 245, .62);
   font-family: "Times New Roman", Times, serif;
-  font-size: 11px;
+  font-size: 9px;
   cursor: pointer;
   user-select: none;
+  transition: opacity 120ms ease;
 }
+.architecture-graph.labels-hidden .architecture-graph-label { opacity: 0; }
 .architecture-graph-node:hover .architecture-graph-label,
 .architecture-graph-node.is-active .architecture-graph-label,
 .architecture-graph-node.is-connected .architecture-graph-label { fill: #ffffff; }
