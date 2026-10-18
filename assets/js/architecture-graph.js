@@ -456,6 +456,18 @@
       if (n.__moved) { n.__moved = false; return; }
       window.location.href = n.href;
     });
+    // Hovering a dot inside the local graph gives main-graph brightness
+    // feedback and arms Shift+Enter to re-target the panel to that dot's
+    // node (the dot's main-graph counterpart is used, since the local dots
+    // carry local-world coordinates).
+    localNodeSelections
+      .on('pointerenter', (event, n) => {
+        const main = graph.nodes.find(node => node.id === n.id);
+        if (main) highlight(main);
+      })
+      .on('pointerleave', () => {
+        if (localGraphOpen) highlight(localGraphNode);
+      });
     const localTick = () => {
       links.attr('x1', link => link.source.x).attr('y1', link => link.source.y)
         .attr('x2', link => link.target.x).attr('y2', link => link.target.y);
@@ -533,12 +545,11 @@
       path.textContent = node.id;
       option.append(title, path);
       option.addEventListener('pointerenter', event => {
-        if (localGraphOpen) return;
         highlight(node);
-        tooltipAt(event.clientX, event.clientY, node);
+        if (!localGraphOpen) tooltipAt(event.clientX, event.clientY, node);
       });
       option.addEventListener('pointerleave', () => {
-        if (localGraphOpen) return;
+        if (localGraphOpen) { highlight(localGraphNode); return; }
         highlight();
         hideTooltip();
       });
@@ -606,20 +617,22 @@
       .attr('role', 'link')
       .attr('aria-label', node => `${node.title}, ${node.weight} connections`)
       .on('pointerenter', (event, node) => {
-        if (localGraphOpen) return;
-        highlight(node); tooltipAt(event.clientX, event.clientY, node);
+        highlight(node);
+        if (!localGraphOpen) tooltipAt(event.clientX, event.clientY, node);
       })
-      .on('pointermove', (event, node) => tooltipAt(event.clientX, event.clientY, node))
+      .on('pointermove', (event, node) => {
+        if (!localGraphOpen) tooltipAt(event.clientX, event.clientY, node);
+      })
       .on('pointerleave', () => {
-        if (localGraphOpen) return;
+        if (localGraphOpen) { highlight(localGraphNode); return; }
         highlight(); hideTooltip();
       })
       .on('focus', (event, node) => {
-        if (localGraphOpen) return;
-        highlight(node); tooltipAt(event.clientX, event.clientY, node);
+        highlight(node);
+        if (!localGraphOpen) tooltipAt(event.clientX, event.clientY, node);
       })
       .on('blur', () => {
-        if (localGraphOpen) return;
+        if (localGraphOpen) { highlight(localGraphNode); return; }
         highlight(); hideTooltip();
       })
       .on('keydown', (event, node) => {
@@ -752,10 +765,10 @@
     requestAnimationFrame(() => fit(false));
   });
   window.addEventListener('keydown', event => {
-    // Shift+Enter while hovering a graph node or a search option opens its
-    // local graph; the search input stays an allowed target so the shortcut
-    // works right after typing.
-    if (event.shiftKey && event.key === 'Enter' && !localGraphOpen && activeNode && !event.repeat) {
+    // Shift+Enter while hovering a graph node or a search option opens that
+    // note's local graph, replacing any open one; the search input stays an
+    // allowed target so the shortcut works right after typing.
+    if (event.shiftKey && event.key === 'Enter' && activeNode && !event.repeat) {
       event.preventDefault();
       openLocalGraph(activeNode);
       return;
