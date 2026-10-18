@@ -22,6 +22,8 @@
   let reloadTimer;
   let suppressClick = false;
   let draggedNode = null;
+  let activeNode = null;
+  let connectedNodes = new Set();
   const LABEL_ZOOM_THRESHOLD = 1.2;
   const LINK_DISTANCE_MIN = 230;
   const LINK_DISTANCE_MAX = 270;
@@ -231,19 +233,27 @@
     status.dataset.state = error ? 'error' : '';
   }
 
+  // Brightness ranking (front = brightest): hovered node #fff > neighbor node >
+  // incident edge > neighbor-neighbor edge > resting node > resting edge >
+  // unlinked node > half-unlinked edge > unlinked edge > background. Edges
+  // keep their own stroke overlap at crossings; no synthetic point is added.
   function highlight(active = null) {
+    activeNode = active;
+    connectedNodes = new Set(active ? [active.id, ...(graph.neighbors.get(active.id) || [])] : []);
     const query = search.value.trim().toLowerCase();
-    const connected = new Set(active ? [active.id, ...(graph.neighbors.get(active.id) || [])] : []);
     const matches = node => !query || node.id.toLowerCase().includes(query) || node.title.toLowerCase().includes(query);
     nodeLayer.selectAll('.architecture-graph-node')
       .classed('is-dimmed', node => Boolean(query) && !matches(node))
       .classed('is-match', node => matches(node))
-      .classed('is-connected', node => Boolean(active) && connected.has(node.id))
-      .classed('is-neighbor', node => Boolean(active) && node.id !== active.id && connected.has(node.id))
-      .classed('is-active', node => active?.id === node.id);
+      .classed('is-active', node => active?.id === node.id)
+      .classed('is-neighbor', node => Boolean(active) && node.id !== active.id && connectedNodes.has(node.id))
+      .classed('is-unlinked', node => Boolean(active) && !connectedNodes.has(node.id));
     edgeLayer.selectAll('.architecture-graph-edge')
-      .classed('is-connected', edge => Boolean(active) && connected.has(edge.source.id) && connected.has(edge.target.id))
-      .classed('is-dimmed', edge => Boolean(active) && !(connected.has(edge.source.id) && connected.has(edge.target.id)));
+      .classed('is-incident', edge => Boolean(active) && (edge.source.id === active.id || edge.target.id === active.id))
+      .classed('is-neighbor-edge', edge => Boolean(active) && edge.source.id !== active.id && edge.target.id !== active.id
+        && connectedNodes.has(edge.source.id) && connectedNodes.has(edge.target.id))
+      .classed('is-half-unlinked', edge => Boolean(active) && connectedNodes.has(edge.source.id) !== connectedNodes.has(edge.target.id))
+      .classed('is-unlinked', edge => Boolean(active) && !connectedNodes.has(edge.source.id) && !connectedNodes.has(edge.target.id));
   }
 
   function tooltipAt(event, node) {

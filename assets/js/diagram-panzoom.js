@@ -99,40 +99,6 @@ async function main() {
     return;
   }
 
-  // Shared fullscreen overlay: the card itself moves in and out, so all
-  // pan/zoom/tooltip listeners survive.
-  const overlay = document.createElement('div');
-  overlay.className = 'diagram-overlay';
-  overlay.hidden = true;
-  overlay.setAttribute('role', 'dialog');
-  overlay.setAttribute('aria-modal', 'true');
-  const closeBtn = document.createElement('button');
-  closeBtn.className = 'diagram-overlay-close';
-  closeBtn.type = 'button';
-  closeBtn.setAttribute('aria-label', 'Exit fullscreen');
-  closeBtn.textContent = '✕';
-  overlay.appendChild(closeBtn);
-  document.body.appendChild(overlay);
-  let openCard = null;
-  let openParent = null;
-  let openAnchor = null;
-
-  const closeFullscreen = () => {
-    if (!openCard) return;
-    overlay.hidden = true;
-    if (openAnchor && openAnchor.parentNode === openParent) {
-      openParent.insertBefore(openCard, openAnchor);
-    } else {
-      openParent.appendChild(openCard);
-    }
-    document.body.classList.remove('diagram-fullscreen-open');
-    openCard = null;
-  };
-  closeBtn.addEventListener('click', closeFullscreen);
-  window.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') closeFullscreen();
-  });
-
   let wired = 0;
   for (const card of document.querySelectorAll('.diagram-card')) {
     const viewport = card.querySelector('.diagram-viewport');
@@ -469,24 +435,50 @@ async function main() {
     viewport.addEventListener('dblclick', recenter);
     recenterBtn.addEventListener('click', recenter);
 
-    // Fullscreen: move the whole card into the overlay; position preserved
-    // on return via the sibling anchor.
+    // Fullscreen: like the architecture graph, the card itself fills the
+    // viewport (inset 3svh/3vw) with a ::after backdrop, the same icon
+    // button toggles back, and Escape exits. While fullscreen the card is
+    // reparented to <body>: position:fixed children of the flex
+    // .next-generation-screen container are laid out at their static
+    // (centered) position with the insets ignored, while as a body child
+    // the card fixes to the viewport exactly like the graph.
+    let openParent = null;
+    let openAnchor = null;
     const fullscreenBtn = card.querySelector('.diagram-fullscreen-btn');
-    fullscreenBtn.addEventListener('click', () => {
-      if (openCard) return;
+    const enterFullscreen = () => {
       cancelMomentum();
-      openCard = card;
       openParent = card.parentElement;
       openAnchor = card.nextSibling;
-      overlay.appendChild(card);
-      overlay.hidden = false;
+      document.body.appendChild(card);
+      card.classList.add('is-fullscreen');
       document.body.classList.add('diagram-fullscreen-open');
       requestAnimationFrame(() => {
-        fitK = computeFitK();
-        if (!touched) fit();
-        else if (k < fitK) startRecover();
-        else apply();
+        fit();
+        touched = false;
       });
+    };
+    const exitFullscreen = () => {
+      cancelMomentum();
+      card.classList.remove('is-fullscreen');
+      document.body.classList.remove('diagram-fullscreen-open');
+      if (openAnchor && openAnchor.parentNode === openParent) {
+        openParent.insertBefore(card, openAnchor);
+      } else {
+        openParent.appendChild(card);
+      }
+      openParent = null;
+      openAnchor = null;
+      requestAnimationFrame(() => {
+        fit();
+        touched = false;
+      });
+    };
+    fullscreenBtn.addEventListener('click', () => {
+      if (card.classList.contains('is-fullscreen')) exitFullscreen();
+      else enterFullscreen();
+    });
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && card.classList.contains('is-fullscreen')) exitFullscreen();
     });
 
     // Hover: context tooltip for nodes and mid-edge labels.
