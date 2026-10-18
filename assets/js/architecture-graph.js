@@ -33,7 +33,6 @@
   let localGraphX = 0;
   let localGraphY = 0;
   let shiftingView = false;
-  let centeringZeroed = false;
   const LABEL_ZOOM_THRESHOLD = 1.2;
   const LINK_DISTANCE_MIN = 230;
   const LINK_DISTANCE_MAX = 270;
@@ -824,8 +823,8 @@
       .force('charge', d3.forceManyBody()
         .strength(OBSIDIAN_REPEL_STRENGTH)
         .distanceMin(OBSIDIAN_REPEL_MIN_DISTANCE))
-      .force('x', d3.forceX(0).strength(centeringZeroed ? 0 : OBSIDIAN_CENTER_STRENGTH))
-      .force('y', d3.forceY(0).strength(centeringZeroed ? 0 : OBSIDIAN_CENTER_STRENGTH))
+      .force('x', d3.forceX(0).strength(OBSIDIAN_CENTER_STRENGTH))
+      .force('y', d3.forceY(0).strength(OBSIDIAN_CENTER_STRENGTH))
       .force('collision', d3.forceCollide(OBSIDIAN_COLLISION_RADIUS).strength(OBSIDIAN_COLLISION_STRENGTH))
       .stop();
     const tick = () => {
@@ -835,15 +834,15 @@
     };
     simulation.on('tick', tick);
 
-    // Drag model (restored to the message-1 state by user request): classic
-    // elastic drag — pickup boosts incident springs ×4 (cap 0.95) and reheats
-    // at alphaTarget 0.35, so the directly linked nodes are pulled along
-    // during the hold; the centering forces (x/y toward the origin) are
-    // zeroed on pickup and STAY zeroed for the rest of the page session —
-    // the layout neither fights the drag nor slides back toward the center
-    // after release. Release unpins the node (fx/fy = null) and restores
-    // baseline strengths so it is affected by the other nodes' forces again
-    // and springs back while the simulation cools.
+    // Drag model: classic elastic drag — pickup boosts incident springs ×4
+    // (cap 0.95) and reheats at alphaTarget 0.35, so the directly linked
+    // nodes are pulled along during the hold. Release unpins the node
+    // (fx/fy = null) and restores baseline strengths so it is affected by
+    // the other nodes' forces again and springs back while the simulation
+    // cools. The centering forces (x/y toward the origin, strength 0.1) stay
+    // active like the original Obsidian graph — they hold the layout
+    // together and keep weakly-connected notes from being flung out of the
+    // cluster by the repulsion while the simulation runs hot.
     nodes.call(d3.drag()
       .on('start', (event, node) => {
         draggedNode = node;
@@ -853,9 +852,6 @@
         node.__moved = false;
         node.fx = node.x;
         node.fy = node.y;
-        centeringZeroed = true;
-        simulation.force('x').strength(0);
-        simulation.force('y').strength(0);
         simulation.alphaTarget(DRAG_ALPHA_TARGET).restart();
       })
       .on('drag', (event, node) => {
