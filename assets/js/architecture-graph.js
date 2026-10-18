@@ -21,7 +21,6 @@
   let lastSignature = '';
   let reloadTimer;
   let suppressClick = false;
-  let draggedNode = null;
   let activeNode = null;
   let connectedNodes = new Set();
   const LABEL_ZOOM_THRESHOLD = 1.2;
@@ -29,9 +28,8 @@
   const LINK_DISTANCE_MAX = 270;
   const LINE_TENSION_MULTIPLIER = 4;
   const MAX_LINK_TENSION_STRENGTH = 0.7;
-  const DRAG_LINK_TENSION_BOOST = 4;
-  const DRAG_MAX_LINK_STRENGTH = 0.95;
-  const DRAG_ALPHA_TARGET = 0.35;
+  const RELEASE_ALPHA_TARGET = 0.2;
+  const RELEASE_HEAT_MS = 500;
   const OBSIDIAN_REPEL_STRENGTH = -1000;
   const OBSIDIAN_REPEL_MIN_DISTANCE = 30;
   const OBSIDIAN_CENTER_STRENGTH = 0.1;
@@ -337,13 +335,7 @@
     nodes.append('circle').attr('class', 'architecture-graph-dot').attr('r', radius);
     nodes.append('text').attr('class', 'architecture-graph-label').attr('x', node => radius(node) + 4).attr('dy', '.35em').text(node => node.title);
 
-    const linkStrength = edge => {
-      const baseStrength = LINE_TENSION_MULTIPLIER * edge.weight / Math.min(edge.source.weight, edge.target.weight);
-      const isDraggedLink = draggedNode && (edge.source.id === draggedNode.id || edge.target.id === draggedNode.id);
-      return isDraggedLink
-        ? Math.min(DRAG_MAX_LINK_STRENGTH, baseStrength * DRAG_LINK_TENSION_BOOST)
-        : Math.min(MAX_LINK_TENSION_STRENGTH, baseStrength);
-    };
+    const linkStrength = edge => Math.min(MAX_LINK_TENSION_STRENGTH, LINE_TENSION_MULTIPLIER * edge.weight / Math.min(edge.source.weight, edge.target.weight));
     const forceTension = d3.forceLink(visibleEdges)
       .id(node => node.id)
       .distance(edge => edge.restDistance)
@@ -363,31 +355,57 @@
     };
     simulation.on('tick', tick);
 
+    // Hold model: while the pointer is down the simulation stays asleep — the
+    // pinned node's x/y follow the pointer directly (rendered via tick()) and
+    // its lines stretch, but no force runs on the graph, so nothing clusters
+    // toward the picked node. Release pins every other node, heats the sim
+    // briefly so only the released node is pulled back under the other nodes'
+    // forces (pinned endpoints still transmit spring force), and unpins the
+    // rest only when the simulation cools to 'end' — by then alpha is below
+    // threshold and no motion can follow, so the graph never visibly moves.
+    let releaseInFlight = false;
+    simulation.on('end', () => {
+      if (!releaseInFlight) return;
+      releaseInFlight = false;
+      for (const other of graph.nodes) { other.fx = null; other.fy = null; }
+    });
+
     nodes.call(d3.drag()
       .on('start', (event, node) => {
-        draggedNode = node;
-        forceTension.strength(linkStrength);
+        releaseInFlight = false;
+        simulation.alphaTarget(0);
+        simulation.alpha(Math.min(simulation.alpha(), 0.03));
+        for (const other of graph.nodes) {
+          if (other !== node) { other.fx = null; other.fy = null; }
+        }
         node.__startX = event.x;
         node.__startY = event.y;
         node.__moved = false;
         node.fx = node.x;
         node.fy = node.y;
-        simulation.alphaTarget(DRAG_ALPHA_TARGET).restart();
       })
       .on('drag', (event, node) => {
         if (Math.hypot(event.x - node.__startX, event.y - node.__startY) > 4) {
           node.__moved = true;
           suppressClick = true;
         }
+        node.x = event.x;
+        node.y = event.y;
         node.fx = event.x;
         node.fy = event.y;
+        tick();
       })
       .on('end', (event, node) => {
         node.fx = null;
         node.fy = null;
-        draggedNode = null;
-        forceTension.strength(linkStrength);
-        simulation.alphaTarget(0);
+        if (node.__moved) {
+          releaseInFlight = true;
+          for (const other of graph.nodes) {
+            if (other !== node) { other.fx = other.x; other.fy = other.y; }
+          }
+          simulation.alphaTarget(RELEASE_ALPHA_TARGET).restart();
+          window.setTimeout(() => simulation?.alphaTarget(0), RELEASE_HEAT_MS);
+        }
       }));
 
     if (reducedMotion.matches) {

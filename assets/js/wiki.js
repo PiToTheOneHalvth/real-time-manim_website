@@ -9,6 +9,7 @@
   const search = document.getElementById('wiki-search');
   const status = document.getElementById('wiki-status');
   const noteList = document.getElementById('wiki-note-list');
+  const sidebarToggle = document.getElementById('wiki-sidebar-toggle');
   const localHost = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
   let documents = new Map();
   let currentID = '';
@@ -152,8 +153,9 @@
       const external = safeExternalHref(splitTarget(rawTarget).path);
       return external ? token(`<a href="${escapeHTML(external)}" rel="noreferrer">${inline(label, sourcePath)}</a>`) : escapeHTML(label);
     });
-    text = escapeHTML(text);
     text = text.replace(/`([^`]+)`/g, (_, value) => token(`<code>${escapeHTML(value)}</code>`));
+    text = text.replace(/\\\$/g, () => token('$'));
+    text = escapeHTML(text);
     text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
     text = text.replace(/__([^_]+)__/g, '<strong>$1</strong>');
     text = text.replace(/\*([^*]+)\*/g, '<em>$1</em>');
@@ -168,8 +170,201 @@
     return count ? `${base}-${count + 1}` : base;
   }
 
+  // ---- Code highlighting (VS Code dark+ palette, zero-dependency tokenizer) ----
+  const COPY_ICON_SVG = '<svg class="copy-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M15 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h2"/></svg>';
+  const CHECK_ICON_SVG = '<svg class="check-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m5 12 4 4L19 6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+  const CODE_LANGS = {
+    python: {
+      com: '#',
+      strings: ["'''", '"""'],
+      kw: ['if', 'elif', 'else', 'for', 'while', 'try', 'except', 'finally', 'with', 'return', 'yield', 'break', 'continue', 'pass', 'raise', 'import', 'from', 'as', 'lambda', 'assert', 'del', 'global', 'nonlocal', 'in', 'is', 'not', 'and', 'or', 'async', 'await'],
+      key: ['def', 'class'],
+      cnst: ['True', 'False', 'None', 'self', 'cls'],
+    },
+    js: {
+      com: '//', block: true, backtick: true,
+      kw: ['if', 'else', 'for', 'while', 'do', 'switch', 'case', 'try', 'catch', 'finally', 'return', 'break', 'continue', 'throw', 'new', 'typeof', 'instanceof', 'in', 'of', 'delete', 'void', 'yield', 'await'],
+      key: ['function', 'class', 'const', 'let', 'var', 'import', 'export', 'default', 'extends', 'implements', 'interface', 'enum', 'type', 'namespace', 'public', 'private', 'protected', 'static', 'async', 'get', 'set'],
+      cnst: ['true', 'false', 'null', 'undefined', 'NaN', 'this', 'super'],
+    },
+    c: {
+      com: '//', block: true,
+      kw: ['if', 'else', 'for', 'while', 'do', 'switch', 'case', 'try', 'catch', 'return', 'break', 'continue', 'goto', 'sizeof'],
+      key: ['struct', 'union', 'enum', 'typedef', 'static', 'const', 'volatile', 'inline', 'extern', 'register', 'signed', 'unsigned'],
+      cnst: ['true', 'false', 'NULL'],
+    },
+    cpp: {
+      com: '//', block: true,
+      kw: ['if', 'else', 'for', 'while', 'do', 'switch', 'case', 'try', 'catch', 'return', 'break', 'continue', 'goto', 'sizeof', 'new', 'delete', 'throw'],
+      key: ['struct', 'union', 'enum', 'typedef', 'class', 'template', 'typename', 'namespace', 'using', 'public', 'private', 'protected', 'static', 'const', 'volatile', 'inline', 'extern', 'friend', 'operator', 'virtual', 'override', 'final'],
+      cnst: ['true', 'false', 'nullptr', 'NULL', 'this'],
+    },
+    sh: {
+      com: '#',
+      kw: ['if', 'then', 'else', 'elif', 'fi', 'for', 'while', 'do', 'done', 'in', 'case', 'esac', 'return', 'echo', 'source', 'shift'],
+      key: ['function', 'export', 'local'],
+      cnst: ['true', 'false'],
+    },
+    json: { kw: [], key: [], cnst: ['true', 'false', 'null'] },
+    yaml: { com: '#', kw: [], key: [], cnst: ['true', 'false', 'null', 'yes', 'no', 'on', 'off'] },
+  };
+  CODE_LANGS.jsx = CODE_LANGS.js;
+  CODE_LANGS.tsx = CODE_LANGS.js;
+  CODE_LANGS.ts = CODE_LANGS.js;
+  CODE_LANGS.cc = CODE_LANGS.cpp;
+  CODE_LANGS.h = CODE_LANGS.c;
+  CODE_LANGS.hpp = CODE_LANGS.cpp;
+  CODE_LANGS.bash = CODE_LANGS.sh;
+  CODE_LANGS.shell = CODE_LANGS.sh;
+  CODE_LANGS.zsh = CODE_LANGS.sh;
+  CODE_LANGS.yml = CODE_LANGS.yaml;
+
+  function highlightTokens(raw, language) {
+    const entry = CODE_LANGS[language];
+    const src = String(raw);
+    if (!entry) return escapeHTML(src);
+    const kwSet = new Set(entry.kw || []);
+    const keySet = new Set(entry.key || []);
+    const cnstSet = new Set(entry.cnst || []);
+    let out = '';
+    let i = 0;
+    const emit = (cls, text) => { out += `<span class="tok-${cls}">${escapeHTML(text)}</span>`; };
+    while (i < src.length) {
+      const ch = src[i];
+      if (entry.block && ch === '/' && src[i + 1] === '*') {
+        const end = src.indexOf('*/', i + 2);
+        const stop = end < 0 ? src.length : end + 2;
+        emit('com', src.slice(i, stop));
+        i = stop;
+        continue;
+      }
+      if (entry.com && src.startsWith(entry.com, i)) {
+        const end = src.indexOf('\n', i);
+        emit('com', src.slice(i, end < 0 ? src.length : end));
+        i = end < 0 ? src.length : end;
+        continue;
+      }
+      let matched = false;
+      for (const quote of entry.strings || []) {
+        if (src.startsWith(quote, i)) {
+          const end = src.indexOf(quote, i + quote.length);
+          const stop = end < 0 ? src.length : end + quote.length;
+          emit('str', src.slice(i, stop));
+          i = stop;
+          matched = true;
+          break;
+        }
+      }
+      if (matched) continue;
+      if (ch === '"' || ch === "'" || (ch === '`' && entry.backtick)) {
+        let j = i + 1;
+        while (j < src.length) {
+          if (src[j] === '\\') { j += 2; continue; }
+          if (src[j] === ch) { j += 1; break; }
+          j += 1;
+        }
+        emit('str', src.slice(i, j));
+        i = j;
+        continue;
+      }
+      if (/\d/.test(ch)) {
+        const m = /^(?:0[xXbBoO][\da-fA-F_]+|\d[\d_]*(?:\.\d[\d_]*)?(?:[eE][+-]?\d+)?)/.exec(src.slice(i));
+        if (m) { emit('num', m[0]); i += m[0].length; continue; }
+      }
+      if (/[A-Za-z_]/.test(ch)) {
+        const m = /^[A-Za-z_]\w*/.exec(src.slice(i));
+        const word = m[0];
+        i += word.length;
+        let cls = null;
+        if (kwSet.has(word)) cls = 'kw';
+        else if (keySet.has(word)) cls = 'key';
+        else if (cnstSet.has(word)) cls = 'cnst';
+        else {
+          let j = i;
+          while (j < src.length && /\s/.test(src[j])) j += 1;
+          if (src[j] === '(') cls = 'fn';
+        }
+        if (cls) emit(cls, word);
+        else out += escapeHTML(word);
+        continue;
+      }
+      out += escapeHTML(ch);
+      i += 1;
+    }
+    return out;
+  }
+
+  const copyTimers = new Map();
+  function copyWithSelection(text, button) {
+    const field = document.createElement('textarea');
+    field.value = text;
+    field.setAttribute('readonly', '');
+    field.style.position = 'fixed';
+    field.style.opacity = '0';
+    document.body.append(field);
+    field.select();
+    try {
+      if (!document.execCommand('copy')) throw new Error('Copy unavailable');
+    } finally {
+      field.remove();
+      button.focus({ preventScroll: true });
+    }
+  }
+  function handleCopyClick(button) {
+    const block = button.closest('.wiki-codeblock');
+    const codeEl = block && block.querySelector('pre code');
+    const text = codeEl ? codeEl.textContent.replace(/\n$/, '') : '';
+    const previous = copyTimers.get(button);
+    if (previous) window.clearTimeout(previous);
+    button.disabled = true;
+    button.dataset.copied = 'false';
+    const setCopied = () => {
+      button.dataset.copied = 'true';
+      button.setAttribute('aria-label', 'Code copied');
+      button.title = 'Copied';
+    };
+    const reset = () => {
+      button.dataset.copied = 'false';
+      button.setAttribute('aria-label', 'Copy code');
+      button.title = 'Copy code';
+    };
+    (async () => {
+      try {
+        try {
+          if (!navigator.clipboard?.writeText) throw new Error('Clipboard unavailable');
+          await navigator.clipboard.writeText(text);
+        } catch {
+          copyWithSelection(text, button);
+        }
+        setCopied();
+      } catch {
+        reset();
+      } finally {
+        button.disabled = false;
+      }
+      copyTimers.set(button, window.setTimeout(() => { reset(); copyTimers.delete(button); }, 3000));
+    })();
+  }
+
   function renderMarkdown(markdown, sourcePath) {
-    const text = markdown.replace(/^---\n[\s\S]*?\n---\n?/, '');
+    const codeContents = [];
+    const codeSpans = [];
+    let text = markdown.replace(/^---\n[\s\S]*?\n---\n?/, '');
+    text = text.replace(/```[\s\S]*?```/g, (block) => {
+      const blockLines = block.split('\n');
+      const open = blockLines.shift();
+      const close = blockLines.pop();
+      codeContents.push({
+        language: ((open.match(/^```\s*([\w-]*)\s*$/) || [])[1] || ''),
+        code: blockLines.join('\n'),
+      });
+      return `${open}\n\u0002${codeContents.length - 1}\u0002\n${close}`;
+    });
+    text = text.replace(/`([^`\n]+)`/g, (_, value) => {
+      codeSpans.push(value);
+      return `\u0003${codeSpans.length - 1}\u0003`;
+    });
     const lines = text.replace(/\r\n/g, '\n').split('\n');
     const html = [];
     const usedIDs = new Map();
@@ -185,7 +380,14 @@
     };
     const flushList = () => {
       if (!listType) return;
-      html.push(`<${listType}>${listItems.map(item => `<li>${inline(item, sourcePath)}</li>`).join('')}</${listType}>`);
+      const hasTask = listItems.some(item => item && typeof item === 'object' && 'checked' in item);
+      const items = listItems.map(item => {
+        if (item && typeof item === 'object' && 'checked' in item) {
+          return `<li class="task-list-item"><input type="checkbox" disabled${item.checked ? ' checked' : ''}> ${inline(item.text, sourcePath)}</li>`;
+        }
+        return `<li>${inline(item, sourcePath)}</li>`;
+      });
+      html.push(`<${listType}${hasTask ? ' class="contains-task-list"' : ''}>${items.join('')}</${listType}>`);
       listType = null;
       listItems = [];
     };
@@ -206,7 +408,7 @@
       const line = lines[index];
       if (code) {
         if (/^```/.test(line)) {
-          html.push(`<pre><code${code.language ? ` class="language-${escapeHTML(code.language)}"` : ''}>${escapeHTML(code.lines.join('\n'))}</code></pre>`);
+          html.push(`<div class="wiki-codeblock"><pre><code${code.language ? ` class="language-${escapeHTML(code.language)}"` : ''}>${escapeHTML(code.lines.join('\n'))}</code></pre><button class="wiki-code-copy" type="button" aria-label="Copy code" title="Copy code">${COPY_ICON_SVG}${CHECK_ICON_SVG}</button></div>`);
           code = null;
         } else code.lines.push(line);
         continue;
@@ -228,7 +430,9 @@
         const type = /^\s*\d+\./.test(line) ? 'ol' : 'ul';
         if (listType && listType !== type) flushList();
         listType = type;
-        listItems.push(line.replace(/^\s*(?:[-*+]\s+|\d+\.\s+)/, ''));
+        const content = line.replace(/^\s*(?:[-*+]\s+|\d+\.\s+)/, '');
+        const task = content.match(/^\[([ xX])\]\s*/);
+        listItems.push(task ? { checked: task[1] !== ' ', text: content.slice(task[0].length) } : content);
         continue;
       }
       if (/^\s*\|/.test(line) && index + 1 < lines.length && /^\s*\|?\s*:?-{2,}/.test(lines[index + 1])) {
@@ -238,9 +442,14 @@
       if (!line.trim()) { flushAll(); continue; }
       flushList(); flushQuote(); flushTable(); paragraph.push(line.trim());
     }
-    if (code) html.push(`<pre><code>${escapeHTML(code.lines.join('\n'))}</code></pre>`);
+    if (code) html.push(`<div class="wiki-codeblock"><pre><code${code.language ? ` class="language-${escapeHTML(code.language)}"` : ''}>${escapeHTML(code.lines.join('\n'))}</code></pre><button class="wiki-code-copy" type="button" aria-label="Copy code" title="Copy code">${COPY_ICON_SVG}${CHECK_ICON_SVG}</button></div>`);
     flushAll();
-    return html.join('\n');
+    return html.join('\n')
+      .replace(/\u0002(\d+)\u0002/g, (_, index) => {
+        const entry = codeContents[Number(index)];
+        return highlightTokens(entry.code, entry.language);
+      })
+      .replace(/\u0003(\d+)\u0003/g, (_, index) => `<code>${escapeHTML(codeSpans[Number(index)])}</code>`);
   }
 
   const ARROW_SVG = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>';
@@ -456,6 +665,20 @@
   async function init() {
     try {
       await refreshSource(false);
+      if (sidebarToggle) {
+        const setTocState = (collapsed) => {
+          shell.classList.toggle('is-toc-collapsed', collapsed);
+          sidebarToggle.setAttribute('aria-expanded', String(!collapsed));
+          sidebarToggle.setAttribute('aria-label', collapsed ? 'Show notes' : 'Hide notes');
+        };
+        setTocState(localStorage.getItem('wiki-toc-collapsed') === '1');
+        sidebarToggle.addEventListener('click', () => {
+          const collapsed = shell.classList.toggle('is-toc-collapsed');
+          sidebarToggle.setAttribute('aria-expanded', String(!collapsed));
+          sidebarToggle.setAttribute('aria-label', collapsed ? 'Show notes' : 'Hide notes');
+          try { localStorage.setItem('wiki-toc-collapsed', collapsed ? '1' : '0'); } catch { /* private mode */ }
+        });
+      }
       search.addEventListener('input', updateList);
       noteList.addEventListener('click', event => {
         const link = event.target.closest('.wiki-note-link');
@@ -473,6 +696,11 @@
         if (plainName) toggleFolder(plainName.closest('.wiki-folder').dataset.path);
       });
       article.addEventListener('click', event => {
+        const copyButton = event.target.closest('.wiki-code-copy');
+        if (copyButton) {
+          handleCopyClick(copyButton);
+          return;
+        }
         const link = event.target.closest('a');
         const match = link?.getAttribute('href')?.match(/^wiki\.html\?note=([^#]+)(?:#.*)?$/);
         if (!match) return;
