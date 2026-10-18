@@ -383,8 +383,8 @@
         node.fy = event.y;
       })
       .on('end', (event, node) => {
-        node.fx = node.x;
-        node.fy = node.y;
+        node.fx = null;
+        node.fy = null;
         draggedNode = null;
         forceTension.strength(linkStrength);
         simulation.alphaTarget(0);
