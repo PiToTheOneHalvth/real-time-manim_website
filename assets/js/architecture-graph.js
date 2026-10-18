@@ -24,6 +24,13 @@
   let draggedNode = null;
   let activeNode = null;
   let connectedNodes = new Set();
+  let localGraphOpen = false;
+  let localGraphNode = null;
+  let localSim = null;
+  let localResize = null;
+  let localGraphSize = 0;
+  let localGraphX = 0;
+  let localGraphY = 0;
   const LABEL_ZOOM_THRESHOLD = 1.2;
   const LINK_DISTANCE_MIN = 230;
   const LINK_DISTANCE_MAX = 270;
@@ -38,6 +45,12 @@
   const OBSIDIAN_COLLISION_RADIUS = 60;
   const OBSIDIAN_COLLISION_STRENGTH = 0.5;
   const SETTLE_TICKS = 420;
+  const LOCAL_GRAPH_MIN_SIZE = 240;
+  const LOCAL_GRAPH_MAX_SIZE = 900;
+  const LOCAL_GRAPH_DEFAULT_MAX = 400;
+  const LOCAL_GRAPH_GAP = 14;
+  const LOCAL_GRAPH_WORLD = 1000;
+  const LOCAL_GRAPH_SETTLE_TICKS = 300;
 
   const escapeHTML = value => String(value).replace(/[&<>"']/g, character => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
@@ -257,7 +270,8 @@
   }
 
   function tooltipAt(event, node) {
-    tooltip.innerHTML = `<strong>${escapeHTML(node.title)}</strong><span>${node.weight} connections</span>`;
+    if (localGraphOpen) return;
+    tooltip.innerHTML = `<strong>${escapeHTML(node.title)}</strong><span class="architecture-graph-hint"><kbd>⇧</kbd><kbd>⏎</kbd> open local graph</span>`;
     tooltip.hidden = false;
     const bounds = root.getBoundingClientRect();
     tooltip.style.left = `${Math.max(10, Math.min(event.clientX - bounds.left + 14, bounds.width - tooltip.offsetWidth - 12))}px`;
@@ -266,6 +280,227 @@
 
   function hideTooltip() {
     tooltip.hidden = true;
+  }
+
+  function localGraphBounds() {
+    return { width: viewport.clientWidth, height: viewport.clientHeight };
+  }
+
+  function applyLocalGraphSize(size) {
+    localGraphSize = size;
+    tooltip.style.width = `${size}px`;
+    tooltip.style.height = `${size}px`;
+  }
+
+  // The local-graph panel sits with its top-left corner in the right-bottom
+  // corner direction of the hovered node and follows the node while the main
+  // simulation, pan, or zoom moves it.
+  function positionLocalGraph() {
+    if (!localGraphOpen || !localGraphNode) return;
+    const transform = d3.zoomTransform(svg.node());
+    // The dot radius lives in world units and must be scaled by the zoom
+    // level before mixing it with the screen-space gap.
+    const screenRadius = radius(localGraphNode) * transform.k;
+    const x = transform.applyX(localGraphNode.x) + screenRadius + LOCAL_GRAPH_GAP;
+    const y = transform.applyY(localGraphNode.y) + screenRadius + LOCAL_GRAPH_GAP;
+    const { width, height } = localGraphBounds();
+    localGraphX = Math.max(8, Math.min(x, width - localGraphSize - 12));
+    localGraphY = Math.max(8, Math.min(y, height - localGraphSize - 12));
+    tooltip.style.left = `${localGraphX}px`;
+    tooltip.style.top = `${localGraphY}px`;
+  }
+
+  // The square resizes ONLY by dragging its bottom-right corner grip; the
+  // size delta is the mean of the pointer's dx and dy so it stays a square,
+  // and the maximum is clamped so the panel never leaves the viewport.
+  function clampLocalGraphSize(size) {
+    const { width, height } = localGraphBounds();
+    const max = Math.max(LOCAL_GRAPH_MIN_SIZE,
+      Math.min(LOCAL_GRAPH_MAX_SIZE, width - localGraphX - 12, height - localGraphY - 12));
+    return Math.min(Math.max(LOCAL_GRAPH_MIN_SIZE, size), max);
+  }
+
+  function wireLocalResize(grip) {
+    const onPointerMove = event => {
+      if (!localResize) return;
+      const delta = (event.clientX - localResize.startX + event.clientY - localResize.startY) / 2;
+      applyLocalGraphSize(clampLocalGraphSize(localResize.startSize + delta));
+    };
+    const onPointerUp = () => {
+      if (!localResize) return;
+      localResize = null;
+      tooltip.classList.remove('is-resizing');
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+      window.removeEventListener('pointercancel', onPointerUp);
+    };
+    grip.addEventListener('pointerdown', event => {
+      event.preventDefault();
+      event.stopPropagation();
+      localResize = { startX: event.clientX, startY: event.clientY, startSize: localGraphSize };
+      tooltip.classList.add('is-resizing');
+      window.addEventListener('pointermove', onPointerMove);
+      window.addEventListener('pointerup', onPointerUp);
+      window.addEventListener('pointercancel', onPointerUp);
+      if (grip.setPointerCapture) grip.setPointerCapture(event.pointerId);
+    });
+  }
+
+  // Expands the hover card into a square Obsidian-style local graph: the
+  // hovered node, its direct neighbors, and the edges among them, laid out
+  // by its own force simulation in a fixed 1000-unit world that scales with
+  // the panel.
+  function openLocalGraph(node) {
+    if (!graph) return;
+    localGraphOpen = true;
+    localGraphNode = node;
+    if (localSim) localSim.stop();
+    const subSet = new Set([node.id, ...(graph.neighbors.get(node.id) || [])]);
+    const subNodes = graph.nodes.filter(n => subSet.has(n.id));
+    // Only edges incident to the hovered node are drawn — never lines
+    // between two non-hovered neighbor nodes.
+    const subEdges = graph.edges
+      .filter(edge => subSet.has(edge.source) && subSet.has(edge.target))
+      .filter(edge => edge.source === node.id || edge.target === node.id);
+    const world = LOCAL_GRAPH_WORLD;
+    const center = world / 2;
+    const seedRandom = seededRandom(`local:${node.id}`);
+    const localNodes = subNodes.map(n => ({
+      id: n.id,
+      title: n.title,
+      href: n.href,
+      isCenter: n.id === node.id,
+      weight: n.weight,
+      x: n.id === node.id ? center : center + (seedRandom() - .5) * world * .5,
+      y: n.id === node.id ? center : center + (seedRandom() - .5) * world * .5,
+    }));
+    const localLinks = subEdges.map(edge => {
+      const restRandom = seededRandom(`local:${edge.source}|${edge.target}`);
+      return {
+        source: localNodes.find(n => n.id === edge.source),
+        target: localNodes.find(n => n.id === edge.target),
+        restDistance: world * .13 + restRandom() * world * .09,
+      };
+    });
+
+    tooltip.hidden = false;
+    tooltip.innerHTML = '';
+    tooltip.classList.remove('is-resizing');
+    tooltip.classList.add('is-local-graph', 'opening');
+    const head = document.createElement('div');
+    head.className = 'architecture-graph-local-head';
+    const header = document.createElement('strong');
+    header.textContent = node.title;
+    head.appendChild(header);
+    const meta = document.createElement('span');
+    meta.className = 'architecture-graph-local-meta';
+    meta.textContent = `${node.weight} connections`;
+    head.appendChild(meta);
+    tooltip.appendChild(head);
+    const localSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    localSvg.setAttribute('class', 'architecture-graph-local-svg');
+    localSvg.setAttribute('viewBox', `0 0 ${world} ${world}`);
+    localSvg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+    localSvg.setAttribute('aria-hidden', 'true');
+    tooltip.appendChild(localSvg);
+    const grip = document.createElement('button');
+    grip.type = 'button';
+    grip.className = 'architecture-graph-resize';
+    grip.setAttribute('aria-label', 'Resize local graph');
+    grip.innerHTML = '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true"><path d="M4 12 12 4M8 16 16 8M0 8 8 0" stroke-linecap="round"/></svg>';
+    tooltip.appendChild(grip);
+
+    const selection = d3.select(localSvg);
+    const localEdgeLayer = selection.append('g').attr('class', 'architecture-graph-local-edges');
+    const localNodeLayer = selection.append('g').attr('class', 'architecture-graph-local-nodes');
+    const links = localEdgeLayer.selectAll('line').data(localLinks).join('line')
+      .attr('class', 'local-graph-edge');
+    const localNodeSelections = localNodeLayer.selectAll('g').data(localNodes).join('g')
+      .attr('class', 'local-graph-node');
+    localNodeSelections.append('circle')
+      .attr('class', 'local-graph-dot')
+      .attr('r', n => (n.isCenter ? 26 : 18))
+      .classed('is-center', n => n.isCenter);
+    localNodeSelections.append('text')
+      .attr('class', 'local-graph-label')
+      .attr('x', n => (n.isCenter ? 26 : 18) + 10)
+      .attr('dy', '.35em')
+      .classed('is-center', n => n.isCenter)
+      .text(n => n.title);
+    // Local graph nodes are draggable (classic elastic: pinned while held,
+    // reheat at alphaTarget 0.35 so the neighbors are pulled along, springs
+    // back on release) and clickable (opens the note's wiki page; a drag
+    // suppresses the click).
+    localNodeSelections.call(d3.drag()
+      .on('start', (event, n) => {
+        n.__startX = event.x;
+        n.__startY = event.y;
+        n.__moved = false;
+        n.fx = n.x;
+        n.fy = n.y;
+        localSim.alphaTarget(DRAG_ALPHA_TARGET).restart();
+      })
+      .on('drag', (event, n) => {
+        if (Math.hypot(event.x - n.__startX, event.y - n.__startY) > 4) n.__moved = true;
+        n.fx = event.x;
+        n.fy = event.y;
+      })
+      .on('end', (event, n) => {
+        n.fx = null;
+        n.fy = null;
+        localSim.alphaTarget(0);
+      }));
+    localNodeSelections.on('click', (event, n) => {
+      if (n.__moved) { n.__moved = false; return; }
+      window.location.href = n.href;
+    });
+    const localTick = () => {
+      links.attr('x1', link => link.source.x).attr('y1', link => link.source.y)
+        .attr('x2', link => link.target.x).attr('y2', link => link.target.y);
+      localNodeSelections.attr('transform', n => `translate(${n.x},${n.y})`);
+    };
+    localSim = d3.forceSimulation(localNodes)
+      .force('link', d3.forceLink(localLinks).id(n => n.id)
+        .distance(link => link.restDistance)
+        .strength(.5))
+      .force('charge', d3.forceManyBody().strength(-330).distanceMin(20))
+      .force('center', d3.forceCenter(center, center).strength(.07))
+      .force('collision', d3.forceCollide(52).strength(.55))
+      .on('tick', localTick);
+    if (reducedMotion.matches) {
+      localSim.tick(LOCAL_GRAPH_SETTLE_TICKS);
+      localTick();
+      localSim.stop();
+    } else {
+      localSim.alpha(.3);
+      for (let index = 0; index < LOCAL_GRAPH_SETTLE_TICKS; index += 1) localSim.tick();
+      localTick();
+      localSim.alpha(0).restart();
+      const settled = localSim;
+      window.setTimeout(() => { if (localSim === settled) settled.stop(); }, 250);
+    }
+
+    const { width, height } = localGraphBounds();
+    localGraphSize = Math.max(LOCAL_GRAPH_MIN_SIZE,
+      Math.min(LOCAL_GRAPH_DEFAULT_MAX, Math.round(width * .5), Math.round(height * .55)));
+    applyLocalGraphSize(localGraphSize);
+    positionLocalGraph();
+    wireLocalResize(grip);
+    window.setTimeout(() => tooltip.classList.remove('opening'), 320);
+  }
+
+  function exitLocalGraph() {
+    if (!localGraphOpen) return;
+    localGraphOpen = false;
+    localGraphNode = null;
+    localResize = null;
+    if (localSim) { localSim.stop(); localSim = null; }
+    tooltip.classList.remove('is-local-graph', 'is-resizing', 'opening');
+    tooltip.style.width = '';
+    tooltip.style.height = '';
+    tooltip.innerHTML = '';
+    tooltip.hidden = true;
+    highlight();
   }
 
   function fit(animate = true) {
@@ -285,6 +520,7 @@
   }
 
   function render(nextGraph) {
+    exitLocalGraph();
     graph = nextGraph;
     if (simulation) simulation.stop();
     edgeLayer.selectAll('*').remove();
@@ -294,6 +530,7 @@
     zoom = d3.zoom().scaleExtent([.25, 5]).on('zoom', event => {
       world.attr('transform', event.transform);
       root.classList.toggle('labels-hidden', event.transform.k < LABEL_ZOOM_THRESHOLD);
+      positionLocalGraph();
     });
     svg.call(zoom).on('dblclick.zoom', null);
 
@@ -319,11 +556,23 @@
       .attr('tabindex', 0)
       .attr('role', 'link')
       .attr('aria-label', node => `${node.title}, ${node.weight} connections`)
-      .on('pointerenter', (event, node) => { highlight(node); tooltipAt(event, node); })
+      .on('pointerenter', (event, node) => {
+        if (localGraphOpen) return;
+        highlight(node); tooltipAt(event, node);
+      })
       .on('pointermove', tooltipAt)
-      .on('pointerleave', () => { highlight(); hideTooltip(); })
-      .on('focus', (event, node) => { highlight(node); tooltipAt(event, node); })
-      .on('blur', () => { highlight(); hideTooltip(); })
+      .on('pointerleave', () => {
+        if (localGraphOpen) return;
+        highlight(); hideTooltip();
+      })
+      .on('focus', (event, node) => {
+        if (localGraphOpen) return;
+        highlight(node); tooltipAt(event, node);
+      })
+      .on('blur', () => {
+        if (localGraphOpen) return;
+        highlight(); hideTooltip();
+      })
       .on('keydown', (event, node) => {
         if (event.key === 'Enter' || event.key === ' ') {
           event.preventDefault();
@@ -332,6 +581,11 @@
       })
       .on('click', (event, node) => {
         if (suppressClick) { suppressClick = false; return; }
+        if (localGraphOpen) {
+          event.stopPropagation();
+          openLocalGraph(node);
+          return;
+        }
         window.location.href = node.href;
       });
     nodes.append('circle').attr('class', 'architecture-graph-dot').attr('r', radius);
@@ -360,15 +614,19 @@
     const tick = () => {
       links.attr('x1', edge => edge.source.x).attr('y1', edge => edge.source.y).attr('x2', edge => edge.target.x).attr('y2', edge => edge.target.y);
       nodes.attr('transform', node => `translate(${node.x}, ${node.y})`);
+      positionLocalGraph();
     };
     simulation.on('tick', tick);
 
     // Drag model (restored to the message-1 state by user request): classic
     // elastic drag — pickup boosts incident springs ×4 (cap 0.95) and reheats
     // at alphaTarget 0.35, so the directly linked nodes are pulled along
-    // during the hold; release unpins the node (fx/fy = null) and restores
-    // baseline strengths so it is affected by the other nodes' forces again
-    // and springs back while the simulation cools.
+    // during the hold; the centering forces (x/y toward the origin) are
+    // zeroed for the hold so the layout does not fight the drag back toward
+    // center, and are restored on release. Release unpins the node
+    // (fx/fy = null) and restores baseline strengths so it is affected by
+    // the other nodes' forces again and springs back while the simulation
+    // cools.
     nodes.call(d3.drag()
       .on('start', (event, node) => {
         draggedNode = node;
@@ -378,6 +636,8 @@
         node.__moved = false;
         node.fx = node.x;
         node.fy = node.y;
+        simulation.force('x').strength(0);
+        simulation.force('y').strength(0);
         simulation.alphaTarget(DRAG_ALPHA_TARGET).restart();
       })
       .on('drag', (event, node) => {
@@ -393,6 +653,8 @@
         node.fy = null;
         draggedNode = null;
         forceTension.strength(linkStrength);
+        simulation.force('x').strength(OBSIDIAN_CENTER_STRENGTH);
+        simulation.force('y').strength(OBSIDIAN_CENTER_STRENGTH);
         simulation.alphaTarget(0);
       }));
 
@@ -441,11 +703,26 @@
     requestAnimationFrame(() => fit(false));
   });
   window.addEventListener('keydown', event => {
+    if (event.shiftKey && event.key === 'Enter' && !localGraphOpen && activeNode && !event.repeat
+      && !(event.target instanceof HTMLInputElement) && !(event.target instanceof HTMLTextAreaElement)) {
+      event.preventDefault();
+      openLocalGraph(activeNode);
+      return;
+    }
     if (event.key === 'Escape' && root.classList.contains('is-fullscreen')) {
       root.classList.remove('is-fullscreen');
       document.body.classList.remove('architecture-graph-open');
       requestAnimationFrame(() => fit(false));
     }
+  });
+  // The ONLY way to leave local graph mode is a click on empty graph space:
+  // clicks on nodes switch the local graph, clicks on the panel itself are
+  // inert, and a pan drag is suppressed by d3.zoom's click filter.
+  viewport.addEventListener('click', event => {
+    if (!localGraphOpen) return;
+    if (event.target.closest('.architecture-graph-node')) return;
+    if (event.target.closest('.architecture-graph-tooltip')) return;
+    exitLocalGraph();
   });
   window.addEventListener('resize', () => {
     clearTimeout(reloadTimer);

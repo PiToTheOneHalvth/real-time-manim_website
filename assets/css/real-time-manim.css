@@ -640,6 +640,95 @@ a:focus-visible, button:focus-visible {
 .architecture-graph-tooltip strong,
 .architecture-graph-tooltip span { display: block; }
 .architecture-graph-tooltip span { margin-top: 3px; color: rgba(245, 245, 245, .6); font-size: 12px; }
+.architecture-graph-tooltip .architecture-graph-hint {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.architecture-graph-tooltip .architecture-graph-hint kbd {
+  display: inline-block;
+  padding: 2px 5px;
+  border: 1px solid rgba(245, 245, 245, .34);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: rgba(245, 245, 245, .06);
+  color: rgba(245, 245, 245, .82);
+  font: 600 10px/1.2 ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
+}
+/* Local graph mode: the hover card expands into a square panel anchored in
+   the right-bottom corner direction of the hovered node. The square resizes
+   ONLY by dragging its bottom-right corner grip. */
+.architecture-graph-tooltip.is-local-graph {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-sizing: border-box;
+  max-width: none;
+  padding: 12px 14px 14px;
+  overflow: hidden;
+  pointer-events: auto;
+  cursor: default;
+}
+.architecture-graph-tooltip.is-local-graph.opening {
+  transition: left 260ms cubic-bezier(.3, .85, .35, 1),
+    top 260ms cubic-bezier(.3, .85, .35, 1),
+    width 260ms cubic-bezier(.3, .85, .35, 1),
+    height 260ms cubic-bezier(.3, .85, .35, 1);
+}
+.architecture-graph-tooltip.is-local-graph.is-resizing {
+  transition: none;
+  user-select: none;
+}
+.architecture-graph-tooltip.is-local-graph strong { font-size: 15px; }
+.architecture-graph-local-svg {
+  display: block;
+  flex: 1;
+  min-height: 0;
+  animation: local-graph-reveal 300ms ease both;
+}
+@keyframes local-graph-reveal {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.local-graph-edge {
+  stroke: rgba(245, 245, 245, .22);
+  stroke-width: 2.5;
+}
+.local-graph-dot { fill: #9a9a9a; }
+.local-graph-dot.is-center { fill: #ffffff; }
+.local-graph-label {
+  fill: rgba(245, 245, 245, .6);
+  font-family: "Times New Roman", Times, serif;
+  font-size: 22px;
+  user-select: none;
+}
+.local-graph-label.is-center { fill: #ffffff; }
+.local-graph-node { cursor: grab; }
+.local-graph-node:active { cursor: grabbing; }
+.local-graph-node:hover .local-graph-dot { fill: #ffffff; }
+.architecture-graph-local-head strong { font-size: 15px; }
+.architecture-graph-local-meta {
+  display: block;
+  margin-top: 3px;
+  color: rgba(245, 245, 245, .6);
+  font-size: 12px;
+}
+.architecture-graph-resize {
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: rgba(245, 245, 245, .55);
+  cursor: nwse-resize;
+  touch-action: none;
+}
+.architecture-graph-resize:hover { color: #ffffff; }
 body.architecture-graph-open { overflow: hidden; }
 .architecture-graph.is-fullscreen {
   position: fixed;
