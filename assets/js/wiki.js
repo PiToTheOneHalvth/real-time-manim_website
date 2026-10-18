@@ -243,33 +243,160 @@
     return html.join('\n');
   }
 
+  const ARROW_SVG = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>';
+  const folderOverrides = new Map();
+
+  function buildTree() {
+    const root = { folders: new Map(), notes: [] };
+    [...documents.values()].sort((a, b) => a.id.localeCompare(b.id)).forEach(entry => {
+      const segments = entry.id.split('/');
+      let node = root;
+      for (let index = 0; index < segments.length; index += 1) {
+        if (index === segments.length - 1) {
+          node.notes.push({ name: segments[index], entry });
+        } else {
+          if (!node.folders.has(segments[index])) {
+            node.folders.set(segments[index], { name: segments[index], path: segments.slice(0, index + 1).join('/'), folders: new Map(), notes: [] });
+          }
+          node = node.folders.get(segments[index]);
+        }
+      }
+    });
+    return root;
+  }
+
+  function isFolderOpen(path) {
+    if (folderOverrides.has(path)) return folderOverrides.get(path);
+    return currentID ? currentID.startsWith(`${path}/`) : false;
+  }
+
+  function toggleFolder(path) {
+    const folder = noteList.querySelector(`.wiki-folder[data-path="${CSS.escape(path)}"]`);
+    const open = !isFolderOpen(path);
+    folderOverrides.set(path, open);
+    if (folder) {
+      folder.classList.toggle('is-collapsed', !open);
+      const arrow = folder.querySelector('.wiki-folder-arrow');
+      if (arrow) {
+        arrow.setAttribute('aria-expanded', String(open));
+        arrow.setAttribute('aria-label', `${open ? 'Collapse' : 'Expand'} ${folder.dataset.name}`);
+      }
+    }
+  }
+
+  function syncFolderStates() {
+    noteList.querySelectorAll('.wiki-folder').forEach(folder => {
+      const open = isFolderOpen(folder.dataset.path);
+      folder.classList.toggle('is-collapsed', !open);
+      const arrow = folder.querySelector('.wiki-folder-arrow');
+      if (arrow) {
+        arrow.setAttribute('aria-expanded', String(open));
+        arrow.setAttribute('aria-label', `${open ? 'Collapse' : 'Expand'} ${folder.dataset.name}`);
+      }
+    });
+  }
+
+  function revealNote(id) {
+    const segments = id.split('/');
+    for (let index = 0; index < segments.length - 1; index += 1) {
+      folderOverrides.set(segments.slice(0, index + 1).join('/'), true);
+    }
+    syncFolderStates();
+  }
+
+  function renderFolderNode(node, container) {
+    [...node.folders.values()].sort((a, b) => a.name.localeCompare(b.name)).forEach(folder => {
+      const folderEntry = documents.get(`${folder.path}/index.md`);
+      const folderEl = document.createElement('div');
+      folderEl.className = 'wiki-folder';
+      folderEl.dataset.path = folder.path;
+      folderEl.dataset.name = folder.name;
+      const row = document.createElement('div');
+      row.className = 'wiki-folder-row';
+      const arrow = document.createElement('button');
+      arrow.type = 'button';
+      arrow.className = 'wiki-folder-arrow';
+      arrow.setAttribute('aria-label', `Expand ${folder.name}`);
+      arrow.innerHTML = ARROW_SVG;
+      let name;
+      if (folderEntry) {
+        name = document.createElement('a');
+        name.className = 'wiki-folder-name wiki-note-link';
+        name.href = `wiki.html?note=${encodeURIComponent(folderEntry.id)}`;
+        name.dataset.noteId = folderEntry.id;
+        name.dataset.searchText = folder.path;
+        name.title = folderEntry.id;
+        name.textContent = folder.name;
+      } else {
+        name = document.createElement('span');
+        name.className = 'wiki-folder-name';
+        name.textContent = folder.name;
+      }
+      row.append(arrow, name);
+      const children = document.createElement('div');
+      children.className = 'wiki-folder-children';
+      const inner = document.createElement('div');
+      inner.className = 'wiki-folder-children-inner';
+      renderFolderNode(folder, inner);
+      folder.notes.sort((a, b) => a.name.localeCompare(b.name)).forEach(note => {
+        if (note.entry.id === `${folder.path}/index`) return;
+        const link = document.createElement('a');
+        link.className = 'wiki-note-link';
+        link.href = `wiki.html?note=${encodeURIComponent(note.entry.id)}`;
+        link.dataset.noteId = note.entry.id;
+        link.dataset.searchText = note.entry.id;
+        link.title = note.entry.id;
+        link.textContent = note.name;
+        inner.append(link);
+      });
+      children.append(inner);
+      folderEl.append(row, children);
+      container.append(folderEl);
+    });
+  }
+
   function renderList() {
     noteList.innerHTML = '';
-    [...documents.values()].sort((a, b) => a.id.localeCompare(b.id)).forEach(entry => {
+    const tree = buildTree();
+    renderFolderNode(tree, noteList);
+    tree.notes.sort((a, b) => a.name.localeCompare(b.name)).forEach(note => {
+      if (note.entry.id === 'index') return;
       const link = document.createElement('a');
       link.className = 'wiki-note-link';
-      link.href = `wiki.html?note=${encodeURIComponent(entry.id)}`;
-      link.dataset.noteID = entry.id;
-      link.textContent = entry.id.split('/').join(' / ');
+      link.href = `wiki.html?note=${encodeURIComponent(note.entry.id)}`;
+      link.dataset.noteId = note.entry.id;
+      link.dataset.searchText = note.entry.id;
+      link.title = note.entry.id;
+      link.textContent = note.name;
       noteList.append(link);
     });
+    syncFolderStates();
     updateList();
   }
 
   function updateList() {
     const query = search.value.trim().toLowerCase();
     let visible = 0;
+    let total = 0;
     noteList.querySelectorAll('.wiki-note-link').forEach(link => {
-      const shown = !query || link.textContent.toLowerCase().includes(query);
+      total += 1;
+      const shown = !query || (link.dataset.searchText || link.textContent).toLowerCase().includes(query);
       link.classList.toggle('is-hidden', !shown);
       if (shown) visible += 1;
     });
-    status.textContent = `${visible} of ${documents.size} notes`;
+    noteList.querySelectorAll('.wiki-folder').forEach(folder => {
+      if (!query) { folder.classList.remove('is-hidden'); return; }
+      const subtreeMatch = folder.querySelectorAll('.wiki-note-link:not(.is-hidden)').length > 0;
+      folder.classList.toggle('is-hidden', !subtreeMatch);
+      folder.classList.remove('is-collapsed');
+    });
+    if (!query) syncFolderStates();
+    status.textContent = query ? `${visible} of ${total} notes` : `${visible} notes`;
   }
 
   function markCurrent() {
     noteList.querySelectorAll('.wiki-note-link').forEach(link => {
-      if (link.dataset.noteID === currentID) link.setAttribute('aria-current', 'page');
+      if (link.dataset.noteId === currentID) link.setAttribute('aria-current', 'page');
       else link.removeAttribute('aria-current');
     });
   }
@@ -280,6 +407,7 @@
     article.innerHTML = `<div class="wiki-note-meta">${escapeHTML(entry.path)}</div>${renderMarkdown(entry.markdown, entry.path)}`;
     document.title = `${title} | Real-Time Manim Wiki`;
     markCurrent();
+    revealNote(entry.id);
   }
 
   function entryByID(id) {
@@ -305,7 +433,7 @@
   }
 
   function navigate(id, push = true) {
-    const target = documents.has(id) ? id : 'index';
+    const target = entryByID(id) ? id : 'index';
     if (push) history.pushState({}, '', `wiki.html?note=${encodeURIComponent(target)}`);
     loadNote(target);
   }
@@ -331,9 +459,18 @@
       search.addEventListener('input', updateList);
       noteList.addEventListener('click', event => {
         const link = event.target.closest('.wiki-note-link');
-        if (!link) return;
-        event.preventDefault();
-        navigate(link.dataset.noteID);
+        if (link) {
+          event.preventDefault();
+          navigate(link.dataset.noteId);
+          return;
+        }
+        const arrow = event.target.closest('.wiki-folder-arrow');
+        if (arrow) {
+          toggleFolder(arrow.closest('.wiki-folder').dataset.path);
+          return;
+        }
+        const plainName = event.target.closest('.wiki-folder-name');
+        if (plainName) toggleFolder(plainName.closest('.wiki-folder').dataset.path);
       });
       article.addEventListener('click', event => {
         const link = event.target.closest('a');
