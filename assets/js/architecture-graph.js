@@ -273,7 +273,7 @@
 
   function tooltipAt(x, y, node) {
     if (localGraphOpen) return;
-    tooltip.innerHTML = `<strong>${escapeHTML(node.title)}</strong><span class="architecture-graph-hint"><kbd>⇧</kbd><kbd>⏎</kbd> open local graph</span>`;
+    tooltip.innerHTML = `<strong>${escapeHTML(node.title)}</strong><span class="architecture-graph-hint"><kbd>right-click</kbd> open local graph</span>`;
     tooltip.hidden = false;
     const bounds = root.getBoundingClientRect();
     tooltip.style.left = `${Math.max(10, Math.min(x - bounds.left + 14, bounds.width - tooltip.offsetWidth - 12))}px`;
@@ -378,7 +378,9 @@
     const { width, height } = localGraphBounds();
     const size = localGraphDefaultSize();
     const { margin, floor } = localGraphEdge();
-    return x >= floor && y >= floor && x + size + margin <= width && y + size + margin <= height;
+    // Half-pixel tolerance: the clamp lands the panel exactly on the binding
+    // edge, and float noise must not re-trigger a micro-shift.
+    return x >= floor - .5 && y >= floor - .5 && x + size + margin <= width + .5 && y + size + margin <= height + .5;
   }
 
   // When the hovered node is not in a spot where the panel would fit, the
@@ -410,7 +412,13 @@
       const hi = now + extent - margin - size - anchor;
       return Math.max(lo, Math.min(hi, now));
     };
-    end = end.translate(clampAxis(end.x, leftNow, width) - end.x, clampAxis(end.y, topNow, height) - end.y);
+    // NOTE: build the end transform with the identity constructor — the
+    // Transform.translate METHOD adds k·(dx, dy) (world-space), which left
+    // every shift at only k × the needed distance and caused the panel to
+    // visually clamp while the node never reached its spot.
+    end = d3.zoomIdentity
+      .translate(clampAxis(end.x, leftNow, width), clampAxis(end.y, topNow, height))
+      .scale(end.k);
     if (reducedMotion.matches) {
       world.attr('transform', end);
       svg.property('__zoom', end);
@@ -608,7 +616,7 @@
       window.location.href = n.href;
     });
     // Hovering a dot inside the local graph gives main-graph brightness
-    // feedback and arms Shift+Enter to re-target the panel to that dot's
+    // feedback, and right-clicking it re-targets the panel to that dot's
     // node (the dot's main-graph counterpart is used, since the local dots
     // carry local-world coordinates).
     localNodeSelections
@@ -618,6 +626,11 @@
       })
       .on('pointerleave', () => {
         if (localGraphOpen) highlight(localGraphNode);
+      })
+      .on('contextmenu', (event, n) => {
+        event.preventDefault();
+        const main = graph.nodes.find(node => node.id === n.id);
+        if (main) openLocalGraph(main);
       });
     const localTick = () => {
       links.attr('x1', link => link.source.x).attr('y1', link => link.source.y)
@@ -673,8 +686,9 @@
 
   // Bing-style options below the search field: title + path per row. Hovering
   // an option behaves exactly like hovering the graph node (brightness ladder
-  // + tooltip, with the ⌘⇧ local-graph hint), and a click opens the note's
-  // wiki page — or switches the local graph when it is open.
+  // + tooltip, with the right-click local-graph hint), a click opens the
+  // note's wiki page — or switches the local graph when it is open — and a
+  // right-click opens the local graph directly.
   function renderSearchOptions() {
     const query = search.value.trim().toLowerCase();
     if (!query || !graph) { hideSearchList(); return; }
@@ -708,6 +722,10 @@
         event.stopPropagation();
         if (localGraphOpen) openLocalGraph(node);
         else window.location.href = node.href;
+      });
+      option.addEventListener('contextmenu', event => {
+        event.preventDefault();
+        openLocalGraph(node);
       });
       searchList.appendChild(option);
     }
@@ -744,6 +762,10 @@
       positionLocalGraph();
     });
     svg.call(zoom).on('dblclick.zoom', null);
+    // Right-click is the local-graph trigger; keep the browser menu out of
+    // the whole graph canvas (node right-clicks open the panel and handle
+    // the event first).
+    svg.on('contextmenu', event => event.preventDefault());
 
     const nodeByID = new Map(graph.nodes.map(node => [node.id, node]));
     const visibleEdges = graph.edges
@@ -794,6 +816,12 @@
           event.preventDefault();
           window.location.href = node.href;
         }
+      })
+      .on('contextmenu', (event, node) => {
+        // Right-click IS the local-graph trigger: opens the node's local
+        // graph (replacing any open panel); the native menu is suppressed.
+        event.preventDefault();
+        openLocalGraph(node);
       })
       .on('click', (event, node) => {
         if (suppressClick) { suppressClick = false; return; }
@@ -916,14 +944,6 @@
     requestAnimationFrame(() => fit(false));
   });
   window.addEventListener('keydown', event => {
-    // Shift+Enter while hovering a graph node or a search option opens that
-    // note's local graph, replacing any open one; the search input stays an
-    // allowed target so the shortcut works right after typing.
-    if (event.shiftKey && event.key === 'Enter' && activeNode && !event.repeat) {
-      event.preventDefault();
-      openLocalGraph(activeNode);
-      return;
-    }
     if (event.key === 'Escape' && root.classList.contains('is-fullscreen')) {
       root.classList.remove('is-fullscreen');
       document.body.classList.remove('architecture-graph-open');
