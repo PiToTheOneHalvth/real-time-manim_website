@@ -32,6 +32,7 @@
   let localGraphSize = 0;
   let localGraphX = 0;
   let localGraphY = 0;
+  let shiftingView = false;
   let centeringZeroed = false;
   const LABEL_ZOOM_THRESHOLD = 1.2;
   const LINK_DISTANCE_MIN = 230;
@@ -294,6 +295,12 @@
     tooltip.style.height = `${size}px`;
   }
 
+  // The panel hugs the screen edge in fullscreen (no margin), and keeps a
+  // small inset otherwise.
+  function localGraphEdge() {
+    return root.classList.contains('is-fullscreen') ? { margin: 0, floor: 0 } : { margin: 12, floor: 8 };
+  }
+
   // The local-graph panel sits with its top-left corner in the right-bottom
   // corner direction of the hovered node and follows the node while the main
   // simulation, pan, or zoom moves it.
@@ -306,8 +313,9 @@
     const x = transform.applyX(localGraphNode.x) + screenRadius + LOCAL_GRAPH_GAP;
     const y = transform.applyY(localGraphNode.y) + screenRadius + LOCAL_GRAPH_GAP;
     const { width, height } = localGraphBounds();
-    localGraphX = Math.max(8, Math.min(x, width - localGraphSize - 12));
-    localGraphY = Math.max(8, Math.min(y, height - localGraphSize - 12));
+    const { margin, floor } = localGraphEdge();
+    localGraphX = Math.max(floor, Math.min(x, width - localGraphSize - margin));
+    localGraphY = Math.max(floor, Math.min(y, height - localGraphSize - margin));
     tooltip.style.left = `${localGraphX}px`;
     tooltip.style.top = `${localGraphY}px`;
   }
@@ -317,8 +325,9 @@
   // and the maximum is clamped so the panel never leaves the viewport.
   function clampLocalGraphSize(size) {
     const { width, height } = localGraphBounds();
+    const { margin } = localGraphEdge();
     const max = Math.max(LOCAL_GRAPH_MIN_SIZE,
-      Math.min(LOCAL_GRAPH_MAX_SIZE, width - localGraphX - 12, height - localGraphY - 12));
+      Math.min(LOCAL_GRAPH_MAX_SIZE, width - localGraphX - margin, height - localGraphY - margin));
     return Math.min(Math.max(LOCAL_GRAPH_MIN_SIZE, size), max);
   }
 
@@ -348,14 +357,108 @@
     });
   }
 
+  function localGraphDefaultSize() {
+    const { width, height } = localGraphBounds();
+    return Math.max(LOCAL_GRAPH_MIN_SIZE,
+      Math.min(LOCAL_GRAPH_DEFAULT_MAX, Math.round(width * .5), Math.round(height * .55)));
+  }
+
+  // Normalized logistic sigmoid: endpoints hit exactly 0/1, fast middle —
+  // the site's standard easing for quick triggered shifts.
+  const sigmoidEase = t => {
+    const logistic = z => 1 / (1 + Math.exp(-z));
+    const sigma = 1 / 6;
+    return (logistic((t - .5) / sigma) - logistic(-3)) / (logistic(3) - logistic(-3));
+  };
+
+  function localGraphFits(node) {
+    const transform = d3.zoomTransform(svg.node());
+    const screenRadius = radius(node) * transform.k;
+    const x = transform.applyX(node.x) + screenRadius + LOCAL_GRAPH_GAP;
+    const y = transform.applyY(node.y) + screenRadius + LOCAL_GRAPH_GAP;
+    const { width, height } = localGraphBounds();
+    const size = localGraphDefaultSize();
+    const { margin, floor } = localGraphEdge();
+    return x >= floor && y >= floor && x + size + margin <= width && y + size + margin <= height;
+  }
+
+  // When the hovered node is not in a spot where the panel would fit, the
+  // panel opens immediately at the node and the view glides over 400 ms with
+  // a normalized-logistic sigmoid, translate only (the zoom level is never
+  // changed). Zoomed out: the MINIMAL distance that brings the panel fully
+  // inside (no fixed anchor, so the view never sweeps across the whole
+  // screen). Zoomed in (k > 1): the node glides to the comfortable 20% / 22%
+  // anchor instead of being jammed against a boundary. Hover feedback is
+  // frozen while the view slides under the cursor, so the highlight doesn't
+  // flicker across the nodes the sweep passes.
+  function openLocalGraph(node) {
+    if (!graph) return;
+    if (localGraphFits(node)) { doOpenLocalGraph(node, true); return; }
+    doOpenLocalGraph(node, false);
+    const start = d3.zoomTransform(svg.node());
+    const { width, height } = localGraphBounds();
+    const size = localGraphDefaultSize();
+    const { margin, floor } = localGraphEdge();
+    const zoomedIn = start.k > 1;
+    let end = zoomedIn
+      ? d3.zoomIdentity.translate(width * .2 - start.k * node.x, height * .22 - start.k * node.y).scale(start.k)
+      : start;
+    const r = radius(node) * start.k;
+    const leftNow = end.applyX(node.x) + r + LOCAL_GRAPH_GAP;
+    const topNow = end.applyY(node.y) + r + LOCAL_GRAPH_GAP;
+    const clampAxis = (now, anchor, extent) => {
+      const lo = now + floor - anchor;
+      const hi = now + extent - margin - size - anchor;
+      return Math.max(lo, Math.min(hi, now));
+    };
+    end = end.translate(clampAxis(end.x, leftNow, width) - end.x, clampAxis(end.y, topNow, height) - end.y);
+    if (reducedMotion.matches) {
+      world.attr('transform', end);
+      svg.property('__zoom', end);
+      positionLocalGraph();
+      return;
+    }
+    const ix = d3.interpolate(start.x, end.x);
+    const iy = d3.interpolate(start.y, end.y);
+    const ik = d3.interpolate(start.k, end.k);
+    let done = false;
+    const started = performance.now();
+    const finish = () => {
+      world.attr('transform', end);
+      svg.property('__zoom', end);
+      positionLocalGraph();
+      done = true;
+      shiftingView = false;
+      highlight(localGraphNode);
+    };
+    // Plain rAF + performance.now() — d3.timer's slewed clock can stall the
+    // callback (the shift froze mid-frame in headless), so the glide owns its
+    // clock. The watchdog completes the glide even if rAF is suspended.
+    shiftingView = true;
+    const step = () => {
+      if (done) return;
+      const t = Math.min(1, (performance.now() - started) / 400);
+      const eased = sigmoidEase(t);
+      const next = d3.zoomIdentity.translate(ix(eased), iy(eased)).scale(ik(eased));
+      world.attr('transform', next);
+      svg.property('__zoom', next);
+      positionLocalGraph();
+      if (t === 1) { finish(); return; }
+      requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+    window.setTimeout(() => { if (!done) finish(); }, 450);
+  }
+
   // Expands the hover card into a square Obsidian-style local graph: the
   // hovered node, its direct neighbors, and the edges among them, laid out
   // by its own force simulation in a fixed 1000-unit world that scales with
   // the panel.
-  function openLocalGraph(node) {
+  function doOpenLocalGraph(node, withOpening = true) {
     if (!graph) return;
     localGraphOpen = true;
     localGraphNode = node;
+    highlight(node);
     if (localSim) localSim.stop();
     const subSet = new Set([node.id, ...(graph.neighbors.get(node.id) || [])]);
     const subNodes = graph.nodes.filter(n => subSet.has(n.id));
@@ -388,7 +491,8 @@
     tooltip.hidden = false;
     tooltip.innerHTML = '';
     tooltip.classList.remove('is-resizing');
-    tooltip.classList.add('is-local-graph', 'opening');
+    tooltip.classList.add('is-local-graph');
+    if (withOpening) tooltip.classList.add('opening');
     const head = document.createElement('div');
     head.className = 'architecture-graph-local-head';
     const header = document.createElement('strong');
@@ -411,10 +515,58 @@
     grip.setAttribute('aria-label', 'Resize local graph');
     grip.innerHTML = '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true"><path d="M4 12 12 4M8 16 16 8M0 8 8 0" stroke-linecap="round"/></svg>';
     tooltip.appendChild(grip);
+    const recenter = document.createElement('button');
+    recenter.type = 'button';
+    recenter.className = 'architecture-graph-local-recenter';
+    recenter.setAttribute('aria-label', 'Recenter local graph');
+    recenter.title = 'Recenter local graph';
+    recenter.innerHTML = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M9 3v6H3M15 3v6h6M9 21v-6H3M15 21v-6h6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    recenter.addEventListener('click', event => { event.stopPropagation(); recenterLocal(); });
+    tooltip.appendChild(recenter);
 
     const selection = d3.select(localSvg);
-    const localEdgeLayer = selection.append('g').attr('class', 'architecture-graph-local-edges');
-    const localNodeLayer = selection.append('g').attr('class', 'architecture-graph-local-nodes');
+    const localWorld = selection.append('g').attr('class', 'architecture-graph-local-world');
+    const localEdgeLayer = localWorld.append('g').attr('class', 'architecture-graph-local-edges');
+    const localNodeLayer = localWorld.append('g').attr('class', 'architecture-graph-local-nodes');
+    // The local graph is zoomable (wheel) and pannable (background drag);
+    // d3.drag's stopImmediatePropagation on the dots keeps dot drags from
+    // panning the view, exactly like the main graph.
+    const localZoom = d3.zoom().scaleExtent([.5, 6]).on('zoom', event => {
+      localWorld.attr('transform', event.transform);
+      tooltip.classList.toggle('labels-hidden', event.transform.k < LABEL_ZOOM_THRESHOLD);
+    });
+    selection.call(localZoom).on('dblclick.zoom', null);
+    // The local view starts at identity (k = 1), below the label threshold,
+    // so labels are hidden until the user zooms in — same as the global graph.
+    tooltip.classList.add('labels-hidden');
+    // Recenter glides the local view back to identity (whole graph visible)
+    // with the same sigmoid rAF + watchdog pattern as the main-view shift.
+    function recenterLocal() {
+      const startT = d3.zoomTransform(localSvg);
+      const ix = d3.interpolate(startT.x, 0);
+      const iy = d3.interpolate(startT.y, 0);
+      const ik = d3.interpolate(startT.k, 1);
+      let done = false;
+      const started = performance.now();
+      const finish = () => {
+        localWorld.attr('transform', d3.zoomIdentity);
+        d3.select(localSvg).property('__zoom', d3.zoomIdentity);
+        tooltip.classList.toggle('labels-hidden', true);
+      };
+      const step = () => {
+        if (done) return;
+        const t = Math.min(1, (performance.now() - started) / 320);
+        const eased = sigmoidEase(t);
+        const next = d3.zoomIdentity.translate(ix(eased), iy(eased)).scale(ik(eased));
+        localWorld.attr('transform', next);
+        d3.select(localSvg).property('__zoom', next);
+        tooltip.classList.toggle('labels-hidden', next.k < LABEL_ZOOM_THRESHOLD);
+        if (t === 1) { done = true; return; }
+        requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+      window.setTimeout(() => { if (!done) { done = true; finish(); } }, 370);
+    }
     const links = localEdgeLayer.selectAll('line').data(localLinks).join('line')
       .attr('class', 'local-graph-edge');
     const localNodeSelections = localNodeLayer.selectAll('g').data(localNodes).join('g')
@@ -494,13 +646,11 @@
       window.setTimeout(() => { if (localSim === settled) settled.stop(); }, 250);
     }
 
-    const { width, height } = localGraphBounds();
-    localGraphSize = Math.max(LOCAL_GRAPH_MIN_SIZE,
-      Math.min(LOCAL_GRAPH_DEFAULT_MAX, Math.round(width * .5), Math.round(height * .55)));
+    localGraphSize = localGraphDefaultSize();
     applyLocalGraphSize(localGraphSize);
     positionLocalGraph();
     wireLocalResize(grip);
-    window.setTimeout(() => tooltip.classList.remove('opening'), 320);
+    if (withOpening) window.setTimeout(() => tooltip.classList.remove('opening'), 320);
   }
 
   function exitLocalGraph() {
@@ -545,10 +695,12 @@
       path.textContent = node.id;
       option.append(title, path);
       option.addEventListener('pointerenter', event => {
+        if (shiftingView) return;
         highlight(node);
         if (!localGraphOpen) tooltipAt(event.clientX, event.clientY, node);
       });
       option.addEventListener('pointerleave', () => {
+        if (shiftingView) return;
         if (localGraphOpen) { highlight(localGraphNode); return; }
         highlight();
         hideTooltip();
@@ -617,13 +769,16 @@
       .attr('role', 'link')
       .attr('aria-label', node => `${node.title}, ${node.weight} connections`)
       .on('pointerenter', (event, node) => {
+        if (shiftingView) return;
         highlight(node);
         if (!localGraphOpen) tooltipAt(event.clientX, event.clientY, node);
       })
       .on('pointermove', (event, node) => {
-        if (!localGraphOpen) tooltipAt(event.clientX, event.clientY, node);
+        if (shiftingView || localGraphOpen) return;
+        tooltipAt(event.clientX, event.clientY, node);
       })
       .on('pointerleave', () => {
+        if (shiftingView) return;
         if (localGraphOpen) { highlight(localGraphNode); return; }
         highlight(); hideTooltip();
       })

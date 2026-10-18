@@ -741,6 +741,7 @@ a:focus-visible, button:focus-visible {
   display: block;
   flex: 1;
   min-height: 0;
+  touch-action: none;
   animation: local-graph-reveal 300ms ease both;
 }
 @keyframes local-graph-reveal {
@@ -758,12 +759,33 @@ a:focus-visible, button:focus-visible {
   font-family: "Times New Roman", Times, serif;
   font-size: 22px;
   user-select: none;
+  transition: opacity 120ms ease;
 }
 .local-graph-label.is-center { fill: #ffffff; }
-.local-graph-node { cursor: grab; }
+/* Labels hide below the same zoom threshold as the global graph. */
+.architecture-graph-tooltip.labels-hidden .local-graph-label { opacity: 0; }
+.local-graph-node { cursor: pointer; }
 .local-graph-node:active { cursor: grabbing; }
 .local-graph-node:hover .local-graph-dot { fill: #ffffff; }
 .architecture-graph-local-head strong { font-size: 15px; }
+.architecture-graph-tooltip.is-local-graph .architecture-graph-local-head { padding-right: 34px; }
+.architecture-graph-local-recenter {
+  position: absolute;
+  z-index: 2;
+  top: 10px;
+  right: 10px;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid rgba(245, 245, 245, .2);
+  border-radius: 7px;
+  background: #101010;
+  color: rgba(245, 245, 245, .8);
+  cursor: pointer;
+}
+.architecture-graph-local-recenter:hover { background: #1c1c1c; color: #ffffff; }
 .architecture-graph-local-meta {
   display: block;
   margin-top: 3px;
@@ -790,17 +812,9 @@ body.architecture-graph-open { overflow: hidden; }
 .architecture-graph.is-fullscreen {
   position: fixed;
   z-index: 60;
-  inset: 3svh 3vw;
+  inset: 0;
   min-height: 0;
-  border-radius: 12px;
-  box-shadow: 0 16px 60px rgba(0, 0, 0, .6);
-}
-.architecture-graph.is-fullscreen::after {
-  position: fixed;
-  z-index: -1;
-  inset: -3svh -3vw;
-  background: rgba(0, 0, 0, .92);
-  content: "";
+  border-radius: 0;
 }
 .future-section {
   position: sticky;
@@ -1097,26 +1111,19 @@ body.architecture-graph-open { overflow: hidden; }
 /* Hidden while the view already sits at the centered fit state. */
 .diagram-recenter-btn.is-centered { opacity: 0; pointer-events: none; }
 /* Fullscreen = the card itself fixed at the viewport edges, exactly like
-   the architecture graph's fullscreen: inset 3svh/3vw, a ::after backdrop,
+   the architecture graph's fullscreen: inset 0, no gap to the screen edge,
    and the same fullscreen icon button toggles back. */
 .diagram-card.is-fullscreen {
   position: fixed;
   z-index: 60;
-  inset: 3svh 3vw;
+  inset: 0;
   margin: 0;
   width: auto;
   height: auto;
   min-height: 0;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 16px 60px rgba(0, 0, 0, .6);
-}
-.diagram-card.is-fullscreen::after {
-  position: fixed;
-  z-index: -1;
-  inset: -3svh -3vw;
-  background: rgba(0, 0, 0, .92);
-  content: "";
+  border-radius: 0;
 }
 /* The reveal transition leaves transform: translateY(0) on the card,
    which would turn it into the containing block for the fixed ::after
