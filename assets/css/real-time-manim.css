@@ -519,17 +519,20 @@ a:focus-visible, button:focus-visible {
 .architecture-graph-search {
   display: block;
   width: 100%;
-  min-height: 34px;
-  padding: 7px 11px;
-  border: 1px solid rgba(245, 245, 245, .2);
-  border-radius: 8px;
+  min-height: 16px;
+  padding: 0 2px 1px;
+  border: 0;
+  border-bottom: 1px solid rgba(245, 245, 245, .2);
+  border-radius: 0;
   outline: none;
-  background: rgba(16, 16, 16, .94);
+  background: transparent;
   color: var(--foreground);
   font-size: 15px;
+  line-height: 1;
+  caret-color: var(--foreground);
 }
 .architecture-graph-search::placeholder { color: rgba(245, 245, 245, .52); }
-.architecture-graph-search:focus-visible,
+.architecture-graph-search:focus-visible { border-bottom-color: var(--foreground); }
 .architecture-graph-toolbar button:focus-visible,
 .architecture-graph-node:focus-visible {
   outline: 2px solid var(--foreground);
@@ -641,16 +644,6 @@ body.architecture-graph-open { overflow: hidden; }
   inset: -3svh -3vw;
   background: rgba(0, 0, 0, .92);
   content: "";
-}
-.architecture-graph-visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
 }
 .future-section {
   position: sticky;
