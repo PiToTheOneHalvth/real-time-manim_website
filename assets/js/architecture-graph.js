@@ -32,6 +32,7 @@
   let localGraphSize = 0;
   let localGraphX = 0;
   let localGraphY = 0;
+  let localFitK = 1;
   let shiftingView = false;
   const LABEL_ZOOM_THRESHOLD = 1.2;
   const LINK_DISTANCE_MIN = 230;
@@ -535,29 +536,61 @@
     const localWorld = selection.append('g').attr('class', 'architecture-graph-local-world');
     const localEdgeLayer = localWorld.append('g').attr('class', 'architecture-graph-local-edges');
     const localNodeLayer = localWorld.append('g').attr('class', 'architecture-graph-local-nodes');
+    // The drawn graph fills the square edge-to-edge: the view is fitted to
+    // the content's bounding box (dots plus radii) with NO gap between the
+    // showing edge and the panel boundary, capped at k = 6 so a lone node
+    // doesn't blow up past the zoom ceiling.
+    const computeFit = () => {
+      let x0 = Infinity;
+      let y0 = Infinity;
+      let x1 = -Infinity;
+      let y1 = -Infinity;
+      for (const n of localNodes) {
+        const r = n.isCenter ? 26 : 18;
+        x0 = Math.min(x0, n.x - r);
+        x1 = Math.max(x1, n.x + r);
+        y0 = Math.min(y0, n.y - r);
+        y1 = Math.max(y1, n.y + r);
+      }
+      const bw = Math.max(1, x1 - x0);
+      const bh = Math.max(1, y1 - y0);
+      const k = Math.min(6, world / bw, world / bh);
+      return d3.zoomIdentity
+        .translate(world / 2 - k * (x0 + x1) / 2, world / 2 - k * (y0 + y1) / 2)
+        .scale(k);
+    };
+    const applyLocalTransform = next => {
+      localFitK = next.k;
+      localWorld.attr('transform', next);
+      d3.select(localSvg).property('__zoom', next);
+    };
     // The local graph is zoomable (wheel) and pannable (background drag);
     // d3.drag's stopImmediatePropagation on the dots keeps dot drags from
-    // panning the view, exactly like the main graph.
+    // panning the view, exactly like the main graph. Labels hide below the
+    // SAME RELATIVE threshold as the global graph: 1.2 × the fitted rest
+    // scale, so they stay hidden at rest and appear after zooming in.
     const localZoom = d3.zoom().scaleExtent([.5, 6]).on('zoom', event => {
       localWorld.attr('transform', event.transform);
-      tooltip.classList.toggle('labels-hidden', event.transform.k < LABEL_ZOOM_THRESHOLD);
+      tooltip.classList.toggle('labels-hidden', event.transform.k < localFitK * LABEL_ZOOM_THRESHOLD);
     });
     selection.call(localZoom).on('dblclick.zoom', null);
-    // The local view starts at identity (k = 1), below the label threshold,
-    // so labels are hidden until the user zooms in — same as the global graph.
+    // The local view starts at the fitted rest scale, below the relative
+    // label threshold, so labels are hidden until the user zooms in — same
+    // as the global graph.
     tooltip.classList.add('labels-hidden');
-    // Recenter glides the local view back to identity (whole graph visible)
-    // with the same sigmoid rAF + watchdog pattern as the main-view shift.
+    // Recenter glides the local view back to the fitted rest view (whole
+    // graph visible, labels re-hidden) with the same sigmoid rAF + watchdog
+    // pattern as the main-view shift.
     function recenterLocal() {
       const startT = d3.zoomTransform(localSvg);
-      const ix = d3.interpolate(startT.x, 0);
-      const iy = d3.interpolate(startT.y, 0);
-      const ik = d3.interpolate(startT.k, 1);
+      const target = computeFit();
+      const ix = d3.interpolate(startT.x, target.x);
+      const iy = d3.interpolate(startT.y, target.y);
+      const ik = d3.interpolate(startT.k, target.k);
       let done = false;
       const started = performance.now();
       const finish = () => {
-        localWorld.attr('transform', d3.zoomIdentity);
-        d3.select(localSvg).property('__zoom', d3.zoomIdentity);
+        applyLocalTransform(target);
         tooltip.classList.toggle('labels-hidden', true);
       };
       const step = () => {
@@ -567,7 +600,7 @@
         const next = d3.zoomIdentity.translate(ix(eased), iy(eased)).scale(ik(eased));
         localWorld.attr('transform', next);
         d3.select(localSvg).property('__zoom', next);
-        tooltip.classList.toggle('labels-hidden', next.k < LABEL_ZOOM_THRESHOLD);
+        tooltip.classList.toggle('labels-hidden', next.k < localFitK * LABEL_ZOOM_THRESHOLD);
         if (t === 1) { done = true; return; }
         requestAnimationFrame(step);
       };
@@ -649,10 +682,12 @@
       localSim.tick(LOCAL_GRAPH_SETTLE_TICKS);
       localTick();
       localSim.stop();
+      applyLocalTransform(computeFit());
     } else {
       localSim.alpha(.3);
       for (let index = 0; index < LOCAL_GRAPH_SETTLE_TICKS; index += 1) localSim.tick();
       localTick();
+      applyLocalTransform(computeFit());
       localSim.alpha(0).restart();
       const settled = localSim;
       window.setTimeout(() => { if (localSim === settled) settled.stop(); }, 250);

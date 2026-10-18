@@ -625,6 +625,19 @@ a:focus-visible, button:focus-visible {
   cursor: grab;
   touch-action: none;
 }
+/* Black gradient strip at the top of the graph, matching the local graph's
+   head strip: fades the canvas into dark behind the toolbar, click-through. */
+.architecture-graph-viewport::before {
+  content: '';
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 64px;
+  pointer-events: none;
+  background: linear-gradient(rgba(23, 23, 23, .92), rgba(23, 23, 23, .55) 65%, transparent);
+}
 .architecture-graph-viewport:active { cursor: grabbing; }
 .architecture-graph-viewport svg {
   display: block;
@@ -714,14 +727,14 @@ a:focus-visible, button:focus-visible {
 }
 /* Local graph mode: the hover card expands into a square panel anchored in
    the right-bottom corner direction of the hovered node. The square resizes
-   ONLY by dragging its bottom-right corner grip. */
+   ONLY by dragging its bottom-right corner grip. The drawn graph fills the
+   square edge-to-edge (the view fits the content bbox), and the title/meta
+   float as a translucent strip over the top. */
 .architecture-graph-tooltip.is-local-graph {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  display: block;
   box-sizing: border-box;
   max-width: none;
-  padding: 12px 14px 14px;
+  padding: 0;
   overflow: hidden;
   pointer-events: auto;
   cursor: default;
@@ -738,9 +751,11 @@ a:focus-visible, button:focus-visible {
 }
 .architecture-graph-tooltip.is-local-graph strong { font-size: 15px; }
 .architecture-graph-local-svg {
+  position: absolute;
+  inset: 0;
   display: block;
-  flex: 1;
-  min-height: 0;
+  width: 100%;
+  height: 100%;
   touch-action: none;
   animation: local-graph-reveal 300ms ease both;
 }
@@ -768,7 +783,17 @@ a:focus-visible, button:focus-visible {
 .local-graph-node:active { cursor: grabbing; }
 .local-graph-node:hover .local-graph-dot { fill: #ffffff; }
 .architecture-graph-local-head strong { font-size: 15px; }
-.architecture-graph-tooltip.is-local-graph .architecture-graph-local-head { padding-right: 34px; }
+.architecture-graph-tooltip.is-local-graph .architecture-graph-local-head {
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: 10px 36px 16px 14px;
+  border-radius: 7px 7px 0 0;
+  background: linear-gradient(rgba(23, 23, 23, .92), rgba(23, 23, 23, .55) 65%, transparent);
+  pointer-events: none;
+}
 .architecture-graph-local-recenter {
   position: absolute;
   z-index: 2;
