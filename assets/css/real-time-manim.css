@@ -512,6 +512,7 @@ a:focus-visible, button:focus-visible {
   pointer-events: none;
 }
 .architecture-graph-search-label {
+  position: relative;
   flex: 1 1 220px;
   max-width: 320px;
   pointer-events: auto;
@@ -533,6 +534,61 @@ a:focus-visible, button:focus-visible {
 }
 .architecture-graph-search::placeholder { color: rgba(245, 245, 245, .52); }
 .architecture-graph-search:focus-visible { border-bottom-color: var(--foreground); }
+.architecture-graph-search-hint {
+  position: absolute;
+  right: 0;
+  bottom: 1px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: rgba(245, 245, 245, .52);
+  font-size: 12px;
+  line-height: 1.2;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+}
+.architecture-graph-search:not(:placeholder-shown) ~ .architecture-graph-search-hint { opacity: 0; }
+/* Bing-style search options dropdown below the search field. */
+.architecture-graph-search-list {
+  position: absolute;
+  z-index: 5;
+  top: calc(100% + 8px);
+  right: 0;
+  left: 0;
+  margin: 0;
+  padding: 5px;
+  max-height: 40vh;
+  overflow: auto;
+  list-style: none;
+  border: 1px solid rgba(245, 245, 245, .22);
+  border-radius: 8px;
+  background: #171717;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .45);
+  pointer-events: auto;
+}
+.architecture-graph-search-option {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.architecture-graph-search-option:hover { background: #242424; }
+.architecture-graph-search-option-title {
+  color: var(--foreground);
+  font-size: 13px;
+  line-height: 1.25;
+}
+.architecture-graph-search-option:hover .architecture-graph-search-option-title { color: #ffffff; }
+.architecture-graph-search-option-path {
+  overflow: hidden;
+  color: rgba(245, 245, 245, .5);
+  font-size: 11px;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .architecture-graph-toolbar button:focus-visible,
 .architecture-graph-node:focus-visible {
   outline: 2px solid var(--foreground);
@@ -611,7 +667,7 @@ a:focus-visible, button:focus-visible {
   stroke-width: 0;
 }
 .architecture-graph-node.is-unlinked { opacity: .41; }
-.architecture-graph-node.is-dimmed { opacity: .13; }
+.architecture-graph-node.is-dimmed { opacity: .3; }
 .architecture-graph-label {
   fill: rgba(245, 245, 245, .62);
   font-family: "Times New Roman", Times, serif;
@@ -645,7 +701,8 @@ a:focus-visible, button:focus-visible {
   align-items: center;
   gap: 5px;
 }
-.architecture-graph-tooltip .architecture-graph-hint kbd {
+.architecture-graph-tooltip .architecture-graph-hint kbd,
+.architecture-graph-search-hint kbd {
   display: inline-block;
   padding: 2px 5px;
   border: 1px solid rgba(245, 245, 245, .34);

@@ -12,6 +12,7 @@
   const edgeLayer = world.append('g').attr('class', 'architecture-graph-edges');
   const nodeLayer = world.append('g').attr('class', 'architecture-graph-nodes');
   const search = root.querySelector('.architecture-graph-search');
+  const searchList = root.querySelector('.architecture-graph-search-list');
   const status = root.querySelector('.architecture-graph-status');
   const tooltip = root.querySelector('.architecture-graph-tooltip');
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -31,6 +32,7 @@
   let localGraphSize = 0;
   let localGraphX = 0;
   let localGraphY = 0;
+  let centeringZeroed = false;
   const LABEL_ZOOM_THRESHOLD = 1.2;
   const LINK_DISTANCE_MIN = 230;
   const LINK_DISTANCE_MAX = 270;
@@ -269,13 +271,13 @@
       .classed('is-unlinked', edge => Boolean(active) && !connectedNodes.has(edge.source.id) && !connectedNodes.has(edge.target.id));
   }
 
-  function tooltipAt(event, node) {
+  function tooltipAt(x, y, node) {
     if (localGraphOpen) return;
     tooltip.innerHTML = `<strong>${escapeHTML(node.title)}</strong><span class="architecture-graph-hint"><kbd>⇧</kbd><kbd>⏎</kbd> open local graph</span>`;
     tooltip.hidden = false;
     const bounds = root.getBoundingClientRect();
-    tooltip.style.left = `${Math.max(10, Math.min(event.clientX - bounds.left + 14, bounds.width - tooltip.offsetWidth - 12))}px`;
-    tooltip.style.top = `${Math.max(10, Math.min(event.clientY - bounds.top + 14, bounds.height - tooltip.offsetHeight - 12))}px`;
+    tooltip.style.left = `${Math.max(10, Math.min(x - bounds.left + 14, bounds.width - tooltip.offsetWidth - 12))}px`;
+    tooltip.style.top = `${Math.max(10, Math.min(y - bounds.top + 14, bounds.height - tooltip.offsetHeight - 12))}px`;
   }
 
   function hideTooltip() {
@@ -503,6 +505,53 @@
     highlight();
   }
 
+  function hideSearchList() {
+    searchList.hidden = true;
+    searchList.innerHTML = '';
+  }
+
+  // Bing-style options below the search field: title + path per row. Hovering
+  // an option behaves exactly like hovering the graph node (brightness ladder
+  // + tooltip, with the ⌘⇧ local-graph hint), and a click opens the note's
+  // wiki page — or switches the local graph when it is open.
+  function renderSearchOptions() {
+    const query = search.value.trim().toLowerCase();
+    if (!query || !graph) { hideSearchList(); return; }
+    const options = graph.nodes
+      .filter(node => node.id.toLowerCase().includes(query) || node.title.toLowerCase().includes(query))
+      .slice(0, 8);
+    if (!options.length) { hideSearchList(); return; }
+    searchList.innerHTML = '';
+    for (const node of options) {
+      const option = document.createElement('li');
+      option.className = 'architecture-graph-search-option';
+      const title = document.createElement('span');
+      title.className = 'architecture-graph-search-option-title';
+      title.textContent = node.title;
+      const path = document.createElement('span');
+      path.className = 'architecture-graph-search-option-path';
+      path.textContent = node.id;
+      option.append(title, path);
+      option.addEventListener('pointerenter', event => {
+        if (localGraphOpen) return;
+        highlight(node);
+        tooltipAt(event.clientX, event.clientY, node);
+      });
+      option.addEventListener('pointerleave', () => {
+        if (localGraphOpen) return;
+        highlight();
+        hideTooltip();
+      });
+      option.addEventListener('click', event => {
+        event.stopPropagation();
+        if (localGraphOpen) openLocalGraph(node);
+        else window.location.href = node.href;
+      });
+      searchList.appendChild(option);
+    }
+    searchList.hidden = false;
+  }
+
   function fit(animate = true) {
     if (!graph || !world.node() || !zoom) return;
     const { width, height } = dimensions();
@@ -558,16 +607,16 @@
       .attr('aria-label', node => `${node.title}, ${node.weight} connections`)
       .on('pointerenter', (event, node) => {
         if (localGraphOpen) return;
-        highlight(node); tooltipAt(event, node);
+        highlight(node); tooltipAt(event.clientX, event.clientY, node);
       })
-      .on('pointermove', tooltipAt)
+      .on('pointermove', (event, node) => tooltipAt(event.clientX, event.clientY, node))
       .on('pointerleave', () => {
         if (localGraphOpen) return;
         highlight(); hideTooltip();
       })
       .on('focus', (event, node) => {
         if (localGraphOpen) return;
-        highlight(node); tooltipAt(event, node);
+        highlight(node); tooltipAt(event.clientX, event.clientY, node);
       })
       .on('blur', () => {
         if (localGraphOpen) return;
@@ -607,8 +656,8 @@
       .force('charge', d3.forceManyBody()
         .strength(OBSIDIAN_REPEL_STRENGTH)
         .distanceMin(OBSIDIAN_REPEL_MIN_DISTANCE))
-      .force('x', d3.forceX(0).strength(OBSIDIAN_CENTER_STRENGTH))
-      .force('y', d3.forceY(0).strength(OBSIDIAN_CENTER_STRENGTH))
+      .force('x', d3.forceX(0).strength(centeringZeroed ? 0 : OBSIDIAN_CENTER_STRENGTH))
+      .force('y', d3.forceY(0).strength(centeringZeroed ? 0 : OBSIDIAN_CENTER_STRENGTH))
       .force('collision', d3.forceCollide(OBSIDIAN_COLLISION_RADIUS).strength(OBSIDIAN_COLLISION_STRENGTH))
       .stop();
     const tick = () => {
@@ -622,11 +671,11 @@
     // elastic drag — pickup boosts incident springs ×4 (cap 0.95) and reheats
     // at alphaTarget 0.35, so the directly linked nodes are pulled along
     // during the hold; the centering forces (x/y toward the origin) are
-    // zeroed for the hold so the layout does not fight the drag back toward
-    // center, and are restored on release. Release unpins the node
-    // (fx/fy = null) and restores baseline strengths so it is affected by
-    // the other nodes' forces again and springs back while the simulation
-    // cools.
+    // zeroed on pickup and STAY zeroed for the rest of the page session —
+    // the layout neither fights the drag nor slides back toward the center
+    // after release. Release unpins the node (fx/fy = null) and restores
+    // baseline strengths so it is affected by the other nodes' forces again
+    // and springs back while the simulation cools.
     nodes.call(d3.drag()
       .on('start', (event, node) => {
         draggedNode = node;
@@ -636,6 +685,7 @@
         node.__moved = false;
         node.fx = node.x;
         node.fy = node.y;
+        centeringZeroed = true;
         simulation.force('x').strength(0);
         simulation.force('y').strength(0);
         simulation.alphaTarget(DRAG_ALPHA_TARGET).restart();
@@ -653,8 +703,6 @@
         node.fy = null;
         draggedNode = null;
         forceTension.strength(linkStrength);
-        simulation.force('x').strength(OBSIDIAN_CENTER_STRENGTH);
-        simulation.force('y').strength(OBSIDIAN_CENTER_STRENGTH);
         simulation.alphaTarget(0);
       }));
 
@@ -671,6 +719,7 @@
       fit(false);
     }
     highlight();
+    renderSearchOptions();
   }
 
   async function load(force = false) {
@@ -690,7 +739,7 @@
     }
   }
 
-  search.addEventListener('input', () => highlight());
+  search.addEventListener('input', () => { highlight(); renderSearchOptions(); });
   root.querySelector('.architecture-graph-refresh').addEventListener('click', () => load(true));
   root.querySelector('.architecture-graph-recenter').addEventListener('click', () => fit(true));
   root.querySelector('.architecture-graph-fullscreen').addEventListener('click', () => {
@@ -703,8 +752,10 @@
     requestAnimationFrame(() => fit(false));
   });
   window.addEventListener('keydown', event => {
-    if (event.shiftKey && event.key === 'Enter' && !localGraphOpen && activeNode && !event.repeat
-      && !(event.target instanceof HTMLInputElement) && !(event.target instanceof HTMLTextAreaElement)) {
+    // Shift+Enter while hovering a graph node or a search option opens its
+    // local graph; the search input stays an allowed target so the shortcut
+    // works right after typing.
+    if (event.shiftKey && event.key === 'Enter' && !localGraphOpen && activeNode && !event.repeat) {
       event.preventDefault();
       openLocalGraph(activeNode);
       return;
