@@ -204,15 +204,11 @@ a.wiki-folder-name { text-decoration: none; border-radius: 5px; }
 
 .wiki-article {
   position: relative;
-  left: 0;
+  left: 50%;
   width: min(100%, 960px);
   padding: clamp(32px, 7vw, 100px) clamp(6vw, 10vw, 150px) 120px;
-  transform: translateX(0);
-  transition: left .32s cubic-bezier(.3, .85, .35, 1), transform .32s cubic-bezier(.3, .85, .35, 1);
-}
-.wiki-shell.is-toc-collapsed .wiki-article {
-  left: 50%;
   transform: translateX(-50%);
+  transition: left .32s cubic-bezier(.3, .85, .35, 1), transform .32s cubic-bezier(.3, .85, .35, 1);
 }
 .wiki-article h1, .wiki-article h2, .wiki-article h3, .wiki-article h4, .wiki-article h5, .wiki-article h6 {
   scroll-margin-top: 90px;
