@@ -464,6 +464,13 @@
   // the panel.
   function doOpenLocalGraph(node, withOpening = true) {
     if (!graph) return;
+    // The hover card expands into the panel: freeze its committed geometry
+    // as the opening transition's before-state (adding the class and the
+    // target size in one frame would snap with no animation). Re-targeting
+    // an already-open panel — or reduced motion — swaps instantly instead.
+    const openingFrom = withOpening && !localGraphOpen && !tooltip.hidden && !reducedMotion.matches
+      ? { left: tooltip.style.left, top: tooltip.style.top, width: tooltip.offsetWidth, height: tooltip.offsetHeight }
+      : null;
     localGraphOpen = true;
     localGraphNode = node;
     highlight(node);
@@ -694,8 +701,21 @@
     }
 
     localGraphSize = localGraphDefaultSize();
-    applyLocalGraphSize(localGraphSize);
-    positionLocalGraph();
+    if (openingFrom) {
+      // Commit the hover-card geometry as the transition's before-state —
+      // the forced reflow between the two writes is what lets the CSS
+      // opening transition animate the expand to the panel size/position.
+      tooltip.style.left = openingFrom.left;
+      tooltip.style.top = openingFrom.top;
+      tooltip.style.width = `${openingFrom.width}px`;
+      tooltip.style.height = `${openingFrom.height}px`;
+      void tooltip.offsetWidth;
+      applyLocalGraphSize(localGraphSize);
+      positionLocalGraph();
+    } else {
+      applyLocalGraphSize(localGraphSize);
+      positionLocalGraph();
+    }
     wireLocalResize(grip);
     if (withOpening) window.setTimeout(() => tooltip.classList.remove('opening'), 320);
   }
