@@ -16,12 +16,13 @@
   const status = root.querySelector('.architecture-graph-status');
   const tooltip = root.querySelector('.architecture-graph-tooltip');
   // The global labels get a second, purely visual copy in an overlay svg
-  // stacked ABOVE the local-graph panel — the panel is 'behind the label of
-  // the global graph'. The overlay mirrors the main svg (same viewBox, same
-  // world transform, same per-node transforms and state classes), so outside
-  // the panel it overdraws the originals pixel-identically and above the
-  // panel the labels stay visible. pointer-events: none on the whole overlay
-  // — input falls through to the panel (inert) or the main svg (clicks).
+  // stacked BELOW the local-graph panel — the panel sits ABOVE the global
+  // graph's annotations. The overlay mirrors the main svg (same viewBox,
+  // same world transform, same per-node transforms and state classes), so
+  // outside the panel it overdraws the originals pixel-identically, and
+  // where the panel covers it the annotations hide under the panel.
+  // pointer-events: none on the whole overlay — input falls through to the
+  // panel (inert) or the main svg (clicks).
   const labelOverlay = d3.select(viewport)
     .append('svg')
     .attr('class', 'architecture-graph-label-overlay')
@@ -70,7 +71,6 @@
   const LOCAL_GRAPH_MAX_SIZE = 900;
   const LOCAL_GRAPH_DEFAULT_MAX = 400;
   const LOCAL_GRAPH_GAP = 14;
-  const LOCAL_GRAPH_TOP_BAND = 40;
   const LOCAL_GRAPH_WORLD = 1000;
   const LOCAL_GRAPH_SETTLE_TICKS = 300;
 
@@ -344,10 +344,6 @@
     const { margin, floor } = localGraphEdge();
     localGraphX = Math.max(floor, Math.min(x, width - localGraphSize - margin));
     localGraphY = Math.max(floor, Math.min(y, height - localGraphSize - margin));
-    // Near the top of the graph the panel gets a black gradient at its top
-    // edge (see .near-graph-top in the CSS) so the global labels that now
-    // float ABOVE the panel keep a dark, readable backdrop.
-    tooltip.classList.toggle('near-graph-top', localGraphY < LOCAL_GRAPH_TOP_BAND);
     tooltip.style.left = `${localGraphX}px`;
     tooltip.style.top = `${localGraphY}px`;
   }
@@ -845,7 +841,7 @@
       clearTimeout(collapseTimer);
       collapseTimer = null;
       if (swapTimer) { clearTimeout(swapTimer); swapTimer = null; }
-      tooltip.classList.remove('is-local-graph', 'labels-hidden', 'opening', 'is-resizing', 'collapsing', 'near-graph-top');
+      tooltip.classList.remove('is-local-graph', 'labels-hidden', 'opening', 'is-resizing', 'collapsing');
       tooltip.style.width = '';
       tooltip.style.height = '';
       tooltip.innerHTML = '';
@@ -857,7 +853,7 @@
     localGraphNode = null;
     localResize = null;
     if (localSim) { localSim.stop(); localSim = null; }
-    tooltip.classList.remove('is-local-graph', 'is-resizing', 'opening', 'near-graph-top');
+    tooltip.classList.remove('is-local-graph', 'is-resizing', 'opening');
     tooltip.style.width = '';
     tooltip.style.height = '';
     tooltip.innerHTML = '';
