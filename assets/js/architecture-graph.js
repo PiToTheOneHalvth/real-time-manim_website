@@ -897,8 +897,75 @@
     searchList.hidden = false;
   }
 
+  // Rubber-band (jelly) zoom limits, matching the mermaid diagram: beyond
+  // GRAPH_ZOOM_MIN/MAX the scale stretches with 70% resistance while the
+  // input lasts, then a spring-back with a slight overshoot snaps it onto
+  // the limit when the gesture stops. d3's internal transform stays the raw
+  // (uncompressed) accumulator; the visible transform is the stretch. The
+  // accumulator resets to the boundary only when a spring starts.
+  const GRAPH_ZOOM_MIN = 0.25;
+  const GRAPH_ZOOM_MAX = 5;
+  let graphJellyTimer = 0;
+  let graphJellyFrame = 0;
+  let graphView = new d3.zoomIdentity.constructor(1, 0, 0);
+  const cancelGraphJelly = () => {
+    if (graphJellyTimer) { clearTimeout(graphJellyTimer); graphJellyTimer = 0; }
+    if (graphJellyFrame) { cancelAnimationFrame(graphJellyFrame); graphJellyFrame = 0; }
+  };
+  const graphJellyTarget = (t) => {
+    const k = t.k < GRAPH_ZOOM_MIN ? GRAPH_ZOOM_MIN : GRAPH_ZOOM_MAX;
+    return new d3.zoomIdentity.constructor(k, t.x, t.y);
+  };
+  const applyGraphView = (view) => {
+    graphView = view;
+    world.attr('transform', `translate(${view.x}, ${view.y}) scale(${view.k})`);
+    root.classList.toggle('labels-hidden', view.k < LABEL_ZOOM_THRESHOLD);
+    positionLocalGraph();
+  };
+  const scheduleGraphJelly = () => {
+    cancelGraphJelly();
+    if (reducedMotion.matches) {
+      const raw = d3.zoomTransform(svg.node());
+      const target = graphJellyTarget(raw);
+      svg.property('__zoom', new d3.zoomIdentity.constructor(target.k, target.x, target.y));
+      applyGraphView(target);
+      return;
+    }
+    graphJellyTimer = setTimeout(() => { graphJellyTimer = 0; graphJellySpring(); }, 180);
+  };
+  const graphJellySpring = () => {
+    cancelGraphJelly();
+    const raw = d3.zoomTransform(svg.node());
+    // Stale timer (a fit already recovered): nothing to spring.
+    if (!(raw.k < GRAPH_ZOOM_MIN || raw.k > GRAPH_ZOOM_MAX)) return;
+    const target = graphJellyTarget(raw);
+    // Re-engage from the boundary so a mid-spring wheel starts at the edge
+    // (accepted ≤4% one-frame correction) instead of the raw depth.
+    svg.property('__zoom', new d3.zoomIdentity.constructor(target.k, raw.x, raw.y));
+    const start = graphView;
+    const c1 = 1.70158;
+    const c3 = c1 + 1;
+    const ease = t => (t >= 1 ? 1 : 1 + c3 * (t - 1) ** 3 + c1 * (t - 1) ** 2);
+    const duration = 450;
+    const began = performance.now();
+    const step = (now) => {
+      const t = Math.min(1, (now - began) / duration);
+      const e = ease(t);
+      applyGraphView(new d3.zoomIdentity.constructor(
+        start.k + (target.k - start.k) * e,
+        start.x + (target.x - start.x) * e,
+        start.y + (target.y - start.y) * e,
+      ));
+      if (t < 1) { graphJellyFrame = requestAnimationFrame(step); return; }
+      graphJellyFrame = 0;
+      applyGraphView(target);
+    };
+    graphJellyFrame = requestAnimationFrame(step);
+  };
+
   function fit(animate = true) {
     if (!graph || !world.node() || !zoom) return;
+    cancelGraphJelly();
     const { width, height } = dimensions();
     svg.attr('viewBox', `0 0 ${width} ${height}`);
     const bounds = world.node().getBBox();
@@ -911,6 +978,7 @@
       ? svg.transition().duration(320).ease(d3.easeCubicOut)
       : svg;
     selection.call(zoom.transform, transform);
+    graphView = transform;
   }
 
   function render(nextGraph) {
@@ -921,11 +989,45 @@
     nodeLayer.selectAll('*').remove();
     const { width, height } = dimensions();
     svg.attr('viewBox', `0 0 ${width} ${height}`);
-    zoom = d3.zoom().scaleExtent([.25, 5]).on('zoom', event => {
-      world.attr('transform', event.transform);
-      root.classList.toggle('labels-hidden', event.transform.k < LABEL_ZOOM_THRESHOLD);
-      positionLocalGraph();
-    });
+    cancelGraphJelly();
+    graphView = d3.zoomIdentity;
+    zoom = d3.zoom().on('zoom', event => {
+      const raw = event.transform;
+      // Cap the raw accumulator BEFORE mapping, so a single cap-crossing
+      // event cannot stretch the visual scale past the capped depth (and
+      // repeated pinch input cannot grow it without bound).
+      let rawK = raw.k;
+      if (rawK > GRAPH_ZOOM_MAX + GRAPH_ZOOM_MAX / 0.3) {
+        rawK = GRAPH_ZOOM_MAX + GRAPH_ZOOM_MAX / 0.3;
+        svg.property('__zoom', new d3.zoomIdentity.constructor(rawK, raw.x, raw.y));
+      }
+      let tk = rawK;
+      let band = null;
+      if (tk < GRAPH_ZOOM_MIN) { tk = 0.7 * GRAPH_ZOOM_MIN + 0.3 * tk; band = 'min'; }
+      else if (tk > GRAPH_ZOOM_MAX) { tk = GRAPH_ZOOM_MAX + 0.3 * (tk - GRAPH_ZOOM_MAX); band = 'max'; }
+      // d3 already anchored the RAW transform at the pointer; re-anchor the
+      // stretched scale so the point under the cursor stays put.
+      let x = raw.x;
+      let y = raw.y;
+      if (band && event.sourceEvent) {
+        const p = d3.pointer(event.sourceEvent, svg.node());
+        if (p) {
+          x = p[0] - (p[0] - raw.x) * (tk / rawK);
+          y = p[1] - (p[1] - raw.y) * (tk / rawK);
+        }
+      }
+      applyGraphView(new d3.zoomIdentity.constructor(tk, x, y));
+      if (band) {
+        scheduleGraphJelly();
+      } else {
+        cancelGraphJelly();
+      }
+    })
+      .on('start', () => cancelGraphJelly()) // a pointer hold freezes the stretch
+      .on('end', () => {
+        const t = d3.zoomTransform(svg.node());
+        if (t.k < GRAPH_ZOOM_MIN || t.k > GRAPH_ZOOM_MAX) scheduleGraphJelly();
+      });
     svg.call(zoom).on('dblclick.zoom', null);
     // Right-click is the local-graph trigger; keep the browser menu out of
     // the whole graph canvas (node right-clicks open the panel and handle

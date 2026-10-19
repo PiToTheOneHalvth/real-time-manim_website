@@ -133,11 +133,12 @@ async function main() {
     let tx = 12, ty = 12, k = 1;
     // Scale at which the whole diagram fits the viewport (the initial full
     // view). Wheel-zoom below it stretches the diagram with resistance, and
-    // a continuous monotonic pull eases it back to the centered full view.
+    // a jelly spring-back snaps it to the centered full view on release.
     let fitK = 1;
     const ZOOM_MAX = 4;
-    // Pinch/ctrl-wheel zoom speed: log-step per deltaY unit (user-tuned,
-    // 0.0015 × 6). Plain two-finger wheel pan is unaffected.
+    // Pinch zoom speed (ctrl/meta wheel): log-step per deltaY unit
+    // (user-tuned, 0.0015 × 6). Plain wheels use the architecture graph's
+    // d3-default curve instead — gesture parity, same feel as the graph.
     const ZOOM_SPEED = 0.009;
     // The uncompressed scale the wheel has dialed; below fitK or above
     // ZOOM_MAX it is mapped onto a resisted visual scale.
@@ -300,9 +301,11 @@ async function main() {
       jellyTimer = setTimeout(() => { jellyTimer = 0; jellySpring(); }, 180);
     };
     const jellySpring = () => {
+      // Stale timer (a fit/fullscreen already recovered): nothing to spring.
+      if (!(rawK < fitK || rawK > ZOOM_MAX)) return;
       cancelAnim();
       cancelMomentum();
-      const below = k < fitK;
+      const below = rawK < fitK;
       const target = below ? fitTarget() : { k: ZOOM_MAX, tx, ty };
       if (below) fitK = target.k;
       // Re-engage the stretch from the boundary: a wheel mid-spring starts
@@ -355,35 +358,14 @@ async function main() {
       const dt = Math.max(0, now - momentumLast);
       momentumLast = now;
       zoomVel *= Math.exp(-dt / 158.6); // τ ≈ 159ms per-frame friction
-      const nextRaw = rawK * Math.exp(zoomVel * dt);
-      if (nextRaw < fitK) {
-        const stretched = 0.7 * fitK + 0.3 * nextRaw;
-        tx = zoomPx - (zoomPx - tx) * (stretched / k);
-        ty = zoomPy - (zoomPy - ty) * (stretched / k);
-        k = stretched;
-        touched = true;
-        apply();
+      rawK = Math.min(ZOOM_MAX + ZOOM_MAX / 0.3, rawK * Math.exp(zoomVel * dt));
+      const band = applyRawZoom(zoomPx, zoomPy);
+      if (band) cancelJelly(); // the glide is still driving; spring when it stops
+      if (Math.abs(zoomVel) < 1e-5) {
         momentumFrame = 0;
-        startRecover('fit');
+        if (band) scheduleJelly();
         return;
       }
-      if (nextRaw > ZOOM_MAX) {
-        const stretched = ZOOM_MAX + 0.3 * (nextRaw - ZOOM_MAX);
-        tx = zoomPx - (zoomPx - tx) * (stretched / k);
-        ty = zoomPy - (zoomPy - ty) * (stretched / k);
-        k = stretched;
-        touched = true;
-        apply();
-        momentumFrame = 0;
-        startRecover('max', tx, ty);
-        return;
-      }
-      rawK = nextRaw;
-      tx = zoomPx - (zoomPx - tx) * (rawK / k);
-      ty = zoomPy - (zoomPy - ty) * (rawK / k);
-      k = rawK;
-      apply();
-      if (Math.abs(zoomVel) < 1e-5) { momentumFrame = 0; return; }
       momentumFrame = requestAnimationFrame(momentumStep);
     };
     const scheduleMomentum = () => {
@@ -392,19 +374,20 @@ async function main() {
       momentumTimer = setTimeout(() => {
         momentumTimer = 0;
         zoomVel *= 0.15;
-        // Below/above the resisted zones the recover glides already give
-        // the gradual stop; skip momentum so the two never fight.
+        // Below/above the resisted zones the jelly spring already gives the
+        // gradual stop; skip momentum so the two never fight.
         if (Math.abs(zoomVel) < 5e-6 || rawK <= fitK || rawK >= ZOOM_MAX) {
           zoomVel = 0;
           return;
         }
+        cancelJelly();
         momentumLast = performance.now();
         momentumFrame = requestAnimationFrame(momentumStep);
       }, 100);
     };
     const recenter = () => {
       cancelAnim();
-      cancelRecover();
+      cancelJelly();
       cancelMomentum();
       if (motionReduced.matches) { fit(); return; }
       const start = { k, tx, ty };
@@ -445,6 +428,7 @@ async function main() {
     const fullscreenBtn = card.querySelector('.diagram-fullscreen-btn');
     const enterFullscreen = () => {
       cancelMomentum();
+      cancelJelly();
       openParent = card.parentElement;
       openAnchor = card.nextSibling;
       document.body.appendChild(card);
@@ -457,6 +441,7 @@ async function main() {
     };
     const exitFullscreen = () => {
       cancelMomentum();
+      cancelJelly();
       card.classList.remove('is-fullscreen');
       document.body.classList.remove('diagram-fullscreen-open');
       if (openAnchor && openAnchor.parentNode === openParent) {
