@@ -102,7 +102,7 @@
       }
       found.set(path, { id: noteID(path), path, markdown });
       for (const link of extractLinks(markdown)) {
-        const targetPath = resolvePath(path, link);
+        const targetPath = resolvePath(path, link, found);
         if (targetPath && !found.has(targetPath)) queue.push(targetPath);
       }
     }

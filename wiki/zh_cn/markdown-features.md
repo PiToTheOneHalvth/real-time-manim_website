@@ -5,7 +5,7 @@ tags: [test, markdown, renderer]
 
 # Markdown feature test
 
-A single note exercising every markdown feature the wiki renderer supports: frontmatter, headings, emphasis, rules, quotes, lists, tasks, tables, code, links and images. Paragraphs join across line breaks — this line and the next
+A single note exercising every markdown feature the wiki renderer supports: frontmatter, headings, emphasis, rules, quotes, lists, tasks, tables, code, wikilinks, mermaid diagrams, links and images. Paragraphs join across line breaks — this line and the next
 collapse into one paragraph with **bold**, __bold underscores__, *italic*, _italic underscores_, and `inline code`.
 
 ## Headings
@@ -83,11 +83,24 @@ Plain fence:
 no language tag
 ```
 
+## Mermaid diagrams
+
+```mermaid
+flowchart TD
+    A[Markdown] --> B{Fence says mermaid?}
+    B -->|Yes| C[Render as diagram]
+    B -->|No| D[Show as code]
+```
+
 ## Links
 
 - external: [GitHub](https://github.com)
 - mailto: [send mail](mailto:someone@example.com)
 - internal markdown link: [back to index](index.md)
+- bare wikilink: [[shortcut-matrix]]
+- wikilink with path and alias: [[appendix/sparse/shortcut-matrix.md|shortcut matrix]]
+
+<!-- HTML comments are skipped by the renderer. -->
 
 ## Images
 
