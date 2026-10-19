@@ -752,6 +752,29 @@ a:focus-visible, button:focus-visible {
   pointer-events: none;
   max-width: none;
 }
+/* The panel content fades out over the first 140ms of the collapse so the
+   swap to the hover card never flashes. The world group (not the svg) is
+   faded: the svg carries the reveal animation whose fill-mode would fight a
+   class-driven opacity change on the svg itself. */
+.architecture-graph-tooltip.collapsing .architecture-graph-local-head,
+.architecture-graph-tooltip.collapsing .architecture-graph-resize,
+.architecture-graph-tooltip.collapsing .architecture-graph-local-recenter {
+  opacity: 0;
+  transition: opacity 140ms ease;
+}
+.architecture-graph-tooltip.collapsing .architecture-graph-local-world {
+  opacity: 0;
+  transition: opacity 140ms ease;
+}
+/* The hover card fades in once the content swap happens mid-shrink. */
+.architecture-graph-tooltip.collapsing > strong,
+.architecture-graph-tooltip.collapsing > .architecture-graph-hint {
+  animation: local-graph-card-in 110ms ease both;
+}
+@keyframes local-graph-card-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
 .architecture-graph-tooltip.is-local-graph.is-resizing {
   transition: none;
   user-select: none;

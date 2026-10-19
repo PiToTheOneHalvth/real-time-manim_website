@@ -3,7 +3,7 @@
   if (!root || !window.d3) return;
 
   const d3 = window.d3;
-  const sourceRoot = new URL(root.dataset.sourceRoot || '../../test_wiki_file/', document.baseURI);
+  const sourceRoot = new URL(root.dataset.sourceRoot || '../../wiki/en_us/', document.baseURI);
   const entryPath = root.dataset.entryPath || 'index.md';
   const manifestPath = root.dataset.manifestPath || 'manifest.json';
   const viewport = root.querySelector('.architecture-graph-viewport');
@@ -36,6 +36,7 @@
   let shiftingView = false;
   let collapseTimer = null;
   let openingTimer = null;
+  let swapTimer = null;
   const LABEL_ZOOM_THRESHOLD = 1.2;
   const LINK_DISTANCE_MIN = 230;
   const LINK_DISTANCE_MAX = 270;
@@ -469,6 +470,10 @@
     if (!graph) return;
     if (collapseTimer) { clearTimeout(collapseTimer); collapseTimer = null; }
     if (openingTimer) { clearTimeout(openingTimer); openingTimer = null; }
+    if (swapTimer) { clearTimeout(swapTimer); swapTimer = null; }
+    // A re-expand mid-collapse starts from wherever the box is; drop the
+    // collapsing state so the panel content is fully visible again.
+    tooltip.classList.remove('collapsing');
     // The hover card expands into the panel: freeze its committed geometry
     // as the opening transition's before-state (adding the class and the
     // target size in one frame would snap with no animation). Re-targeting
@@ -736,6 +741,7 @@
       // (e.g. empty-space click during the shrink).
       clearTimeout(collapseTimer);
       collapseTimer = null;
+      if (swapTimer) { clearTimeout(swapTimer); swapTimer = null; }
       tooltip.classList.remove('is-local-graph', 'labels-hidden', 'opening', 'is-resizing', 'collapsing');
       tooltip.style.width = '';
       tooltip.style.height = '';
@@ -757,12 +763,12 @@
   }
 
   // Second right-click on the node whose panel is open collapses the panel
-  // back into the hovering state — the box swaps to the hover card's content
-  // immediately (so what is visible during the whole collapse IS the hover
-  // card) and shrinks from the panel geometry onto the card's natural size,
-  // ending with the tooltip in exactly the state hovering would put it at
-  // the CURRENT pointer position. Right-clicking a DIFFERENT node still
-  // re-targets the panel.
+  // back into the hovering state. The box starts shrinking immediately while
+  // the panel content fades out over the first 140ms (no one-frame flash),
+  // then the content swaps to the hover card — which fades in — and the box
+  // finishes shrinking onto the card's natural size, ending with the tooltip
+  // in exactly the state hovering would put it at the CURRENT pointer.
+  // Right-clicking a DIFFERENT node still re-targets the panel.
   function collapseLocalGraph(clientX, clientY) {
     if (!localGraphOpen || !localGraphNode || collapseTimer) return;
     const node = localGraphNode;
@@ -773,10 +779,7 @@
     localGraphOpen = false;
     localGraphNode = null;
     if (openingTimer) { clearTimeout(openingTimer); openingTimer = null; }
-    // The box shows the hovering state from the very first frame of the
-    // collapse: swap the panel content for the hover card now.
-    tooltip.classList.remove('is-local-graph', 'labels-hidden');
-    tooltip.innerHTML = `<strong>${escapeHTML(node.title)}</strong><span class="architecture-graph-hint"><kbd>right-click</kbd> open local graph</span>`;
+    if (swapTimer) { clearTimeout(swapTimer); swapTimer = null; }
     // Measure the hover-card target with a hidden probe — same content and
     // classes tooltipAt renders — without disturbing the box.
     const probe = document.createElement('div');
@@ -816,6 +819,15 @@
         highlight();
       }
     };
+    // Swap the faded-out panel content for the hover card mid-shrink. The
+    // CSS fade is 140ms; the swap waits 200ms so the fade is fully done
+    // even with a frame of transition start-up lag.
+    const swapCard = () => {
+      swapTimer = null;
+      if (!collapseTimer) return;
+      tooltip.classList.remove('is-local-graph', 'labels-hidden');
+      tooltip.innerHTML = `<strong>${escapeHTML(node.title)}</strong><span class="architecture-graph-hint"><kbd>right-click</kbd> open local graph</span>`;
+    };
     if (reducedMotion.matches) { finish(); return; }
     tooltip.classList.add('collapsing');
     tooltip.classList.add('opening');
@@ -827,6 +839,7 @@
     tooltip.style.width = `${cardW}px`;
     tooltip.style.height = `${cardH}px`;
     collapseTimer = window.setTimeout(finish, 320);
+    swapTimer = window.setTimeout(swapCard, 200);
   }
 
   function hideSearchList() {
