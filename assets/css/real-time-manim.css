@@ -823,7 +823,7 @@ a:focus-visible, button:focus-visible {
 .local-graph-label {
   fill: rgba(245, 245, 245, .6);
   font-family: "Times New Roman", Times, serif;
-  font-size: 16px;
+  font-size: 12px;
   user-select: none;
   transition: opacity 120ms ease;
 }

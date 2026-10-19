@@ -733,7 +733,7 @@
       .attr('class', 'local-graph-label')
       .attr('x', 0)
       .attr('text-anchor', 'middle')
-      .attr('dy', n => (n.isCenter ? 26 : 18) + 14)
+      .attr('dy', n => (n.isCenter ? 26 : 18) + 11)
       .classed('is-center', n => n.isCenter)
       .text(n => n.title);
     // Local graph nodes are draggable (classic elastic: pinned while held,
