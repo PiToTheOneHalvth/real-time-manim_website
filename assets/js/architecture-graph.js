@@ -435,7 +435,9 @@
     const x = transform.applyX(node.x) + screenRadius + LOCAL_GRAPH_GAP;
     const y = transform.applyY(node.y) + screenRadius + LOCAL_GRAPH_GAP;
     const { width, height } = localGraphBounds();
-    const size = localGraphDefaultSize();
+    // A re-target must be checked against the CURRENT square, not the
+    // default one, or a panel the user grew could clamp past the edge.
+    const size = localGraphOpen ? localGraphSize : localGraphDefaultSize();
     const { margin, floor } = localGraphEdge();
     // Half-pixel tolerance: the clamp lands the panel exactly on the binding
     // edge, and float noise must not re-trigger a micro-shift.
@@ -457,7 +459,9 @@
     doOpenLocalGraph(node, false);
     const start = d3.zoomTransform(svg.node());
     const { width, height } = localGraphBounds();
-    const size = localGraphDefaultSize();
+    // doOpenLocalGraph has already normalized the size (kept on re-target,
+    // default on fresh open) — the glide must clamp for THAT size.
+    const size = localGraphSize;
     const { margin, floor } = localGraphEdge();
     const zoomedIn = start.k > 1;
     let end = zoomedIn
@@ -535,6 +539,9 @@
     const openingFrom = withOpening && !localGraphOpen && !tooltip.hidden && !reducedMotion.matches
       ? { left: tooltip.style.left, top: tooltip.style.top, width: tooltip.offsetWidth, height: tooltip.offsetHeight }
       : null;
+    // Re-targeting the open panel keeps the user's resized square; only a
+    // fresh open from the hover card starts at the default size.
+    const reopening = localGraphOpen;
     localGraphOpen = true;
     localGraphNode = node;
     highlight(node);
@@ -776,7 +783,7 @@
       window.setTimeout(() => { if (localSim === settled) settled.stop(); }, 250);
     }
 
-    localGraphSize = localGraphDefaultSize();
+    if (!reopening) localGraphSize = localGraphDefaultSize();
     if (openingFrom) {
       // Commit the hover-card geometry as the transition's before-state —
       // the forced reflow between the two writes is what lets the CSS
