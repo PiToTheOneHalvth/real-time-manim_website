@@ -203,8 +203,16 @@ a.wiki-folder-name { text-decoration: none; border-radius: 5px; }
 .wiki-note-link.is-hidden { display: none; }
 
 .wiki-article {
+  position: relative;
+  left: 0;
   width: min(100%, 960px);
   padding: clamp(32px, 7vw, 100px) clamp(6vw, 10vw, 150px) 120px;
+  transform: translateX(0);
+  transition: left .32s cubic-bezier(.3, .85, .35, 1), transform .32s cubic-bezier(.3, .85, .35, 1);
+}
+.wiki-shell.is-toc-collapsed .wiki-article {
+  left: 50%;
+  transform: translateX(-50%);
 }
 .wiki-article h1, .wiki-article h2, .wiki-article h3, .wiki-article h4, .wiki-article h5, .wiki-article h6 {
   scroll-margin-top: 90px;
@@ -250,6 +258,17 @@ a.wiki-folder-name { text-decoration: none; border-radius: 5px; }
 }
 .wiki-codeblock { position: relative; margin: 28px 0; }
 .wiki-codeblock pre { padding-right: 44px; }
+.wiki-mermaid { margin: 28px 0; }
+.wiki-mermaid svg { display: block; max-width: 100%; height: auto; margin: 0 auto; }
+.wiki-mermaid .wiki-mermaid-source {
+  padding: 18px;
+  overflow: auto;
+  border: 1px solid var(--wiki-line);
+  border-radius: 7px;
+  background: #1e1e1e;
+  color: #d4d4d4;
+  font: 14px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
 .wiki-code-copy {
   position: absolute;
   top: 6px;

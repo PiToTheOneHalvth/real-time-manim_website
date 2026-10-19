@@ -408,7 +408,11 @@
       const line = lines[index];
       if (code) {
         if (/^```/.test(line)) {
-          html.push(`<div class="wiki-codeblock"><pre><code${code.language ? ` class="language-${escapeHTML(code.language)}"` : ''}>${escapeHTML(code.lines.join('\n'))}</code></pre><button class="wiki-code-copy" type="button" aria-label="Copy code" title="Copy code">${COPY_ICON_SVG}${CHECK_ICON_SVG}</button></div>`);
+          if (code.language === 'mermaid') {
+            html.push(`<div class="wiki-mermaid">${code.lines.join('\n')}</div>`);
+          } else {
+            html.push(`<div class="wiki-codeblock"><pre><code${code.language ? ` class="language-${escapeHTML(code.language)}"` : ''}>${escapeHTML(code.lines.join('\n'))}</code></pre><button class="wiki-code-copy" type="button" aria-label="Copy code" title="Copy code">${COPY_ICON_SVG}${CHECK_ICON_SVG}</button></div>`);
+          }
           code = null;
         } else code.lines.push(line);
         continue;
@@ -442,11 +446,18 @@
       if (!line.trim()) { flushAll(); continue; }
       flushList(); flushQuote(); flushTable(); paragraph.push(line.trim());
     }
-    if (code) html.push(`<div class="wiki-codeblock"><pre><code${code.language ? ` class="language-${escapeHTML(code.language)}"` : ''}>${escapeHTML(code.lines.join('\n'))}</code></pre><button class="wiki-code-copy" type="button" aria-label="Copy code" title="Copy code">${COPY_ICON_SVG}${CHECK_ICON_SVG}</button></div>`);
+    if (code) {
+      if (code.language === 'mermaid') {
+        html.push(`<div class="wiki-mermaid">${code.lines.join('\n')}</div>`);
+      } else {
+        html.push(`<div class="wiki-codeblock"><pre><code${code.language ? ` class="language-${escapeHTML(code.language)}"` : ''}>${escapeHTML(code.lines.join('\n'))}</code></pre><button class="wiki-code-copy" type="button" aria-label="Copy code" title="Copy code">${COPY_ICON_SVG}${CHECK_ICON_SVG}</button></div>`);
+      }
+    }
     flushAll();
     return html.join('\n')
       .replace(/\u0002(\d+)\u0002/g, (_, index) => {
         const entry = codeContents[Number(index)];
+        if (entry.language === 'mermaid') return `<div class="wiki-mermaid-source" hidden>${escapeHTML(entry.code)}</div>`;
         return highlightTokens(entry.code, entry.language);
       })
       .replace(/\u0003(\d+)\u0003/g, (_, index) => `<code>${escapeHTML(codeSpans[Number(index)])}</code>`);
@@ -610,10 +621,36 @@
     });
   }
 
+  let mermaidInit = false;
+  let mermaidRenderCount = 0;
+  function renderMermaidBlocks(container) {
+    if (typeof window.mermaid === 'undefined') return;
+    const blocks = [...container.querySelectorAll('.wiki-mermaid')];
+    if (!blocks.length) return;
+    if (!mermaidInit) {
+      window.mermaid.initialize({ startOnLoad: false, theme: 'dark', themeVariables: { background: 'transparent' } });
+      mermaidInit = true;
+    }
+    blocks.forEach((block) => {
+      const source = block.querySelector('.wiki-mermaid-source');
+      if (!source) return;
+      mermaidRenderCount += 1;
+      window.mermaid.render(`wiki-mermaid-${mermaidRenderCount}`, source.textContent).then(({ svg }) => {
+        block.innerHTML = svg;
+        block.classList.add('is-rendered');
+      }).catch((error) => {
+        block.classList.add('is-error');
+        source.hidden = false;
+        console.error('wiki mermaid:', error);
+      });
+    });
+  }
+
   function renderNote(entry) {
     const rawTitle = entry.markdown.replace(/^---\n[\s\S]*?\n---\n?/, '').match(/^#\s+(.+?)\s*$/m);
     const title = rawTitle ? rawTitle[1].replace(/[#*_`]/g, '').trim() : titleFromID(entry.id);
     article.innerHTML = `<div class="wiki-note-meta">${escapeHTML(entry.path)}</div>${renderMarkdown(entry.markdown, entry.path)}`;
+    renderMermaidBlocks(article);
     document.title = `${title} | Real-Time Manim Wiki`;
     markCurrent();
     revealNote(entry.id);
