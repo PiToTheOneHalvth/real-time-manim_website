@@ -34,6 +34,8 @@
   let localGraphY = 0;
   let localFitK = 1;
   let shiftingView = false;
+  let collapseTimer = null;
+  let openingTimer = null;
   const LABEL_ZOOM_THRESHOLD = 1.2;
   const LINK_DISTANCE_MIN = 230;
   const LINK_DISTANCE_MAX = 270;
@@ -273,7 +275,7 @@
   }
 
   function tooltipAt(x, y, node) {
-    if (localGraphOpen) return;
+    if (localGraphOpen || collapseTimer) return;
     tooltip.innerHTML = `<strong>${escapeHTML(node.title)}</strong><span class="architecture-graph-hint"><kbd>right-click</kbd> open local graph</span>`;
     tooltip.hidden = false;
     const bounds = root.getBoundingClientRect();
@@ -282,6 +284,7 @@
   }
 
   function hideTooltip() {
+    if (collapseTimer) return;
     tooltip.hidden = true;
   }
 
@@ -464,6 +467,8 @@
   // the panel.
   function doOpenLocalGraph(node, withOpening = true) {
     if (!graph) return;
+    if (collapseTimer) { clearTimeout(collapseTimer); collapseTimer = null; }
+    if (openingTimer) { clearTimeout(openingTimer); openingTimer = null; }
     // The hover card expands into the panel: freeze its committed geometry
     // as the opening transition's before-state (adding the class and the
     // target size in one frame would snap with no animation). Re-targeting
@@ -670,7 +675,9 @@
       .on('contextmenu', (event, n) => {
         event.preventDefault();
         const main = graph.nodes.find(node => node.id === n.id);
-        if (main) openLocalGraph(main);
+        if (!main) return;
+        if (localGraphOpen && localGraphNode && localGraphNode.id === main.id) collapseLocalGraph(event.clientX, event.clientY);
+        else openLocalGraph(main);
       });
     const localTick = () => {
       links.attr('x1', link => link.source.x).attr('y1', link => link.source.y)
@@ -717,10 +724,25 @@
       positionLocalGraph();
     }
     wireLocalResize(grip);
-    if (withOpening) window.setTimeout(() => tooltip.classList.remove('opening'), 320);
+    if (withOpening) openingTimer = window.setTimeout(() => {
+      openingTimer = null;
+      tooltip.classList.remove('opening');
+    }, 320);
   }
 
   function exitLocalGraph() {
+    if (collapseTimer) {
+      // A collapse is mid-flight: cancel it and vanish the panel outright
+      // (e.g. empty-space click during the shrink).
+      clearTimeout(collapseTimer);
+      collapseTimer = null;
+      tooltip.classList.remove('is-local-graph', 'labels-hidden', 'opening', 'is-resizing', 'collapsing');
+      tooltip.style.width = '';
+      tooltip.style.height = '';
+      tooltip.innerHTML = '';
+      tooltip.hidden = true;
+      return;
+    }
     if (!localGraphOpen) return;
     localGraphOpen = false;
     localGraphNode = null;
@@ -732,6 +754,79 @@
     tooltip.innerHTML = '';
     tooltip.hidden = true;
     highlight();
+  }
+
+  // Second right-click on the node whose panel is open collapses the panel
+  // back into the hovering state — the box swaps to the hover card's content
+  // immediately (so what is visible during the whole collapse IS the hover
+  // card) and shrinks from the panel geometry onto the card's natural size,
+  // ending with the tooltip in exactly the state hovering would put it at
+  // the CURRENT pointer position. Right-clicking a DIFFERENT node still
+  // re-targets the panel.
+  function collapseLocalGraph(clientX, clientY) {
+    if (!localGraphOpen || !localGraphNode || collapseTimer) return;
+    const node = localGraphNode;
+    if (localSim) { localSim.stop(); localSim = null; }
+    localResize = null;
+    // Treat it as closed immediately: positionLocalGraph and the hover
+    // handlers must not fight the shrink transition.
+    localGraphOpen = false;
+    localGraphNode = null;
+    if (openingTimer) { clearTimeout(openingTimer); openingTimer = null; }
+    // The box shows the hovering state from the very first frame of the
+    // collapse: swap the panel content for the hover card now.
+    tooltip.classList.remove('is-local-graph', 'labels-hidden');
+    tooltip.innerHTML = `<strong>${escapeHTML(node.title)}</strong><span class="architecture-graph-hint"><kbd>right-click</kbd> open local graph</span>`;
+    // Measure the hover-card target with a hidden probe — same content and
+    // classes tooltipAt renders — without disturbing the box.
+    const probe = document.createElement('div');
+    probe.className = 'architecture-graph-tooltip';
+    probe.style.visibility = 'hidden';
+    probe.innerHTML = `<strong>${escapeHTML(node.title)}</strong><span class="architecture-graph-hint"><kbd>right-click</kbd> open local graph</span>`;
+    root.appendChild(probe);
+    const cardW = probe.offsetWidth;
+    const cardH = probe.offsetHeight;
+    probe.remove();
+    const bounds = root.getBoundingClientRect();
+    const tx = Math.max(10, Math.min(clientX - bounds.left + 14, bounds.width - cardW - 12));
+    const ty = Math.max(10, Math.min(clientY - bounds.top + 14, bounds.height - cardH - 12));
+    // Track the pointer so the collapse lands on whatever the hovering state
+    // is at the END — the pointer may move while the box shrinks.
+    let latestX = clientX;
+    let latestY = clientY;
+    const track = event => { latestX = event.clientX; latestY = event.clientY; };
+    window.addEventListener('pointermove', track);
+    const finish = () => {
+      window.removeEventListener('pointermove', track);
+      collapseTimer = null;
+      tooltip.classList.remove('opening', 'collapsing');
+      tooltip.style.width = '';
+      tooltip.style.height = '';
+      // Land exactly on the hovering state: show the hover card for whatever
+      // node/option sits under the pointer now, or nothing over empty space.
+      const over = document.elementFromPoint(latestX, latestY);
+      const hovered = over?.closest('.architecture-graph-node')?.__data__
+        || over?.closest('.architecture-graph-search-option')?.__data__ || null;
+      if (hovered) {
+        tooltipAt(latestX, latestY, hovered);
+        highlight(hovered);
+      } else {
+        tooltip.innerHTML = '';
+        tooltip.hidden = true;
+        highlight();
+      }
+    };
+    if (reducedMotion.matches) { finish(); return; }
+    tooltip.classList.add('collapsing');
+    tooltip.classList.add('opening');
+    // Commit the panel geometry with the transitions active, then shrink to
+    // the hover-card target — the same two-write pattern as the expand.
+    void tooltip.offsetWidth;
+    tooltip.style.left = `${tx}px`;
+    tooltip.style.top = `${ty}px`;
+    tooltip.style.width = `${cardW}px`;
+    tooltip.style.height = `${cardH}px`;
+    collapseTimer = window.setTimeout(finish, 320);
   }
 
   function hideSearchList() {
@@ -755,6 +850,7 @@
     for (const node of options) {
       const option = document.createElement('li');
       option.className = 'architecture-graph-search-option';
+      option.__data__ = node;
       const title = document.createElement('span');
       title.className = 'architecture-graph-search-option-title';
       title.textContent = node.title;
@@ -780,7 +876,8 @@
       });
       option.addEventListener('contextmenu', event => {
         event.preventDefault();
-        openLocalGraph(node);
+        if (localGraphOpen && localGraphNode && localGraphNode.id === node.id) collapseLocalGraph(event.clientX, event.clientY);
+        else openLocalGraph(node);
       });
       searchList.appendChild(option);
     }
@@ -874,9 +971,12 @@
       })
       .on('contextmenu', (event, node) => {
         // Right-click IS the local-graph trigger: opens the node's local
-        // graph (replacing any open panel); the native menu is suppressed.
+        // graph (replacing any open panel) — or COLLAPSES it when the
+        // right-clicked node's panel is already the open one (toggle); the
+        // native menu is suppressed.
         event.preventDefault();
-        openLocalGraph(node);
+        if (localGraphOpen && localGraphNode && localGraphNode.id === node.id) collapseLocalGraph(event.clientX, event.clientY);
+        else openLocalGraph(node);
       })
       .on('click', (event, node) => {
         if (suppressClick) { suppressClick = false; return; }

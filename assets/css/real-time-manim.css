@@ -739,11 +739,18 @@ a:focus-visible, button:focus-visible {
   pointer-events: auto;
   cursor: default;
 }
-.architecture-graph-tooltip.is-local-graph.opening {
+.architecture-graph-tooltip.opening {
   transition: left 260ms cubic-bezier(.3, .85, .35, 1),
     top 260ms cubic-bezier(.3, .85, .35, 1),
     width 260ms cubic-bezier(.3, .85, .35, 1),
     height 260ms cubic-bezier(.3, .85, .35, 1);
+}
+/* While the panel collapses back into the hover card the box carries the
+   hover-card styles (so its content already IS the hovering state) but must
+   not be clamped by the card's max-width while it is still panel-sized. */
+.architecture-graph-tooltip.collapsing {
+  pointer-events: none;
+  max-width: none;
 }
 .architecture-graph-tooltip.is-local-graph.is-resizing {
   transition: none;
