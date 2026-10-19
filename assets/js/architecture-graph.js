@@ -634,8 +634,9 @@
       .classed('is-center', n => n.isCenter);
     localNodeSelections.append('text')
       .attr('class', 'local-graph-label')
-      .attr('x', n => (n.isCenter ? 26 : 18) + 10)
-      .attr('dy', '.35em')
+      .attr('x', 0)
+      .attr('text-anchor', 'middle')
+      .attr('dy', n => (n.isCenter ? 26 : 18) + 14)
       .classed('is-center', n => n.isCenter)
       .text(n => n.title);
     // Local graph nodes are draggable (classic elastic: pinned while held,
@@ -1103,7 +1104,7 @@
         window.location.href = node.href;
       });
     nodes.append('circle').attr('class', 'architecture-graph-dot').attr('r', radius);
-    nodes.append('text').attr('class', 'architecture-graph-label').attr('x', node => radius(node) + 4).attr('dy', '.35em').text(node => node.title);
+    nodes.append('text').attr('class', 'architecture-graph-label').attr('x', 0).attr('text-anchor', 'middle').attr('dy', node => radius(node) + 8).text(node => node.title);
 
     const linkStrength = edge => {
       const baseStrength = LINE_TENSION_MULTIPLIER * edge.weight / Math.min(edge.source.weight, edge.target.weight);
