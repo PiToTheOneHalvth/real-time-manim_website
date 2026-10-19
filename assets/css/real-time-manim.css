@@ -727,9 +727,11 @@ a:focus-visible, button:focus-visible {
 }
 /* Local graph mode: the hover card expands into a square panel anchored in
    the right-bottom corner direction of the hovered node. The square resizes
-   ONLY by dragging its bottom-right corner grip. The drawn graph fills the
-   square edge-to-edge (the view fits the content bbox), and the title/meta
-   float as a translucent strip over the top. */
+   by dragging a corner grip — bottom-right grows from the fixed anchor,
+   top-left moves the corner and the main graph pans with it so the panel
+   stays at the node's right-bottom. The drawn graph fills the square
+   edge-to-edge (the view fits the content bbox), and the title/meta float
+   as a translucent strip over the top. */
 .architecture-graph-tooltip.is-local-graph {
   display: block;
   box-sizing: border-box;
@@ -849,6 +851,7 @@ a:focus-visible, button:focus-visible {
 }
 .architecture-graph-resize {
   position: absolute;
+  z-index: 2;
   right: 3px;
   bottom: 3px;
   display: grid;
@@ -861,6 +864,12 @@ a:focus-visible, button:focus-visible {
   color: rgba(245, 245, 245, .55);
   cursor: nwse-resize;
   touch-action: none;
+}
+.architecture-graph-resize-top-left {
+  right: auto;
+  bottom: auto;
+  left: 3px;
+  top: 3px;
 }
 .architecture-graph-resize:hover { color: #ffffff; }
 body.architecture-graph-open { overflow: hidden; }

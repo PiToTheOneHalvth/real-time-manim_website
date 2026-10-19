@@ -324,9 +324,14 @@
     tooltip.style.top = `${localGraphY}px`;
   }
 
-  // The square resizes ONLY by dragging its bottom-right corner grip; the
-  // size delta is the mean of the pointer's dx and dy so it stays a square,
-  // and the maximum is clamped so the panel never leaves the viewport.
+  // The square resizes by dragging a corner grip; the size delta is the mean
+  // of the pointer's dx and dy so it stays a square, and the maximum is
+  // clamped so the panel never leaves the viewport. Each grip keeps its
+  // OPPOSITE corner fixed (window-resize semantics): the bottom-right grip
+  // grows from the fixed top-left anchor; the top-left grip pins the
+  // bottom-right corner, derives the top-left as BR − size, and ALSO pans
+  // the main graph by the corner delta so the panel stays anchored at the
+  // hovered node's right-bottom direction.
   function clampLocalGraphSize(size) {
     const { width, height } = localGraphBounds();
     const { margin } = localGraphEdge();
@@ -335,11 +340,52 @@
     return Math.min(Math.max(LOCAL_GRAPH_MIN_SIZE, size), max);
   }
 
-  function wireLocalResize(grip) {
+  // Top-left corner: the bottom-right corner is pinned, so the size is
+  // bounded by the distance from that pinned corner to the viewport's
+  // top-left edge (the right/bottom edges are already inside and never move).
+  function clampLocalGraphCornerSize(size, brLeft, brTop) {
+    const { floor } = localGraphEdge();
+    const maxSize = Math.max(LOCAL_GRAPH_MIN_SIZE,
+      Math.min(LOCAL_GRAPH_MAX_SIZE, brLeft - floor, brTop - floor));
+    return Math.min(Math.max(LOCAL_GRAPH_MIN_SIZE, size), maxSize);
+  }
+
+  function wireLocalResize(grip, corner) {
     const onPointerMove = event => {
       if (!localResize) return;
-      const delta = (event.clientX - localResize.startX + event.clientY - localResize.startY) / 2;
-      applyLocalGraphSize(clampLocalGraphSize(localResize.startSize + delta));
+      const dx = event.clientX - localResize.startX;
+      const dy = event.clientY - localResize.startY;
+      if (corner === 'bottom-right') {
+        const delta = (dx + dy) / 2;
+        applyLocalGraphSize(clampLocalGraphSize(localResize.startSize + delta));
+        return;
+      }
+      // Top-left corner: the bottom-right corner stays pinned while the
+      // square resizes around it, and the main graph pans by the same screen
+      // delta as the moving corner so the node stays glued to the panel's
+      // top-left corner (the panel remains at the node's right-bottom).
+      // Pan from the view CAPTURED AT POINTERDOWN by the cumulative corner
+      // offset — panning the live view by the cumulative offset each move
+      // compounds (move n lands at −10·n(n+1)/2, a runaway). Build the
+      // shifted view with the identity constructor: translate is
+      // screen-space, never k-scaled world-space.
+      const delta = (dx + dy) / 2;
+      const brLeft = localResize.startLeft + localResize.startSize;
+      const brTop = localResize.startTop + localResize.startSize;
+      const size = clampLocalGraphCornerSize(localResize.startSize - delta, brLeft, brTop);
+      const left = brLeft - size;
+      const top = brTop - size;
+      applyLocalGraphSize(size);
+      localGraphX = left;
+      localGraphY = top;
+      tooltip.style.left = `${left}px`;
+      tooltip.style.top = `${top}px`;
+      const view = localResize.startView;
+      const shifted = d3.zoomIdentity
+        .translate(view.x + left - localResize.startLeft, view.y + top - localResize.startTop)
+        .scale(view.k);
+      svg.property('__zoom', shifted);
+      applyGraphView(shifted);
     };
     const onPointerUp = () => {
       if (!localResize) return;
@@ -352,7 +398,15 @@
     grip.addEventListener('pointerdown', event => {
       event.preventDefault();
       event.stopPropagation();
-      localResize = { startX: event.clientX, startY: event.clientY, startSize: localGraphSize };
+      if (corner === 'top-left') cancelGraphJelly();
+      localResize = {
+        startX: event.clientX,
+        startY: event.clientY,
+        startSize: localGraphSize,
+        startLeft: localGraphX,
+        startTop: localGraphY,
+        startView: d3.zoomTransform(svg.node()),
+      };
       tooltip.classList.add('is-resizing');
       window.addEventListener('pointermove', onPointerMove);
       window.addEventListener('pointerup', onPointerUp);
@@ -534,12 +588,21 @@
     localSvg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
     localSvg.setAttribute('aria-hidden', 'true');
     tooltip.appendChild(localSvg);
-    const grip = document.createElement('button');
-    grip.type = 'button';
-    grip.className = 'architecture-graph-resize';
-    grip.setAttribute('aria-label', 'Resize local graph');
-    grip.innerHTML = '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true"><path d="M4 12 12 4M8 16 16 8M0 8 8 0" stroke-linecap="round"/></svg>';
+    const makeResizeGrip = (modifier, ariaLabel, paths) => {
+      const grip = document.createElement('button');
+      grip.type = 'button';
+      grip.className = `architecture-graph-resize${modifier ? ` ${modifier}` : ''}`;
+      grip.setAttribute('aria-label', ariaLabel);
+      grip.innerHTML = `<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true">${paths}</svg>`;
+      return grip;
+    };
+    const grip = makeResizeGrip('', 'Resize local graph',
+      '<path d="M4 12 12 4M8 16 16 8M0 8 8 0" stroke-linecap="round"/>');
+    const topLeftGrip = makeResizeGrip('architecture-graph-resize-top-left',
+      'Resize local graph from the top-left corner',
+      '<path d="M12 4 4 12M16 8 8 16M8 0 0 8" stroke-linecap="round"/>');
     tooltip.appendChild(grip);
+    tooltip.appendChild(topLeftGrip);
     const recenter = document.createElement('button');
     recenter.type = 'button';
     recenter.className = 'architecture-graph-local-recenter';
@@ -729,7 +792,8 @@
       applyLocalGraphSize(localGraphSize);
       positionLocalGraph();
     }
-    wireLocalResize(grip);
+    wireLocalResize(grip, 'bottom-right');
+    wireLocalResize(topLeftGrip, 'top-left');
     if (withOpening) openingTimer = window.setTimeout(() => {
       openingTimer = null;
       tooltip.classList.remove('opening');
