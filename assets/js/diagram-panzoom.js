@@ -169,6 +169,23 @@ async function main() {
       canvas.style.transform = `translate(${tx}px, ${ty}px) scale(${k})`;
       updateRecenterVisibility();
     };
+    // Map the raw (uncompressed) scale the wheel has dialed onto the visible
+    // state: inside [fitK, ZOOM_MAX] the identity, below fitK or above
+    // ZOOM_MAX a 70%-resisted stretch, always anchored at the focal point.
+    // Returns 'min' | 'max' when the state landed in a band, else null. The
+    // raw accumulator itself is never re-synced from the visual value.
+    const applyRawZoom = (px, py) => {
+      let target = rawK;
+      let band = null;
+      if (rawK < fitK) { target = 0.7 * fitK + 0.3 * rawK; band = 'min'; }
+      else if (rawK > ZOOM_MAX) { target = ZOOM_MAX + 0.3 * (rawK - ZOOM_MAX); band = 'max'; }
+      tx = px - (px - tx) * (target / k);
+      ty = py - (py - ty) * (target / k);
+      k = target;
+      touched = true;
+      apply();
+      return band;
+    };
     canvas.style.transformOrigin = '0 0';
     const fit = () => {
       const t = fitTarget();
@@ -181,7 +198,7 @@ async function main() {
     new ResizeObserver(() => {
       fitK = computeFitK();
       if (!touched) fit();
-      else if (k < fitK) startRecover();
+      else if (k < fitK || k > ZOOM_MAX) scheduleJelly();
       else apply();
     }).observe(viewport);
 
@@ -190,7 +207,7 @@ async function main() {
     let dragging = false, sx = 0, sy = 0, ox = 0, oy = 0;
     viewport.addEventListener('pointerdown', (e) => {
       cancelAnim();
-      cancelRecover();
+      cancelJelly();
       cancelMomentum();
       dragging = true;
       viewport.setPointerCapture(e.pointerId);
@@ -207,9 +224,8 @@ async function main() {
     const endDrag = () => {
       dragging = false;
       viewport.classList.remove('dragging');
-      // Released while stretched below the full view: resume the recovery
-      // instead of leaving the diagram stuck smaller than the viewport.
-      if (k < fitK) startRecover();
+      // Released while stretched past a limit: the spring-back resumes.
+      if (k < fitK || k > ZOOM_MAX) scheduleJelly();
     };
     viewport.addEventListener('pointerup', endDrag);
     viewport.addEventListener('pointercancel', endDrag);
@@ -223,21 +239,15 @@ async function main() {
       const rect = viewport.getBoundingClientRect();
       const px = e.clientX - rect.left;
       const py = e.clientY - rect.top;
-      const isZoom = e.ctrlKey || e.metaKey;
-      if (!isZoom) {
-        cancelRecover();
-        touched = true;
-        tx -= e.deltaX;
-        ty -= e.deltaY;
-        apply();
-        return;
-      }
-      // Zoom velocity in log-space (log-rawK per ms), EMA-smoothed over
-      // the gesture — released as momentum when the pinch stops (see
-      // scheduleMomentum). Track the focal point so the glide continues
-      // around the same spot.
+      // Gesture parity with the architecture graph (d3.zoom defaults): every
+      // wheel event zooms — a mouse wheel notch, a trackpad two-finger
+      // scroll, and a pinch alike. Plain wheels use d3's deltaMode-aware
+      // sensitivity curve; pinch (ctrl/meta) keeps the user-tuned speed.
       const now = performance.now();
-      const inst = -e.deltaY * ZOOM_SPEED;
+      const isPinch = e.ctrlKey || e.metaKey;
+      const inst = isPinch
+        ? -e.deltaY * ZOOM_SPEED
+        : -e.deltaY * (e.deltaMode === 1 ? 0.05 : e.deltaMode ? 1 : 0.002) * Math.LN2;
       const since = now - zoomLast;
       zoomVel = since > 120
         ? inst / Math.max(since, 8)
@@ -248,32 +258,8 @@ async function main() {
       rawK *= Math.exp(inst);
       rawK = Math.min(ZOOM_MAX + ZOOM_MAX / 0.3, rawK);
       scheduleMomentum();
-      if (rawK < fitK) {
-        const stretched = 0.7 * fitK + 0.3 * rawK;
-        tx = px - (px - tx) * (stretched / k);
-        ty = py - (py - ty) * (stretched / k);
-        k = stretched;
-        touched = true;
-        apply();
-        startRecover('fit');
-        return;
-      }
-      if (rawK > ZOOM_MAX) {
-        const stretched = ZOOM_MAX + 0.3 * (rawK - ZOOM_MAX);
-        tx = px - (px - tx) * (stretched / k);
-        ty = py - (py - ty) * (stretched / k);
-        k = stretched;
-        touched = true;
-        apply();
-        startRecover('max', tx, ty);
-        return;
-      }
-      cancelRecover();
-      touched = true;
-      tx = px - (px - tx) * (rawK / k);
-      ty = py - (py - ty) * (rawK / k);
-      k = rawK;
-      apply();
+      if (applyRawZoom(px, py)) scheduleJelly();
+      else cancelJelly();
     }, { passive: false });
 
     // Double-click or the recenter button glides back to the initial
@@ -283,54 +269,66 @@ async function main() {
     const cancelAnim = () => {
       if (animFrame) { cancelAnimationFrame(animFrame); animFrame = 0; }
     };
-    // Continuous recovery: whenever the diagram sits below the full view,
-    // it eases back to the centered fit state. Exponential decay is
-    // monotonic — the scale rises toward fitK without ever overshooting it —
-    // and it starts on the first overshoot event, not when the gesture ends.
-    // Scale recovers slightly faster than position so the full-view size
-    // returns promptly while the recentering follows.
-    let recoverFrame = 0;
-    let recoverLast = 0;
-    let recoverMode = 'fit';
-    let recoverK = 0;
-    let recoverTx = 0;
-    let recoverTy = 0;
-    const cancelRecover = () => {
-      if (recoverFrame) { cancelAnimationFrame(recoverFrame); recoverFrame = 0; }
+    // Jelly (rubber band): while the input holds the diagram past a limit
+    // the scale stretches with 70% resistance; when the gesture stops
+    // (wheel has no release event — a short idle window stands in), a
+    // spring-back with a slight overshoot snaps it exactly onto the limit.
+    // Below fitK the spring lands on the centered full view; above ZOOM_MAX
+    // it lands on the ceiling keeping the current translation.
+    let jellyTimer = 0;
+    let jellyFrame = 0;
+    const cancelJelly = () => {
+      if (jellyTimer) { clearTimeout(jellyTimer); jellyTimer = 0; }
+      if (jellyFrame) { cancelAnimationFrame(jellyFrame); jellyFrame = 0; }
     };
-    const recoverStep = (now) => {
-      const t = recoverMode === 'fit'
-        ? fitTarget()
-        : { k: recoverK, tx: recoverTx, ty: recoverTy };
-      const dt = Math.min(64, now - recoverLast);
-      recoverLast = now;
-      const sk = 1 - Math.exp(-dt * 0.006);
-      const sp = 1 - Math.exp(-dt * 0.003);
-      k += (t.k - k) * sk;
-      tx += (t.tx - tx) * sp;
-      ty += (t.ty - ty) * sp;
-      apply();
-      if (Math.abs(k - t.k) < 0.0005 && Math.abs(tx - t.tx) < 0.5 && Math.abs(ty - t.ty) < 0.5) {
-        k = t.k; tx = t.tx; ty = t.ty;
-        rawK = t.k;
-        apply();
-        recoverFrame = 0;
+    const scheduleJelly = () => {
+      cancelJelly();
+      if (motionReduced.matches) {
+        if (k < fitK) {
+          const t = fitTarget();
+          fitK = t.k;
+          rawK = t.k;
+          k = t.k; tx = t.tx; ty = t.ty;
+        } else {
+          rawK = ZOOM_MAX;
+          k = ZOOM_MAX;
+        }
         touched = false;
+        apply();
         return;
       }
-      recoverFrame = requestAnimationFrame(recoverStep);
+      jellyTimer = setTimeout(() => { jellyTimer = 0; jellySpring(); }, 180);
     };
-    const startRecover = (mode = 'fit', targetTx = tx, targetTy = ty) => {
-      if (motionReduced.matches) { fit(); touched = false; return; }
-      recoverMode = mode;
-      if (mode === 'max') {
-        recoverK = ZOOM_MAX;
-        recoverTx = targetTx;
-        recoverTy = targetTy;
-      }
-      if (recoverFrame) return;
-      recoverLast = performance.now();
-      recoverFrame = requestAnimationFrame(recoverStep);
+    const jellySpring = () => {
+      cancelAnim();
+      cancelMomentum();
+      const below = k < fitK;
+      const target = below ? fitTarget() : { k: ZOOM_MAX, tx, ty };
+      if (below) fitK = target.k;
+      // Re-engage the stretch from the boundary: a wheel mid-spring starts
+      // at the edge (accepted ≤4% one-frame correction) instead of the raw
+      // depth the gesture dialed.
+      rawK = target.k;
+      const start = { k, tx, ty };
+      const c1 = 1.70158;
+      const c3 = c1 + 1;
+      const ease = t => (t >= 1 ? 1 : 1 + c3 * (t - 1) ** 3 + c1 * (t - 1) ** 2);
+      const duration = 450;
+      const began = performance.now();
+      const step = (now) => {
+        const t = Math.min(1, (now - began) / duration);
+        const e = ease(t);
+        k = start.k + (target.k - start.k) * e;
+        tx = start.tx + (target.tx - start.tx) * e;
+        ty = start.ty + (target.ty - start.ty) * e;
+        apply();
+        if (t < 1) { jellyFrame = requestAnimationFrame(step); return; }
+        jellyFrame = 0;
+        k = target.k; tx = target.tx; ty = target.ty;
+        touched = false;
+        apply();
+      };
+      jellyFrame = requestAnimationFrame(step);
     };
     // Zoom momentum: a pinch that stops keeps gliding and eases out — the
     // same gradual stop a two-finger swipe gets from the trackpad's own
