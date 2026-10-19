@@ -8,6 +8,24 @@ tags: [test, markdown, renderer]
 A single note exercising every markdown feature the wiki renderer supports: frontmatter, headings, emphasis, rules, quotes, lists, tasks, tables, code, wikilinks, mermaid diagrams, links and images. Paragraphs join across line breaks — this line and the next
 collapse into one paragraph with **bold**, __bold underscores__, *italic*, _italic underscores_, and `inline code`.
 
+## What this wiki supports
+
+- Frontmatter (YAML between `---` lines, stripped from the output)
+- Headings `#` through `######`
+- Emphasis: `**bold**`, `__bold__`, `*italic*`, `_italic_`, `inline code`
+- Horizontal rules: `---`, `***`, `___`
+- Blockquotes `>`, including nested blockquotes
+- Lists: unordered `-`, `*`, `+`; ordered `1.`; task lists `- [ ]` / `- [x]` (rendered as checkboxes)
+- Tables with `---`, `---:`, `:---:` alignment
+- Fenced code blocks with an optional language tag: VS Code-dark highlighting for `python/js/ts/jsx/tsx/c/cpp/h/sh/bash/shell/zsh/json/yaml/yml`, plus a copy button; untagged fences render plain
+- Mermaid diagrams: fences tagged `mermaid` render as dark, centered diagrams — never as code
+- Links: external, mailto, and internal markdown links
+- Wikilinks: a bare note name (must be unique across notes) or `path/to/note.md` plus an alias — both forms are demonstrated in Links below
+- Images degrade to alt text
+- HTML comments are skipped
+
+Not rendered: math (`$…$` and `$$…$$`).
+
 ## Headings
 
 ### Level three
