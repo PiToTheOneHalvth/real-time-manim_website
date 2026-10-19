@@ -15,6 +15,20 @@
   const searchList = root.querySelector('.architecture-graph-search-list');
   const status = root.querySelector('.architecture-graph-status');
   const tooltip = root.querySelector('.architecture-graph-tooltip');
+  // The global labels get a second, purely visual copy in an overlay svg
+  // stacked ABOVE the local-graph panel — the panel is 'behind the label of
+  // the global graph'. The overlay mirrors the main svg (same viewBox, same
+  // world transform, same per-node transforms and state classes), so outside
+  // the panel it overdraws the originals pixel-identically and above the
+  // panel the labels stay visible. pointer-events: none on the whole overlay
+  // — input falls through to the panel (inert) or the main svg (clicks).
+  const labelOverlay = d3.select(viewport)
+    .append('svg')
+    .attr('class', 'architecture-graph-label-overlay')
+    .attr('aria-hidden', 'true')
+    .attr('viewBox', svg.attr('viewBox'));
+  const labelOverlayWorld = labelOverlay.append('g')
+    .attr('class', 'architecture-graph-label-overlay-world');
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   let zoom;
   let simulation;
@@ -37,6 +51,7 @@
   let collapseTimer = null;
   let openingTimer = null;
   let swapTimer = null;
+  let overlayLabels = null;
   const LABEL_ZOOM_THRESHOLD = 1.2;
   const LINK_DISTANCE_MIN = 230;
   const LINK_DISTANCE_MAX = 270;
@@ -55,6 +70,7 @@
   const LOCAL_GRAPH_MAX_SIZE = 900;
   const LOCAL_GRAPH_DEFAULT_MAX = 400;
   const LOCAL_GRAPH_GAP = 14;
+  const LOCAL_GRAPH_TOP_BAND = 40;
   const LOCAL_GRAPH_WORLD = 1000;
   const LOCAL_GRAPH_SETTLE_TICKS = 300;
 
@@ -267,6 +283,14 @@
       .classed('is-active', node => active?.id === node.id)
       .classed('is-neighbor', node => Boolean(active) && node.id !== active.id && connectedNodes.has(node.id))
       .classed('is-unlinked', node => Boolean(active) && !connectedNodes.has(node.id));
+    // Mirror the state classes onto the label overlay's twin nodes so the
+    // labels floating above the panel keep the same fill ranking.
+    if (overlayLabels) overlayLabels
+      .classed('is-dimmed', node => Boolean(query) && !matches(node))
+      .classed('is-match', node => matches(node))
+      .classed('is-active', node => active?.id === node.id)
+      .classed('is-neighbor', node => Boolean(active) && node.id !== active.id && connectedNodes.has(node.id))
+      .classed('is-unlinked', node => Boolean(active) && !connectedNodes.has(node.id));
     edgeLayer.selectAll('.architecture-graph-edge')
       .classed('is-incident', edge => Boolean(active) && (edge.source.id === active.id || edge.target.id === active.id))
       .classed('is-neighbor-edge', edge => Boolean(active) && edge.source.id !== active.id && edge.target.id !== active.id
@@ -320,6 +344,10 @@
     const { margin, floor } = localGraphEdge();
     localGraphX = Math.max(floor, Math.min(x, width - localGraphSize - margin));
     localGraphY = Math.max(floor, Math.min(y, height - localGraphSize - margin));
+    // Near the top of the graph the panel gets a black gradient at its top
+    // edge (see .near-graph-top in the CSS) so the global labels that now
+    // float ABOVE the panel keep a dark, readable backdrop.
+    tooltip.classList.toggle('near-graph-top', localGraphY < LOCAL_GRAPH_TOP_BAND);
     tooltip.style.left = `${localGraphX}px`;
     tooltip.style.top = `${localGraphY}px`;
   }
@@ -484,6 +512,7 @@
       .scale(end.k);
     if (reducedMotion.matches) {
       world.attr('transform', end);
+      labelOverlayWorld.attr('transform', end);
       svg.property('__zoom', end);
       positionLocalGraph();
       return;
@@ -495,6 +524,7 @@
     const started = performance.now();
     const finish = () => {
       world.attr('transform', end);
+      labelOverlayWorld.attr('transform', end);
       svg.property('__zoom', end);
       positionLocalGraph();
       done = true;
@@ -511,6 +541,7 @@
       const eased = sigmoidEase(t);
       const next = d3.zoomIdentity.translate(ix(eased), iy(eased)).scale(ik(eased));
       world.attr('transform', next);
+      labelOverlayWorld.attr('transform', next);
       svg.property('__zoom', next);
       positionLocalGraph();
       if (t === 1) { finish(); return; }
@@ -814,7 +845,7 @@
       clearTimeout(collapseTimer);
       collapseTimer = null;
       if (swapTimer) { clearTimeout(swapTimer); swapTimer = null; }
-      tooltip.classList.remove('is-local-graph', 'labels-hidden', 'opening', 'is-resizing', 'collapsing');
+      tooltip.classList.remove('is-local-graph', 'labels-hidden', 'opening', 'is-resizing', 'collapsing', 'near-graph-top');
       tooltip.style.width = '';
       tooltip.style.height = '';
       tooltip.innerHTML = '';
@@ -826,7 +857,7 @@
     localGraphNode = null;
     localResize = null;
     if (localSim) { localSim.stop(); localSim = null; }
-    tooltip.classList.remove('is-local-graph', 'is-resizing', 'opening');
+    tooltip.classList.remove('is-local-graph', 'is-resizing', 'opening', 'near-graph-top');
     tooltip.style.width = '';
     tooltip.style.height = '';
     tooltip.innerHTML = '';
@@ -991,6 +1022,7 @@
   const applyGraphView = (view) => {
     graphView = view;
     world.attr('transform', `translate(${view.x}, ${view.y}) scale(${view.k})`);
+    labelOverlayWorld.attr('transform', `translate(${view.x}, ${view.y}) scale(${view.k})`);
     root.classList.toggle('labels-hidden', view.k < LABEL_ZOOM_THRESHOLD);
     positionLocalGraph();
   };
@@ -1040,6 +1072,7 @@
     cancelGraphJelly();
     const { width, height } = dimensions();
     svg.attr('viewBox', `0 0 ${width} ${height}`);
+    labelOverlay.attr('viewBox', `0 0 ${width} ${height}`);
     const bounds = world.node().getBBox();
     if (!bounds.width || !bounds.height) return;
     const scale = Math.max(.34, .86 * Math.min(width / bounds.width, height / bounds.height));
@@ -1061,6 +1094,7 @@
     nodeLayer.selectAll('*').remove();
     const { width, height } = dimensions();
     svg.attr('viewBox', `0 0 ${width} ${height}`);
+    labelOverlay.attr('viewBox', `0 0 ${width} ${height}`);
     cancelGraphJelly();
     graphView = d3.zoomIdentity;
     zoom = d3.zoom().on('zoom', event => {
@@ -1131,14 +1165,16 @@
       .on('pointerenter', (event, node) => {
         if (shiftingView) return;
         highlight(node);
+        overlayLabels?.filter(d => d.id === node.id).classed('is-hovered', true);
         if (!localGraphOpen) tooltipAt(event.clientX, event.clientY, node);
       })
       .on('pointermove', (event, node) => {
         if (shiftingView || localGraphOpen) return;
         tooltipAt(event.clientX, event.clientY, node);
       })
-      .on('pointerleave', () => {
+      .on('pointerleave', (event, node) => {
         if (shiftingView) return;
+        overlayLabels?.filter(d => d.id === node.id).classed('is-hovered', false);
         if (localGraphOpen) { highlight(localGraphNode); return; }
         highlight(); hideTooltip();
       })
@@ -1177,6 +1213,18 @@
     nodes.append('circle').attr('class', 'architecture-graph-dot').attr('r', radius);
     nodes.append('text').attr('class', 'architecture-graph-label').attr('x', 0).attr('text-anchor', 'middle').attr('dy', node => radius(node) + 8).text(node => node.title);
 
+    // The label overlay: a non-interactive mirror of the labels (same data,
+    // same geometry, same classes) rendered ABOVE the local-graph panel.
+    labelOverlayWorld.selectAll('*').remove();
+    overlayLabels = labelOverlayWorld.selectAll('g').data(graph.nodes).join('g')
+      .attr('class', 'architecture-graph-node architecture-graph-label-copy')
+      .attr('transform', node => `translate(${node.x}, ${node.y})`);
+    overlayLabels.append('text')
+      .attr('class', 'architecture-graph-label')
+      .attr('x', 0).attr('text-anchor', 'middle')
+      .attr('dy', node => radius(node) + 8)
+      .text(node => node.title);
+
     const linkStrength = edge => {
       const baseStrength = LINE_TENSION_MULTIPLIER * edge.weight / Math.min(edge.source.weight, edge.target.weight);
       const isDraggedLink = draggedNode && (edge.source.id === draggedNode.id || edge.target.id === draggedNode.id);
@@ -1200,6 +1248,7 @@
     const tick = () => {
       links.attr('x1', edge => edge.source.x).attr('y1', edge => edge.source.y).attr('x2', edge => edge.target.x).attr('y2', edge => edge.target.y);
       nodes.attr('transform', node => `translate(${node.x}, ${node.y})`);
+      overlayLabels.attr('transform', node => `translate(${node.x}, ${node.y})`);
       positionLocalGraph();
     };
     simulation.on('tick', tick);

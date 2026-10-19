@@ -502,7 +502,10 @@ a:focus-visible, button:focus-visible {
 }
 .architecture-graph-toolbar {
   position: absolute;
-  z-index: 3;
+  /* Above the local-graph panel (4) and the label overlay (5): the top
+     chrome — search, refresh, recenter, fullscreen — stays on top when the
+     panel is dragged up into it (user-directed). */
+  z-index: 7;
   top: 12px;
   right: 12px;
   left: 12px;
@@ -551,7 +554,7 @@ a:focus-visible, button:focus-visible {
 /* Bing-style search options dropdown below the search field. */
 .architecture-graph-search-list {
   position: absolute;
-  z-index: 5;
+  z-index: 6;
   top: calc(100% + 8px);
   right: 0;
   left: 0;
@@ -691,8 +694,22 @@ a:focus-visible, button:focus-visible {
 }
 .architecture-graph.labels-hidden .architecture-graph-label { opacity: 0; }
 .architecture-graph-node:hover .architecture-graph-label,
+.architecture-graph-node.is-hovered .architecture-graph-label,
 .architecture-graph-node.is-active .architecture-graph-label,
 .architecture-graph-node.is-neighbor .architecture-graph-label { fill: #ffffff; }
+/* Second, purely visual copy of the global labels stacked ABOVE the
+   local-graph panel — the panel sits behind the global graph's labels.
+   Mirrors the main svg (same viewBox and transforms); pointer-events: none
+   so all input falls through to the panel (inert) or the main svg. */
+.architecture-graph-label-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
 .architecture-graph-tooltip {
   position: absolute;
   z-index: 4;
@@ -740,6 +757,20 @@ a:focus-visible, button:focus-visible {
   overflow: hidden;
   pointer-events: auto;
   cursor: default;
+}
+/* When the panel hugs the top of the graph, a black gradient darkens its
+   top band: the global labels floating above it (label overlay) get a dark,
+   readable backdrop and the panel edge melts into the canvas. */
+.architecture-graph-tooltip.is-local-graph.near-graph-top::before {
+  content: '';
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 110px;
+  pointer-events: none;
+  background: linear-gradient(rgba(0, 0, 0, .85), rgba(0, 0, 0, .4) 50%, transparent);
 }
 .architecture-graph-tooltip.opening {
   transition: left 260ms cubic-bezier(.3, .85, .35, 1),
