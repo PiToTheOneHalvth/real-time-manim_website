@@ -47,13 +47,19 @@
   let localGraphSize = 0;
   let localGraphX = 0;
   let localGraphY = 0;
-  let localFitK = 1;
+  let localLabelResync = null;
   let shiftingView = false;
   let collapseTimer = null;
   let openingTimer = null;
   let swapTimer = null;
   let overlayLabels = null;
   const LABEL_ZOOM_THRESHOLD = 1.2;
+  // Local-graph labels show once the graph is drawn at this absolute scale —
+  // px per world unit = zoom × panel px / LOCAL_GRAPH_WORLD — so the 12px
+  // labels render at least 0.6 × 12 = 7.2px on screen. The fitted ratio
+  // never appears: zooming and resizing the square both move the crossing
+  // point, exactly tracking the graph's absolute on-screen size.
+  const LOCAL_LABEL_MIN_SCALE = 0.6;
   const LINK_DISTANCE_MIN = 230;
   const LINK_DISTANCE_MAX = 270;
   const LINE_TENSION_MULTIPLIER = 4;
@@ -321,6 +327,10 @@
     localGraphSize = size;
     tooltip.style.width = `${size}px`;
     tooltip.style.height = `${size}px`;
+    // The drawn scale changes with the square's size, so the label state
+    // re-syncs on every resize step (the opening transition's animated
+    // used size is irrelevant — the TARGET size is what the view settles on).
+    if (localLabelResync) localLabelResync();
   }
 
   // The panel hugs the screen edge in fullscreen (no margin), and keeps a
@@ -654,7 +664,7 @@
     // the content's bounding box (dots plus radii) with NO gap between the
     // showing edge and the panel boundary, capped at k = 6 so a lone node
     // doesn't blow up past the zoom ceiling.
-    const computeFit = () => {
+    const localBBox = () => {
       let x0 = Infinity;
       let y0 = Infinity;
       let x1 = -Infinity;
@@ -666,35 +676,45 @@
         y0 = Math.min(y0, n.y - r);
         y1 = Math.max(y1, n.y + r);
       }
-      const bw = Math.max(1, x1 - x0);
-      const bh = Math.max(1, y1 - y0);
+      return { x0, x1, y0, y1, bw: Math.max(1, x1 - x0), bh: Math.max(1, y1 - y0) };
+    };
+    const computeFit = () => {
+      const { x0, x1, y0, y1, bw, bh } = localBBox();
       const k = Math.min(6, world / bw, world / bh);
       return d3.zoomIdentity
         .translate(world / 2 - k * (x0 + x1) / 2, world / 2 - k * (y0 + y1) / 2)
         .scale(k);
     };
+    // Labels show/hide by the graph's ABSOLUTE drawn scale, not its fitted
+    // ratio (user-directed 2026-10-20): px per world unit is k × panel px /
+    // LOCAL_GRAPH_WORLD, and labels appear once it reaches
+    // LOCAL_LABEL_MIN_SCALE — the 12px labels then render ≥ 7.2px on screen.
+    const localLabelShown = k =>
+      k * localGraphSize / LOCAL_GRAPH_WORLD >= LOCAL_LABEL_MIN_SCALE;
+    const syncLocalLabels = k => tooltip.classList.toggle('labels-hidden', !localLabelShown(k));
     const applyLocalTransform = next => {
-      localFitK = next.k;
       localWorld.attr('transform', next);
       d3.select(localSvg).property('__zoom', next);
+      syncLocalLabels(next.k);
     };
     // The local graph is zoomable (wheel) and pannable (background drag);
     // d3.drag's stopImmediatePropagation on the dots keeps dot drags from
-    // panning the view, exactly like the main graph. Labels hide below the
-    // SAME RELATIVE threshold as the global graph: 1.2 × the fitted rest
-    // scale, so they stay hidden at rest and appear after zooming in.
+    // panning the view, exactly like the main graph. Labels show/hide by
+    // the graph's absolute drawn scale (see localLabelShown) — every zoom
+    // event re-evaluates it, and every resize step does too, so the wheel
+    // and the corner grips both move the crossing point.
     const localZoom = d3.zoom().scaleExtent([.5, 6]).on('zoom', event => {
       localWorld.attr('transform', event.transform);
-      tooltip.classList.toggle('labels-hidden', event.transform.k < localFitK * LABEL_ZOOM_THRESHOLD);
+      syncLocalLabels(event.transform.k);
     });
     selection.call(localZoom).on('dblclick.zoom', null);
-    // The local view starts at the fitted rest scale, below the relative
-    // label threshold, so labels are hidden until the user zooms in — same
-    // as the global graph.
+    // Labels start hidden; the fitted rest view applied on open re-syncs
+    // them to the drawn-scale rule, and applyLocalGraphSize re-syncs once
+    // the final panel size lands.
     tooltip.classList.add('labels-hidden');
     // Recenter glides the local view back to the fitted rest view (whole
-    // graph visible, labels re-hidden) with the same sigmoid rAF + watchdog
-    // pattern as the main-view shift.
+    // graph visible, labels synced to the drawn-scale rule along the way)
+    // with the same sigmoid rAF + watchdog pattern as the main-view shift.
     function recenterLocal() {
       const startT = d3.zoomTransform(localSvg);
       const target = computeFit();
@@ -705,7 +725,6 @@
       const started = performance.now();
       const finish = () => {
         applyLocalTransform(target);
-        tooltip.classList.toggle('labels-hidden', true);
       };
       const step = () => {
         if (done) return;
@@ -714,13 +733,16 @@
         const next = d3.zoomIdentity.translate(ix(eased), iy(eased)).scale(ik(eased));
         localWorld.attr('transform', next);
         d3.select(localSvg).property('__zoom', next);
-        tooltip.classList.toggle('labels-hidden', next.k < localFitK * LABEL_ZOOM_THRESHOLD);
+        syncLocalLabels(next.k);
         if (t === 1) { done = true; return; }
         requestAnimationFrame(step);
       };
       requestAnimationFrame(step);
       window.setTimeout(() => { if (!done) { done = true; finish(); } }, 370);
     }
+    // applyLocalGraphSize (resize steps, opening target size) re-evaluates
+    // the label state through this hook against the CURRENT local view.
+    localLabelResync = () => syncLocalLabels(d3.zoomTransform(localSvg).k);
     const links = localEdgeLayer.selectAll('line').data(localLinks).join('line')
       .attr('class', 'local-graph-edge');
     const localNodeSelections = localNodeLayer.selectAll('g').data(localNodes).join('g')
@@ -841,6 +863,7 @@
       clearTimeout(collapseTimer);
       collapseTimer = null;
       if (swapTimer) { clearTimeout(swapTimer); swapTimer = null; }
+      localLabelResync = null;
       tooltip.classList.remove('is-local-graph', 'labels-hidden', 'opening', 'is-resizing', 'collapsing');
       tooltip.style.width = '';
       tooltip.style.height = '';
@@ -852,6 +875,7 @@
     localGraphOpen = false;
     localGraphNode = null;
     localResize = null;
+    localLabelResync = null;
     if (localSim) { localSim.stop(); localSim = null; }
     tooltip.classList.remove('is-local-graph', 'is-resizing', 'opening');
     tooltip.style.width = '';

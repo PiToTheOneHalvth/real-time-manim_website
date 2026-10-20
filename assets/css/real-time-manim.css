@@ -828,7 +828,7 @@ a:focus-visible, button:focus-visible {
   transition: opacity 120ms ease;
 }
 .local-graph-label.is-center { fill: #ffffff; }
-/* Labels hide below the same zoom threshold as the global graph. */
+/* Labels hide below the graph's absolute drawn-scale threshold. */
 .architecture-graph-tooltip.labels-hidden .local-graph-label { opacity: 0; }
 .local-graph-node { cursor: pointer; }
 .local-graph-node:active { cursor: grabbing; }
