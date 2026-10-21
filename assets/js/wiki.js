@@ -2,7 +2,8 @@
   const shell = document.querySelector('.wiki-shell');
   if (!shell) return;
 
-  const sourceRoot = new URL(shell.dataset.sourceRoot || '../../wiki/en_us/', document.baseURI);
+  const sourceRootRaw = shell.dataset.sourceRoot || '../../wiki/en_us/';
+  const sourceRoot = new URL(sourceRootRaw, document.baseURI);
   const entryPath = shell.dataset.entryPath || 'index.md';
   const manifestPath = shell.dataset.manifestPath || 'manifest.json';
   const article = document.getElementById('wiki-article');
@@ -15,6 +16,38 @@
   let currentID = '';
   let sourceSignature = '';
   let refreshTimer;
+
+  const UI_STRINGS = {
+    en: {
+      notes: count => `${count} notes`,
+      ofNotes: (visible, total) => `${visible} of ${total} notes`,
+      loadingNote: 'Loading note...',
+      noNotes: 'No Markdown notes were found.',
+      noteError: 'This note could not be loaded.',
+      sourceError: 'The wiki source could not be loaded. Serve the site over HTTP.',
+      copied: 'Code copied',
+      copyCode: 'Copy code',
+      showNotes: 'Show notes',
+      hideNotes: 'Hide notes',
+      expand: name => `Expand ${name}`,
+      collapse: name => `Collapse ${name}`,
+    },
+    zh: {
+      notes: count => `${count} 篇笔记`,
+      ofNotes: (visible, total) => `${total} 篇中 ${visible} 篇`,
+      loadingNote: '正在加载笔记…',
+      noNotes: '未找到任何 Markdown 笔记。',
+      noteError: '无法加载该笔记。',
+      sourceError: '无法加载 Wiki 源。请通过 HTTP 提供本站点。',
+      copied: '已复制',
+      copyCode: '复制代码',
+      showNotes: '显示笔记',
+      hideNotes: '隐藏笔记',
+      expand: name => `展开 ${name}`,
+      collapse: name => `折叠 ${name}`,
+    },
+  };
+  const ui = UI_STRINGS[shell.dataset.ui === 'zh' ? 'zh' : 'en'];
 
   const escapeHTML = value => String(value).replace(/[&<>"']/g, character => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
@@ -29,7 +62,7 @@
       const close = target.indexOf('>');
       target = close >= 0 ? target.slice(1, close) : target;
     } else {
-      target = target.split(/\s+/)[0];
+      target = target.replace(/\s+(['"])[^'"]*\1\s*$/, '');
     }
     const hash = target.indexOf('#');
     return {
@@ -82,6 +115,28 @@
     } catch {
       return null;
     }
+  }
+
+  function resolveAssetPath(sourcePath, link) {
+    const target = link.path;
+    if (!target || /^[a-z][a-z\d+.-]*:/i.test(target) || target.startsWith('/') || target.startsWith('#')) return null;
+    try {
+      const absolute = new URL(target, new URL(sourcePath, sourceRoot));
+      const prefix = sourceRoot.pathname.endsWith('/') ? sourceRoot.pathname : `${sourceRoot.pathname}/`;
+      if (!absolute.pathname.startsWith(prefix)) return null;
+      const asset = normalizePath(absolute.pathname.slice(prefix.length));
+      return asset || null;
+    } catch {
+      return null;
+    }
+  }
+
+  function resolveMediaSrcs(raw, sourcePath) {
+    return raw.replace(/(src\s*=\s*)(["'])([^"']+)\2/gi, (match, prefix, quote, src) => {
+      if (/^[a-z][a-z\d+.-]*:/i.test(src) || src.startsWith('/') || src.startsWith('#')) return match;
+      const asset = resolveAssetPath(sourcePath, { path: src, vaultRelative: false });
+      return asset ? `${prefix}${quote}${sourceRootRaw}${asset}${quote}` : match;
+    });
   }
 
   async function discover() {
@@ -150,6 +205,8 @@
         const href = `wiki.html?note=${encodeURIComponent(internal.id)}${internal.fragment ? `#${encodeURIComponent(internal.fragment)}` : ''}`;
         return token(`<a href="${href}">${inline(label, sourcePath)}</a>`);
       }
+      const assetPath = resolveAssetPath(sourcePath, { path: splitTarget(rawTarget).path, vaultRelative: false });
+      if (assetPath) return token(`<a href="${escapeHTML(sourceRootRaw + assetPath)}" rel="noreferrer">${inline(label, sourcePath)}</a>`);
       const external = safeExternalHref(splitTarget(rawTarget).path);
       return external ? token(`<a href="${escapeHTML(external)}" rel="noreferrer">${inline(label, sourcePath)}</a>`) : escapeHTML(label);
     });
@@ -164,7 +221,7 @@
   }
 
   function headingID(raw, used) {
-    const base = raw.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'section';
+    const base = raw.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-|-$/g, '') || 'section';
     const count = used.get(base) || 0;
     used.set(base, count + 1);
     return count ? `${base}-${count + 1}` : base;
@@ -321,13 +378,13 @@
     button.dataset.copied = 'false';
     const setCopied = () => {
       button.dataset.copied = 'true';
-      button.setAttribute('aria-label', 'Code copied');
-      button.title = 'Copied';
+      button.setAttribute('aria-label', ui.copied);
+      button.title = ui.copied;
     };
     const reset = () => {
       button.dataset.copied = 'false';
-      button.setAttribute('aria-label', 'Copy code');
-      button.title = 'Copy code';
+      button.setAttribute('aria-label', ui.copyCode);
+      button.title = ui.copyCode;
     };
     (async () => {
       try {
@@ -411,7 +468,7 @@
           if (code.language === 'mermaid') {
             html.push(`<div class="wiki-mermaid">${code.lines.join('\n')}</div>`);
           } else {
-            html.push(`<div class="wiki-codeblock"><pre><code${code.language ? ` class="language-${escapeHTML(code.language)}"` : ''}>${escapeHTML(code.lines.join('\n'))}</code></pre><button class="wiki-code-copy" type="button" aria-label="Copy code" title="Copy code">${COPY_ICON_SVG}${CHECK_ICON_SVG}</button></div>`);
+            html.push(`<div class="wiki-codeblock"><pre><code${code.language ? ` class="language-${escapeHTML(code.language)}"` : ''}>${escapeHTML(code.lines.join('\n'))}</code></pre><button class="wiki-code-copy" type="button" aria-label="${ui.copyCode}" title="${ui.copyCode}">${COPY_ICON_SVG}${CHECK_ICON_SVG}</button></div>`);
           }
           code = null;
         } else code.lines.push(line);
@@ -425,6 +482,16 @@
         flushAll();
         const level = heading[1].length;
         html.push(`<h${level} id="${headingID(heading[2], usedIDs)}">${inline(heading[2], sourcePath)}</h${level}>`);
+        continue;
+      }
+      if (/^<video\b/i.test(line)) {
+        flushAll();
+        let videoHTML = line;
+        while (!/<\/video\s*>\s*$/i.test(videoHTML) && index + 1 < lines.length) {
+          index += 1;
+          videoHTML += `\n${lines[index]}`;
+        }
+        html.push(`<div class="wiki-video">${resolveMediaSrcs(videoHTML, sourcePath)}</div>`);
         continue;
       }
       if (/^\s*([-*_])(?:\s*\1){2,}\s*$/.test(line)) { flushAll(); html.push('<hr>'); continue; }
@@ -450,7 +517,7 @@
       if (code.language === 'mermaid') {
         html.push(`<div class="wiki-mermaid">${code.lines.join('\n')}</div>`);
       } else {
-        html.push(`<div class="wiki-codeblock"><pre><code${code.language ? ` class="language-${escapeHTML(code.language)}"` : ''}>${escapeHTML(code.lines.join('\n'))}</code></pre><button class="wiki-code-copy" type="button" aria-label="Copy code" title="Copy code">${COPY_ICON_SVG}${CHECK_ICON_SVG}</button></div>`);
+        html.push(`<div class="wiki-codeblock"><pre><code${code.language ? ` class="language-${escapeHTML(code.language)}"` : ''}>${escapeHTML(code.lines.join('\n'))}</code></pre><button class="wiki-code-copy" type="button" aria-label="${ui.copyCode}" title="${ui.copyCode}">${COPY_ICON_SVG}${CHECK_ICON_SVG}</button></div>`);
       }
     }
     flushAll();
@@ -499,7 +566,7 @@
       const arrow = folder.querySelector('.wiki-folder-arrow');
       if (arrow) {
         arrow.setAttribute('aria-expanded', String(open));
-        arrow.setAttribute('aria-label', `${open ? 'Collapse' : 'Expand'} ${folder.dataset.name}`);
+        arrow.setAttribute('aria-label', `${open ? ui.collapse(folder.dataset.name) : ui.expand(folder.dataset.name)}`);
       }
     }
   }
@@ -511,7 +578,7 @@
       const arrow = folder.querySelector('.wiki-folder-arrow');
       if (arrow) {
         arrow.setAttribute('aria-expanded', String(open));
-        arrow.setAttribute('aria-label', `${open ? 'Collapse' : 'Expand'} ${folder.dataset.name}`);
+        arrow.setAttribute('aria-label', `${open ? ui.collapse(folder.dataset.name) : ui.expand(folder.dataset.name)}`);
       }
     });
   }
@@ -526,7 +593,7 @@
 
   function renderFolderNode(node, container) {
     [...node.folders.values()].sort((a, b) => a.name.localeCompare(b.name)).forEach(folder => {
-      const folderEntry = documents.get(`${folder.path}/index.md`);
+      const folderEntry = documents.get(`${folder.path}/index.md`) || documents.get(`${folder.path}/README.md`);
       const folderEl = document.createElement('div');
       folderEl.className = 'wiki-folder';
       folderEl.dataset.path = folder.path;
@@ -536,7 +603,7 @@
       const arrow = document.createElement('button');
       arrow.type = 'button';
       arrow.className = 'wiki-folder-arrow';
-      arrow.setAttribute('aria-label', `Expand ${folder.name}`);
+      arrow.setAttribute('aria-label', ui.expand(folder.name));
       arrow.innerHTML = ARROW_SVG;
       let name;
       if (folderEntry) {
@@ -559,7 +626,7 @@
       inner.className = 'wiki-folder-children-inner';
       renderFolderNode(folder, inner);
       folder.notes.sort((a, b) => a.name.localeCompare(b.name)).forEach(note => {
-        if (note.entry.id === `${folder.path}/index`) return;
+        if (folderEntry && note.entry.id === folderEntry.id) return;
         const link = document.createElement('a');
         link.className = 'wiki-note-link';
         link.href = `wiki.html?note=${encodeURIComponent(note.entry.id)}`;
@@ -580,7 +647,7 @@
     const tree = buildTree();
     renderFolderNode(tree, noteList);
     tree.notes.sort((a, b) => a.name.localeCompare(b.name)).forEach(note => {
-      if (note.entry.id === 'index') return;
+      if (note.entry.id === noteID(entryPath)) return;
       const link = document.createElement('a');
       link.className = 'wiki-note-link';
       link.href = `wiki.html?note=${encodeURIComponent(note.entry.id)}`;
@@ -611,7 +678,7 @@
       folder.classList.remove('is-collapsed');
     });
     if (!query) syncFolderStates();
-    status.textContent = query ? `${visible} of ${total} notes` : `${visible} notes`;
+    status.textContent = query ? ui.ofNotes(visible, total) : ui.notes(visible);
   }
 
   function markCurrent() {
@@ -661,25 +728,25 @@
   }
 
   async function loadNote(id) {
-    const entry = entryByID(id) || entryByID('index');
+    const entry = entryByID(id) || entryByID(noteID(entryPath));
     if (!entry) {
-      article.innerHTML = '<p class="wiki-error">No Markdown notes were found.</p>';
+      article.innerHTML = `<p class="wiki-error">${ui.noNotes}</p>`;
       return;
     }
     currentID = entry.id;
-    article.innerHTML = '<p class="wiki-loading">Loading note...</p>';
+    article.innerHTML = `<p class="wiki-loading">${ui.loadingNote}</p>`;
     try {
       if (!entry.markdown) entry.markdown = await fetchText(new URL(entry.path, sourceRoot));
       renderNote(entry);
       updateList();
     } catch (error) {
       console.error('wiki note:', error);
-      article.innerHTML = '<p class="wiki-error">This note could not be loaded.</p>';
+      article.innerHTML = `<p class="wiki-error">${ui.noteError}</p>`;
     }
   }
 
   function navigate(id, push = true) {
-    const target = entryByID(id) ? id : 'index';
+    const target = entryByID(id) ? id : noteID(entryPath);
     if (push) history.pushState({}, '', `wiki.html?note=${encodeURIComponent(target)}`);
     loadNote(target);
   }
@@ -692,7 +759,7 @@
     sourceSignature = signature;
     if (changed) {
       renderList();
-      if (renderCurrent) await loadNote(currentID || new URLSearchParams(location.search).get('note') || 'index');
+      if (renderCurrent) await loadNote(currentID || new URLSearchParams(location.search).get('note') || noteID(entryPath));
     } else {
       updateList();
     }
@@ -706,13 +773,13 @@
         const setTocState = (collapsed) => {
           shell.classList.toggle('is-toc-collapsed', collapsed);
           sidebarToggle.setAttribute('aria-expanded', String(!collapsed));
-          sidebarToggle.setAttribute('aria-label', collapsed ? 'Show notes' : 'Hide notes');
+          sidebarToggle.setAttribute('aria-label', collapsed ? ui.showNotes : ui.hideNotes);
         };
         setTocState(localStorage.getItem('wiki-toc-collapsed') === '1');
         sidebarToggle.addEventListener('click', () => {
           const collapsed = shell.classList.toggle('is-toc-collapsed');
           sidebarToggle.setAttribute('aria-expanded', String(!collapsed));
-          sidebarToggle.setAttribute('aria-label', collapsed ? 'Show notes' : 'Hide notes');
+          sidebarToggle.setAttribute('aria-label', collapsed ? ui.showNotes : ui.hideNotes);
           try { localStorage.setItem('wiki-toc-collapsed', collapsed ? '1' : '0'); } catch { /* private mode */ }
         });
       }
@@ -744,12 +811,12 @@
         event.preventDefault();
         navigate(decodeURIComponent(match[1]));
       });
-      window.addEventListener('popstate', () => navigate(new URLSearchParams(location.search).get('note') || 'index', false));
-      await loadNote(new URLSearchParams(location.search).get('note') || 'index');
+      window.addEventListener('popstate', () => navigate(new URLSearchParams(location.search).get('note') || noteID(entryPath), false));
+      await loadNote(new URLSearchParams(location.search).get('note') || noteID(entryPath));
       if (localHost) refreshTimer = window.setInterval(() => refreshSource(true).catch(error => console.error('wiki refresh:', error)), 5000);
     } catch (error) {
       console.error('wiki:', error);
-      article.innerHTML = '<p class="wiki-error">The wiki source could not be loaded. Serve the site over HTTP.</p>';
+      article.innerHTML = `<p class="wiki-error">${ui.sourceError}</p>`;
     }
   }
 

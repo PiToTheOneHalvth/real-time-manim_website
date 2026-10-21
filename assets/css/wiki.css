@@ -32,8 +32,8 @@ button, input { font: inherit; }
 }
 .wiki-brand { text-decoration: none; }
 .wiki-nav { display: flex; flex-wrap: wrap; gap: 20px; }
-.wiki-nav a, .wiki-open-graph { text-underline-offset: .18em; }
-.wiki-nav a:hover, .wiki-open-graph:hover { opacity: .65; }
+.wiki-nav a, .wiki-open-graph, .wiki-lang { text-underline-offset: .18em; }
+.wiki-nav a:hover, .wiki-open-graph:hover, .wiki-lang:hover { opacity: .65; }
 
 .wiki-shell {
   display: grid;
@@ -46,6 +46,7 @@ button, input { font: inherit; }
 .wiki-shell.is-toc-collapsed .wiki-sidebar-header { margin-bottom: 0; }
 .wiki-shell .wiki-sidebar-header h1,
 .wiki-shell .wiki-open-graph,
+.wiki-shell .wiki-lang,
 .wiki-shell .wiki-search-label,
 .wiki-shell .wiki-status,
 .wiki-shell .wiki-note-list {
@@ -56,6 +57,7 @@ button, input { font: inherit; }
 }
 .wiki-shell.is-toc-collapsed .wiki-sidebar-header h1,
 .wiki-shell.is-toc-collapsed .wiki-open-graph,
+.wiki-shell.is-toc-collapsed .wiki-lang,
 .wiki-shell.is-toc-collapsed .wiki-search-label,
 .wiki-shell.is-toc-collapsed .wiki-status,
 .wiki-shell.is-toc-collapsed .wiki-note-list {
@@ -89,7 +91,7 @@ button, input { font: inherit; }
 .wiki-shell.is-toc-collapsed .wiki-sidebar-header { padding-right: 0; }
 .wiki-sidebar h1 { margin: 0; font-size: 30px; font-weight: 400; }
 .wiki-sidebar-actions { display: flex; align-items: center; gap: 14px; }
-.wiki-open-graph { font-size: 14px; }
+.wiki-open-graph, .wiki-lang { font-size: 14px; }
 .wiki-sidebar-toggle {
   position: absolute;
   z-index: 1;
@@ -256,6 +258,8 @@ a.wiki-folder-name { text-decoration: none; border-radius: 5px; }
 .wiki-codeblock pre { padding-right: 44px; }
 .wiki-mermaid { margin: 28px 0; }
 .wiki-mermaid svg { display: block; max-width: 100%; height: auto; margin: 0 auto; }
+.wiki-video { margin: 28px 0; }
+.wiki-video video { display: block; max-width: 100%; height: auto; margin: 0 auto; }
 .wiki-mermaid .wiki-mermaid-source {
   padding: 18px;
   overflow: auto;
