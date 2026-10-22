@@ -3,7 +3,7 @@
   if (!root || !window.d3) return;
 
   const d3 = window.d3;
-  const sourceRoot = new URL(root.dataset.sourceRoot || '../../wiki/en_us/', document.baseURI);
+  const sourceRoot = new URL(root.dataset.sourceRoot || '../../wiki/en_US/', document.baseURI);
   const entryPath = root.dataset.entryPath || 'index.md';
   const manifestPath = root.dataset.manifestPath || 'manifest.json';
   const viewport = root.querySelector('.architecture-graph-viewport');

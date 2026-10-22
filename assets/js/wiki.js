@@ -2,7 +2,7 @@
   const shell = document.querySelector('.wiki-shell');
   if (!shell) return;
 
-  const sourceRootRaw = shell.dataset.sourceRoot || '../../wiki/en_us/';
+  const sourceRootRaw = shell.dataset.sourceRoot || '../../wiki/en_US/';
   const sourceRoot = new URL(sourceRootRaw, document.baseURI);
   const entryPath = shell.dataset.entryPath || 'index.md';
   const manifestPath = shell.dataset.manifestPath || 'manifest.json';

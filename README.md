@@ -6,16 +6,16 @@ A static, five-page scaffold. Plain HTML and shared CSS; no build step.
 
 ```text
 pages/
-  en_us/
+  en_US/
     real_time_manim.html           Real-Time Manim product page
     manteraction.html              Manteraction product page
     try.html                       Try Real-Time Manim placeholder
     wiki.html                      Dynamic Markdown wiki and note reader
     phormation.html                Club PHormation page
-  zh_cn/                           Chinese pages (empty until requested)
+  zh_CN/                           Chinese pages (empty until requested)
 wiki/
-  en_us/                           Wiki notes: markdown + manifest.json
-  zh_cn/                           Chinese notes (empty until requested)
+  en_US/                           Wiki notes: markdown + manifest.json
+  zh_CN/                           Chinese notes (empty until requested)
 assets/
   css/main.css                    Shared minimal layout
 docs/
@@ -27,7 +27,7 @@ reference_for_real_time_manim/
 The Real-Time Manim desktop page is implemented with its own stylesheet
 (`assets/css/real-time-manim.css`) and clipboard script
 (`assets/js/real-time-manim.js`). The architecture section contains a live
-Obsidian-style graph sourced from `wiki/en_us/`; `pages/en_us/wiki.html`
+Obsidian-style graph sourced from `wiki/en_US/`; `pages/en_US/wiki.html`
 provides the same-origin dynamic Markdown reader for graph-node clicks. The
 other three HTML files remain empty until their designs are requested. Mobile
 layout is implemented for the product and wiki surfaces.
@@ -42,7 +42,7 @@ https://cdn.jsdelivr.net/npm/simple-icons@v14/icons/pypi.svg.
 ## Deployment
 
 Serve this directory as the static site root and link directly to the five HTML
-pages under pages/en_us/. There is no index page. Relative links support a domain root
+pages under pages/en_US/. There is no index page. Relative links support a domain root
 or a subdirectory deployment. Hosting configuration is not supplied by this scaffold.
 
 See [architecture notes](docs/architecture.md) before extending the site.

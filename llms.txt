@@ -7,6 +7,6 @@
 - [Architecture / session log](docs/architecture.md): what has been done, session by session.
 
 ## Human pages
-- [Product](pages/en_us/real_time_manim.html)
-- [Wiki (en)](pages/en_us/wiki.html)
-- [Wiki (zh)](pages/zh_cn/wiki.html)
+- [Product](pages/en_US/real_time_manim.html)
+- [Wiki (en)](pages/en_US/wiki.html)
+- [Wiki (zh)](pages/zh_CN/wiki.html)
