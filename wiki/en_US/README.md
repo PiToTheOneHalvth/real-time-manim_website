@@ -1,4 +1,4 @@
-# RTM-Wiki (English manual)
+# Real-Time-Manim wiki
 
 An English manual snapshot for Real-Time-Manim (RTM): **122 pages**, 9 chapters, **351** sample clips.
 
