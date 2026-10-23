@@ -277,6 +277,19 @@
     return Math.max(8, Math.min(3 * Math.sqrt(node.weight + 1), 30));
   }
 
+  // A note belongs to the reader, not to the graph: inside the wiki's
+  // Architecture panel this graph runs in an iframe, and navigating that frame
+  // would replace the graph with the wiki page. Hand the URL to the whole page
+  // instead (same origin; fall back to local navigation if it is not).
+  function openNote(href) {
+    const target = window.parent && window.parent !== window ? window.parent : window;
+    try {
+      target.location.href = href;
+    } catch {
+      window.location.href = href;
+    }
+  }
+
   function seededRandom(seedText) {
     let seed = 2166136261;
     for (let index = 0; index < seedText.length; index += 1) {
@@ -853,7 +866,7 @@
       }));
     localNodeSelections.on('click', (event, n) => {
       if (n.__moved) { n.__moved = false; return; }
-      window.location.href = n.href;
+      openNote(n.href);
     });
     // Hovering a dot inside the local graph gives main-graph brightness
     // feedback, and right-clicking it re-targets the panel to that dot's
@@ -1086,7 +1099,7 @@
       option.addEventListener('click', event => {
         event.stopPropagation();
         if (localGraphOpen) openLocalGraph(node);
-        else window.location.href = node.href;
+        else openNote(node.href);
       });
       option.addEventListener('contextmenu', event => {
         event.preventDefault();
@@ -1292,7 +1305,7 @@
       .on('keydown', (event, node) => {
         if (event.key === 'Enter' || event.key === ' ') {
           event.preventDefault();
-          window.location.href = node.href;
+          openNote(node.href);
         }
       })
       .on('contextmenu', (event, node) => {
@@ -1311,7 +1324,7 @@
           openLocalGraph(node);
           return;
         }
-        window.location.href = node.href;
+        openNote(node.href);
       });
     nodes.append('circle').attr('class', 'architecture-graph-dot').attr('r', radius);
     nodes.append('text').attr('class', 'architecture-graph-label').attr('x', 0).attr('text-anchor', 'middle').attr('dy', node => radius(node) + 8).text(node => node.title);
