@@ -7,8 +7,20 @@
   --band: rgba(245, 245, 245, .10);
   --hairline: rgba(245, 245, 245, .18);
   --unit: clamp(.75px, .069444vw, 1.5px);
-  --slogan-width: min(88vw, 120svh);
+  --slogan-width: min(92vw, 128svh);
   --taskbar-h: calc(72 * var(--unit) + 1px);
+  /* Editorial scale. One side margin, one gutter, one vertical rhythm and a
+     three-step type ladder — display, heading, body — that every section on
+     the page shares, so the page reads as one document instead of a stack of
+     separately designed blocks. */
+  --pad: clamp(20px, 6vw, 150px);
+  --gutter: clamp(16px, 1.5vw, 32px);
+  --section-y: clamp(96px, 15svh, 220px);
+  --display: min(13.2vw, 22svh);
+  --heading: clamp(34px, 4.9vw, 104px);
+  --body: clamp(16.5px, 1.32vw, 26px);
+  --lead: clamp(19px, 1.62vw, 32px);
+  --measure: 34em;
   font-family: "Times New Roman", Times, serif;
   background: var(--background);
   color: var(--foreground);
@@ -18,16 +30,6 @@
 body { margin: 0; }
 a { color: inherit; }
 button, code { font: inherit; }
-
-/* Dynamic background: starfield canvas, behind all content. */
-#starfield {
-  position: fixed;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 0;
-  pointer-events: none;
-}
 
 /* Top taskbar: site nav on the left, download on the right. Sits at the
    very top of the page; once the page scrolls, the liquid banner takes
@@ -40,7 +42,7 @@ button, code { font: inherit; }
   justify-content: space-between;
   gap: 4vw;
   height: var(--taskbar-h);
-  padding: 0 6vw;
+  padding: 0 var(--pad);
   background: var(--band);
   border-bottom: 1px solid var(--hairline);
 }
@@ -67,21 +69,21 @@ button, code { font: inherit; }
   position: relative;
   z-index: 3;
   height: calc(100svh - var(--taskbar-h));
-  padding: clamp(16px, 4svh, 48px) 6vw;
+  padding: clamp(24px, 4.4svh, 60px) var(--pad) clamp(20px, 2.6svh, 36px);
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1.02fr) minmax(0, .98fr);
   grid-template-rows: minmax(0, 1fr) auto;
-  column-gap: 4vw;
-  row-gap: clamp(16px, 3svh, 32px);
+  column-gap: var(--gutter);
+  row-gap: clamp(20px, 3.6svh, 44px);
   align-items: center;
 }
 
 .hero-title {
   margin: 0;
-  font-size: max(24px, min(12vw, 19svh, calc((100svh - 180 * var(--unit)) / 3)));
+  font-size: var(--display);
   font-weight: 400;
-  line-height: .92;
-  letter-spacing: -.045em;
+  line-height: .86;
+  letter-spacing: -.05em;
 }
 .hero-title span {
   display: block;
@@ -119,15 +121,24 @@ button, code { font: inherit; }
     transform: translateX(0);
   }
 }
-.hero-logo {
+/* The figures are drawn by hero-particles.js: this canvas covers the hero and
+   the particles assemble on .hero-stage's box, which is all the layout they
+   need. The canvas paints behind the hero's own content (the hero is a
+   stacking context, so -1 still sits above the page behind it). */
+.hero-particles {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
   display: block;
   width: 100%;
-  min-height: 0;
-  max-height: 100%;
   height: 100%;
-  object-fit: contain;
-  object-position: right center;
-  justify-self: center;
+  pointer-events: none;
+}
+.hero-stage {
+  grid-column: 2;
+  grid-row: 1;
+  width: 100%;
+  height: 100%;
 }
 
 .social-slot {
@@ -330,7 +341,7 @@ a:focus-visible, button:focus-visible {
   aspect-ratio: 625 / 134;
   object-fit: contain;
   /* The clip's background is pure black; screen blending drops black entirely,
-     so only the baked text shows and the starfield is visible through it.
+     so only the baked text shows and the page's own black shows through it.
      (True alpha WebM was attempted but both local ffmpeg builds silently drop
      the VP9 alpha plane; screen blend gives the same result in every browser
      including Safari.) */
@@ -339,30 +350,44 @@ a:focus-visible, button:focus-visible {
 .real-life-details {
   margin-top: -4svh;
   display: grid;
-  grid-template-columns: minmax(0, 40fr) minmax(0, 44fr);
-  gap: 4vw;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  column-gap: var(--gutter);
+  row-gap: clamp(28px, 4.4svh, 64px);
   align-items: start;
-  padding: 10svh 6vw 12svh;
-  font-size: clamp(16px, 1.8vw, 40px);
-  line-height: 1.5;
-  text-align: right;
+  padding: var(--section-y) var(--pad);
+  font-size: var(--body);
+  line-height: 1.55;
+  text-align: left;
   overflow-wrap: anywhere;
 }
 .real-life-heading {
   grid-column: 1 / -1;
-  margin: 0 0 .8em;
-  font-size: clamp(28px, 4.5vw, 96px);
+  margin: 0;
+  font-size: var(--heading);
   font-weight: 700;
-  line-height: 1.1;
-  text-align: right;
+  line-height: 1.02;
+  letter-spacing: -.025em;
+  text-align: left;
 }
-.real-life-details p { margin: 0; }
+.real-life-details p { margin: 0; max-width: var(--measure); }
 .real-life-image {
+  grid-column: 1 / -1;
   display: block;
   width: 100%;
-  height: auto;
+  height: clamp(320px, 50svh, 700px);
+  object-fit: cover;
+  object-position: center;
 }
-.real-life-details p + p { margin-top: 1.5em; }
+/* The two paragraphs sit side by side under the picture, each at a readable
+   measure — two columns of a spread, not one line stretched across the page. */
+.real-life-copy {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: clamp(28px, 5vw, 120px);
+  row-gap: 1.4em;
+}
+.real-life-copy p:first-child { font-size: var(--lead); line-height: 1.45; }
 .real-life-details.reveal-pending > .real-life-heading,
 .real-life-details.reveal-pending > .real-life-image,
 .real-life-details.reveal-pending > .real-life-copy {
@@ -393,39 +418,40 @@ a:focus-visible, button:focus-visible {
   to { opacity: 1; transform: translateY(0); }
 }
 .next-generation {
-  margin: 0 0 .35em;
-  font-size: clamp(28px, 4.5vw, 96px);
+  margin: 0;
+  font-size: var(--heading);
   font-weight: 700;
-  line-height: 1.08;
+  line-height: 1.02;
+  letter-spacing: -.025em;
   text-align: left;
 }
 .next-generation-section {
-  padding: 0 6vw;
+  padding: 0 var(--pad);
   text-align: left;
-  font-size: clamp(16px, 2vw, 40px);
-  line-height: 1.5;
+  font-size: var(--body);
+  line-height: 1.55;
 }
-/* Each text + mind-map group owns one full viewport. The centered card
-   uses three quarters of the remaining height, keeping the whole map
-   visible with more breathing room around the copy and diagram. */
+/* Each text + diagram group owns one full viewport. The heading takes the left
+   half and the copy the right, then the card runs the full width of the page —
+   the diagram is the argument, so it gets the whole stage. */
 .next-generation-screen {
   min-height: 100svh;
-  padding: 6svh 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 2.5svh;
+  padding: clamp(48px, 7svh, 110px) 0;
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  column-gap: var(--gutter);
+  row-gap: clamp(24px, 3.4svh, 52px);
+  align-content: center;
 }
-.next-generation-screen h2.next-generation { margin: 0; }
-.next-generation-screen p { margin: 0; flex: none; }
+.next-generation-screen h2.next-generation { grid-column: 1 / 7; }
+.next-generation-screen p { grid-column: 7 / 13; margin: 0; max-width: var(--measure); }
 /* The card's caption overhangs 26px below the card; give a trailing
    paragraph room so the caption never collides with it. */
 .next-generation-screen p:last-child { margin-top: 1svh; }
 .next-generation-screen .diagram-card {
-  flex: .75 1 0;
-  width: 80%;
-  align-self: center;
-  min-height: 0;
+  grid-column: 1 / -1;
+  width: 100%;
+  height: clamp(340px, 52svh, 620px);
   margin: 0;
   display: flex;
   flex-direction: column;
@@ -436,65 +462,67 @@ a:focus-visible, button:focus-visible {
 }
 .starts-from-section {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 4vw;
-  padding: 10svh 6vw 12svh;
-  font-size: clamp(16px, 1.8vw, 40px);
-  line-height: 1.5;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  column-gap: var(--gutter);
+  row-gap: clamp(28px, 4.4svh, 64px);
+  align-items: start;
+  padding: var(--section-y) var(--pad);
+  font-size: var(--body);
+  line-height: 1.55;
 }
+/* The heading takes the whole width: one sentence per line, the second one
+   landing like a verdict. */
 .starts-from-section .starts-from {
-  grid-column: 2;
-  margin: 0 0 .6em;
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: var(--heading);
   font-weight: 700;
-  line-height: 1.15;
-  text-align: right;
+  line-height: 1.02;
+  letter-spacing: -.025em;
+  text-align: left;
 }
-.starts-from span {
-  display: block;
-  white-space: nowrap;
-}
-.starts-from {
-  font-size: min(2.6vw, 52px);
-}
-.starts-from-section .starts-from-copy {
-  display: contents;
-}
+.starts-from span { display: block; }
+.starts-from-section .starts-from-copy { display: contents; }
 .starts-from-section .starts-from-copy p {
-  grid-column: 2;
-  text-align: right;
+  grid-column: 1 / 6;
+  margin: 0;
+  max-width: var(--measure);
 }
 .starts-from-section .starts-from-demo {
   grid-column: 1 / -1;
-  justify-self: center;
   display: block;
-  width: min(50%, 720px);
-  height: auto;
+  width: 100%;
+  height: clamp(320px, 50svh, 700px);
+  object-fit: cover;
+  object-position: center;
 }
 .starts-from-section .starts-from-copy .starts-from-left {
-  grid-column: 1;
+  grid-column: 7 / 13;
   text-align: left;
 }
 .starts-from-section .test-number {
-  grid-column: 1 / -1;
+  grid-column: 1 / 7;
   margin: 0;
-  text-align: center;
-  font-size: clamp(36px, min(9vw, 15svh), 180px);
+  text-align: left;
+  font-size: clamp(52px, min(11vw, 20svh), 220px);
   font-weight: 700;
-  line-height: 1.1;
+  line-height: .95;
+  letter-spacing: -.03em;
 }
 .architecture-section {
-  padding: 10svh 6vw 12svh;
+  padding: var(--section-y) var(--pad);
   text-align: left;
 }
 .architecture-heading {
-  margin: 0 0 .8em;
-  font-size: clamp(28px, 4.5vw, 96px);
+  margin: 0 0 .6em;
+  font-size: var(--heading);
   font-weight: 700;
-  line-height: 1.1;
+  line-height: 1.02;
+  letter-spacing: -.025em;
 }
 .architecture-graph {
   position: relative;
-  min-height: min(72svh, 760px);
+  min-height: min(80svh, 900px);
   border: 1px solid rgba(245, 245, 245, .22);
   border-radius: 12px;
   background: #101010;
@@ -920,7 +948,7 @@ body.architecture-graph-open { overflow: hidden; }
   display: grid;
   grid-template-rows: auto 1fr;
   gap: 6svh;
-  text-align: center;
+  text-align: left;
 }
 /* Keep the visible content beneath the touch explanation during its pin.
    The section's measured box and later sticky/fade geometry stay unchanged. */
@@ -931,11 +959,11 @@ body.architecture-graph-open { overflow: hidden; }
 .future-features {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  column-gap: clamp(24px, 6vw, 86px);
-  padding: 0 6vw;
+  column-gap: clamp(24px, 6vw, 120px);
+  padding: 0 var(--pad);
   text-align: left;
-  font-size: clamp(16px, min(2.2vw, 4svh), 44px);
-  line-height: 1.3;
+  font-size: clamp(17px, min(1.9vw, 3.4svh), 38px);
+  line-height: 1.35;
   overflow-wrap: anywhere;
 }
 .future-features ul {
@@ -969,7 +997,8 @@ body.architecture-graph-open { overflow: hidden; }
   margin: 0;
   font-size: clamp(36px, 6vw, 120px);
   font-weight: 700;
-  line-height: 1.1;
+  line-height: 1.02;
+  letter-spacing: -.025em;
   transform: none;
 }
 .future-scroll {
@@ -1008,10 +1037,10 @@ body.architecture-graph-open { overflow: hidden; }
 .manteraction-stage {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 4vw;
+  gap: var(--gutter);
   align-items: start;
-  padding: 8svh 6vw 4svh;
-  text-align: right;
+  padding: var(--section-y) var(--pad) 4svh;
+  text-align: left;
   overflow-wrap: anywhere;
   opacity: var(--manteraction-opacity, 1);
 }
@@ -1027,18 +1056,19 @@ body.architecture-graph-open { overflow: hidden; }
 .manteraction-stage h2 {
   grid-column: 2;
   grid-row: 1;
-  margin: 0 0 .6em;
-  font-size: clamp(24px, 3.2vw, 64px);
-  line-height: 1.15;
+  margin: 0 0 .5em;
+  font-size: clamp(28px, 3.5vw, 76px);
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -.025em;
 }
 .manteraction-stage p {
-  grid-column: 1 / -1;
-  grid-row: 3;
-  justify-self: end;
+  grid-column: 2;
+  grid-row: 2;
   margin: 0;
-  font-size: clamp(16px, 1.8vw, 40px);
-  line-height: 1.5;
-  white-space: nowrap;
+  max-width: var(--measure);
+  font-size: var(--body);
+  line-height: 1.55;
 }
 .manteraction-stage a {
   text-underline-offset: .15em;
@@ -1066,15 +1096,16 @@ body.architecture-graph-open { overflow: hidden; }
 }
 .manteraction-finale strong { font-weight: 700; }
 .manteraction-details {
-  margin: 1.5em 0 0;
-  font-size: clamp(16px, 1.8vw, 40px);
+  margin: 1.2em 0 0;
+  font-size: var(--lead);
   line-height: 1.5;
   text-align: center;
   overflow-wrap: anywhere;
 }
 
 /* Section boundaries: alternating light/dark shade bands with hairlines.
-   The shade is translucent so the starfield stays faintly visible behind it. */
+   The shade is translucent so a band reads as a lifted surface over the black
+   page rather than a separate sheet of colour. */
 .band {
   background: var(--band);
   border-top: 1px solid var(--hairline);
@@ -1085,19 +1116,49 @@ body.architecture-graph-open { overflow: hidden; }
 }
 
 @media (max-width: 600px) {
+  /* One column: the mark gets its own band under the wordmark instead of a
+     narrow half, and the hero grows past the viewport if it must. */
   .hero {
-    grid-template-rows: minmax(0, 1fr) auto auto;
-    row-gap: 2svh;
+    height: auto;
+    min-height: calc(100svh - var(--taskbar-h));
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto auto auto;
+    align-items: end;
+    row-gap: clamp(14px, 2.4svh, 28px);
   }
-  .social-slot, .installation-slot { grid-column: 1 / -1; }
-  .installation-slot { width: calc(280 * var(--unit)); }
-  .next-generation-section p { max-width: 100%; }
+  .hero-title { font-size: min(21vw, 22svh); }
+  .hero-stage {
+    grid-column: 1;
+    width: 100%;
+    height: clamp(180px, 34svh, 340px);
+  }
+  .social-slot { grid-column: 1; justify-self: start; }
+  .installation-slot { grid-column: 1; justify-self: stretch; width: 100%; }
   .taskbar { gap: 3vw; }
   .taskbar-nav { gap: calc(14 * var(--unit)); }
   .taskbar-nav a { font-size: calc(16 * var(--unit)); }
-  .manteraction-stage p { white-space: normal; }
-  .real-life-heading {
-    font-size: clamp(18px, 10.8vw, 28px);
+  /* The 12-track spreads fold to a single column: heading, copy, picture, one
+     after another at full measure. */
+  .real-life-details > *,
+  .starts-from-section > *,
+  .starts-from-section .starts-from-copy p,
+  .starts-from-section .starts-from-copy .starts-from-left,
+  .next-generation-screen > *,
+  .next-generation-screen h2.next-generation,
+  .next-generation-screen p { grid-column: 1 / -1; }
+  .real-life-copy { grid-template-columns: minmax(0, 1fr); }
+  .next-generation-screen p,
+  .starts-from-section .starts-from-copy p { max-width: none; }
+  .real-life-image,
+  .starts-from-section .starts-from-demo { height: clamp(220px, 34svh, 420px); }
+  /* The touch preview reads as a stack too: picture, heading, explanation. */
+  .manteraction-stage {
+    grid-template-columns: minmax(0, 1fr);
+    gap: clamp(16px, 3svh, 32px);
+  }
+  .manteraction-image, .manteraction-stage h2, .manteraction-stage p {
+    grid-column: 1;
+    grid-row: auto;
   }
   .architecture-graph-toolbar {
     display: grid;

@@ -9,7 +9,7 @@
   <link rel="apple-touch-icon" href="../../assets/images/real-time-manim-icon.png">
   <link rel="stylesheet" href="../../assets/css/real-time-manim.css">
   <script src="../../assets/js/real-time-manim.js" defer></script>
-  <script src="../../assets/js/starfield.js" defer></script>
+  <script src="../../assets/js/hero-particles.js" defer></script>
   <script src="../../assets/js/vendor/mermaid.min.js" defer></script>
   <script src="../../assets/js/diagram-panzoom.js" defer></script>
   <script src="../../assets/js/vendor/d3.v7.min.js" defer></script>
@@ -27,8 +27,9 @@
     <button type="button" id="agent-wiki" data-agent-wiki-path="/Users/niuyingkai/PHormation codes/2026fall/real-time-manim_website/wiki/agent" aria-hidden="true" tabindex="-1" title="Agent wiki" style="position:absolute;width:0;height:0;padding:0;border:0;overflow:hidden"></button>
   </header>
   <main class="hero">
+    <canvas id="hero-particles" class="hero-particles" data-src="../../assets/images/real-time-manim.jpg" aria-hidden="true"></canvas>
     <h1 class="hero-title"><span>Real</span><span>Time</span><span>Manim</span></h1>
-    <img class="hero-logo" src="../../assets/images/real-time-manim.jpg" alt="Real-Time Manim logo" width="1053" height="989">
+    <div class="hero-stage" aria-hidden="true"></div>
     <div class="social-slot">
     <div class="social-links" aria-label="Project links">
       <a href="https://github.com/BEGINWITHF/real-time-manim" aria-label="Real-Time Manim on GitHub" title="GitHub">
@@ -160,7 +161,7 @@
       <p>Start with the Manim code you already write. Zero API changes. End somewhere ManimCE can't reach: Vulkan.</p>
       <img class="starts-from-demo" src="../../reference_for_real_time_manim/RTM-real-demo-picture.png" alt="Freeform board with handwritten demo notes" width="2732" height="2048" decoding="async">
       <p class="starts-from-left">real-time-manim is built on <strong>Vulkan</strong>, replacing ManimCE's OpenGL and Cairo renderers. Vulkan is a modern, low-level GPU API — direct control of the hardware means faster, hardware-accelerated rendering, with native per-type senders: a dedicated pipeline for each shape you draw.</p>
-      <h1 class="test-number">[test number]</h1>
+      <p class="test-number">[test number]</p>
       <p class="starts-from-left">Per-feature tests and scripts that verify real renders will back it up. Bugs caught before you ever see them.</p>
     </div>
   </section>
