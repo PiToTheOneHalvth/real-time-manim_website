@@ -93,7 +93,10 @@
   const LOCAL_GRAPH_GAP = 14;
   const LOCAL_GRAPH_WORLD = 1000;
   const LOCAL_GRAPH_SETTLE_TICKS = 300;
-  const GRAPH_FETCH_CONCURRENCY = 12;
+  // 144 notes at 12 per wave took seconds on a cold CDN; the browser spreads
+  // this many over its connections and the crawl finishes in a wave or two.
+  const GRAPH_FETCH_CONCURRENCY = 32;
+  const LOCAL = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
 
   const escapeHTML = value => String(value).replace(/[&<>"']/g, character => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
@@ -127,7 +130,9 @@
   };
 
   async function text(url) {
-    const response = await fetch(url, { cache: 'no-store' });
+    // On a served site let the browser cache the notes, so a re-crawl reads them
+    // off disk; on localhost keep no-store so the live reload sees edits.
+    const response = await fetch(url, { cache: LOCAL ? 'no-store' : 'default' });
     if (!response.ok) throw new Error(`HTTP ${response.status}: ${url.pathname}`);
     return response.text();
   }
@@ -264,7 +269,9 @@
       nodes,
       edges: [...edgeMap.values()],
       neighbors,
-      signature: signatures.join('\u0001'),
+      // A short hash of the notes themselves, so a cached copy can be compared
+      // without keeping (or re-joining) all that markdown.
+      hash: signatureHash(signatures.join('\u0001')),
     };
   }
 
@@ -1422,24 +1429,78 @@
   }
 
   let loading = false;
+  // ---- Cached graph ---------------------------------------------------------
+  // Reading 144 notes takes seconds on a cold CDN, and the panel sat on its
+  // loader every single time. The computed graph is small — nodes, edges, a
+  // hash — so keep it: draw the stored copy at once, then re-crawl quietly and
+  // re-render only when the notes really changed.
+  const GRAPH_CACHE_VERSION = 1;
+  const graphCacheKey = `architecture-graph:v${GRAPH_CACHE_VERSION}:${SOURCES[0]}`;
+
+  function signatureHash(value) {
+    let hash = 2166136261;
+    for (let index = 0; index < value.length; index += 1) {
+      hash = Math.imul(hash ^ value.charCodeAt(index), 16777619);
+    }
+    return (hash >>> 0).toString(36);
+  }
+
+  function hydrateGraph(stored) {
+    const neighbors = new Map(stored.nodes.map(node => [node.id, new Set()]));
+    for (const edge of stored.edges) {
+      neighbors.get(edge.source)?.add(edge.target);
+      neighbors.get(edge.target)?.add(edge.source);
+    }
+    return { nodes: stored.nodes, edges: stored.edges, neighbors, hash: stored.hash };
+  }
+
+  function readCachedGraph() {
+    try {
+      const stored = JSON.parse(localStorage.getItem(graphCacheKey) || 'null');
+      if (!stored || !Array.isArray(stored.nodes) || !stored.nodes.length) return null;
+      if (!Array.isArray(stored.edges) || typeof stored.hash !== 'string') return null;
+      return hydrateGraph(stored);
+    } catch {
+      return null;
+    }
+  }
+
+  function writeCachedGraph(next) {
+    try {
+      localStorage.setItem(graphCacheKey, JSON.stringify({ nodes: next.nodes, edges: next.edges, hash: next.hash }));
+    } catch {
+      // Private mode or a full quota: the graph still works, it just re-crawls.
+    }
+  }
+
   async function load(force = false) {
-    // A crawl is already in flight — the localhost live-reload interval must
-    // not restart it mid-fetch (it would never finish).
+    // A crawl is already in flight — the live-reload interval must not restart
+    // it mid-fetch (it would never finish).
     if (loading) return;
     loading = true;
-    setStatus('Reading wiki graph...');
+    const cached = force ? null : readCachedGraph();
+    if (cached) {
+      // Draw the stored graph straight away; the crawl below only corrects it.
+      lastSignature = cached.hash;
+      render(cached);
+      setStatus(`${cached.nodes.length} notes | ${cached.edges.length} connections`);
+    } else {
+      setStatus('Reading wiki graph...');
+    }
     try {
       const next = await readGraphSource();
-      if (!force && next.signature === lastSignature) {
+      writeCachedGraph(next);
+      if (next.hash === lastSignature) {
         setStatus(`${next.nodes.length} notes | ${next.edges.length} connections`);
         return;
       }
-      lastSignature = next.signature;
+      lastSignature = next.hash;
       render(next);
       setStatus(`${next.nodes.length} notes | ${next.edges.length} connections`);
     } catch (error) {
       console.error('architecture graph:', error);
-      setStatus('Graph unavailable. Serve the site over HTTP to load the Markdown source.', true);
+      // A stale-but-usable cached graph beats an error banner.
+      if (!cached) setStatus('Graph unavailable. Serve the site over HTTP to load the Markdown source.', true);
     } finally {
       loading = false;
     }
@@ -1496,5 +1557,5 @@
   if (typeof ResizeObserver !== 'undefined') new ResizeObserver(refit).observe(viewport);
 
   load();
-  if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) window.setInterval(() => load(), 5000);
+  if (LOCAL) window.setInterval(() => load(), 5000);
 })();
