@@ -32,6 +32,7 @@
     en: {
       notes: count => `${count} notes`,
       ofNotes: (visible, total) => `${visible} of ${total} notes`,
+      noMatches: 'No matching notes',
       loadingNote: 'Loading note...',
       noNotes: 'No Markdown notes were found.',
       noteError: 'This note could not be loaded.',
@@ -46,6 +47,7 @@
     zh: {
       notes: count => `${count} 篇笔记`,
       ofNotes: (visible, total) => `${total} 篇中 ${visible} 篇`,
+      noMatches: '没有匹配的笔记',
       loadingNote: '正在加载笔记…',
       noNotes: '未找到任何 Markdown 笔记。',
       noteError: '无法加载该笔记。',
@@ -642,6 +644,7 @@
       link.href = `wiki.html?note=${encodeURIComponent(note.entry.id)}`;
       link.dataset.noteId = note.entry.id;
       link.dataset.searchText = note.entry.id;
+      link.dataset.name = note.name;
       link.title = note.entry.id;
       link.textContent = note.name;
       noteList.append(link);
@@ -650,24 +653,126 @@
     updateList();
   }
 
+  // ---- Search ---------------------------------------------------------------
+  // Whitespace splits the query into terms that must all match (in any order),
+  // each either as a substring or — for typos and abbreviations such as
+  // "trcore" — as a subsequence of the note's path. Matches inside the visible
+  // name are marked, and ↓ / ↑ / Enter drive the list from the keyboard.
+  let searchCursor = -1;
+
+  function searchTerms() {
+    return search.value.toLowerCase().split(/\s+/).filter(Boolean);
+  }
+
+  function hasSubsequence(text, term) {
+    let index = 0;
+    for (const character of text) {
+      if (character === term[index]) index += 1;
+      if (index === term.length) return true;
+    }
+    return false;
+  }
+
+  function matchesTerm(text, term) {
+    return text.includes(term) || (term.length > 2 && hasSubsequence(text, term));
+  }
+
+  // Mark the runs of `terms` inside the link's visible name. Matching runs on the
+  // whole path, so a term may not appear in the name at all.
+  function markMatches(link, terms) {
+    const name = link.dataset.name || link.textContent;
+    const lower = name.toLowerCase();
+    const ranges = [];
+    for (const term of terms) {
+      if (term.length < 2) continue;
+      let from = 0;
+      for (;;) {
+        const at = lower.indexOf(term, from);
+        if (at < 0) break;
+        ranges.push([at, at + term.length]);
+        from = at + term.length;
+      }
+    }
+    if (!ranges.length) {
+      if (link.dataset.marked) { link.textContent = name; delete link.dataset.marked; }
+      return;
+    }
+    ranges.sort((a, b) => a[0] - b[0]);
+    let html = '';
+    let at = 0;
+    for (const [start, end] of ranges) {
+      const from = Math.max(start, at);
+      if (end <= from) continue;
+      html += `${escapeHTML(name.slice(at, from))}<mark>${escapeHTML(name.slice(from, end))}</mark>`;
+      at = end;
+    }
+    html += escapeHTML(name.slice(at));
+    link.innerHTML = html;
+    link.dataset.marked = '1';
+  }
+
+  function shownLinks() {
+    return [...noteList.querySelectorAll('.wiki-note-link:not(.is-hidden)')];
+  }
+
+  function moveCursor(step) {
+    const links = shownLinks();
+    if (!links.length) return;
+    searchCursor = Math.max(0, Math.min(links.length - 1, searchCursor + step));
+    links.forEach((link, index) => link.classList.toggle('is-cursor', index === searchCursor));
+    links[searchCursor].scrollIntoView({ block: 'nearest' });
+  }
+
   function updateList() {
-    const query = search.value.trim().toLowerCase();
+    const terms = searchTerms();
+    searchCursor = -1;
     let visible = 0;
-    let total = 0;
-    noteList.querySelectorAll('.wiki-note-link').forEach(link => {
-      total += 1;
-      const shown = !query || (link.dataset.searchText || link.textContent).toLowerCase().includes(query);
-      link.classList.toggle('is-hidden', !shown);
-      if (shown) visible += 1;
-    });
+    const links = [...noteList.querySelectorAll('.wiki-note-link')];
+    for (const link of links) {
+      link.classList.remove('is-cursor');
+      const text = (link.dataset.searchText || link.textContent).toLowerCase();
+      const matched = !terms.length || terms.every(term => matchesTerm(text, term));
+      link.classList.toggle('is-hidden', !matched);
+      markMatches(link, matched ? terms : []);
+      if (matched) visible += 1;
+    }
     noteList.querySelectorAll('.wiki-folder').forEach(folder => {
-      if (!query) { folder.classList.remove('is-hidden'); return; }
+      if (!terms.length) { folder.classList.remove('is-hidden'); return; }
       const subtreeMatch = folder.querySelectorAll('.wiki-note-link:not(.is-hidden)').length > 0;
       folder.classList.toggle('is-hidden', !subtreeMatch);
       folder.classList.remove('is-collapsed');
     });
-    if (!query) syncFolderStates();
-    status.textContent = query ? ui.ofNotes(visible, total) : ui.notes(visible);
+    if (!terms.length) {
+      syncFolderStates();
+      status.textContent = ui.notes(visible);
+    } else if (visible) {
+      status.textContent = ui.ofNotes(visible, links.length);
+    } else {
+      status.textContent = ui.noMatches;
+    }
+  }
+
+  function handleSearchKey(event) {
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      moveCursor(event.key === 'ArrowDown' ? 1 : -1);
+      return;
+    }
+    if (event.key === 'Enter') {
+      const links = shownLinks();
+      const target = links[searchCursor] || links[0];
+      if (!target) return;
+      event.preventDefault();
+      navigate(target.dataset.noteId);
+      return;
+    }
+    if (event.key === 'Escape' && search.value) {
+      // Clear the field first; only an already-empty box closes the panel.
+      event.preventDefault();
+      event.stopPropagation();
+      search.value = '';
+      updateList();
+    }
   }
 
   function markCurrent() {
@@ -959,6 +1064,7 @@
         });
       }
       search.addEventListener('input', updateList);
+      search.addEventListener('keydown', handleSearchKey);
       noteList.addEventListener('click', event => {
         const link = event.target.closest('.wiki-note-link');
         if (link) {

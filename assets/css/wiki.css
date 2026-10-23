@@ -277,7 +277,23 @@ button, input { font: inherit; }
 }
 .wiki-top:hover { color: #fff; border-color: rgba(245, 245, 245, .5); background: rgba(22, 22, 22, .95); }
 .wiki-top:active { scale: .92; }
-.wiki-search-label { display: block; }
+.wiki-search-label { position: relative; display: block; }
+/* The line under the search box fills from the left in the foreground colour
+   while the field has focus (see .wiki-search-label in wiki.css). */
+.wiki-search-label::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: var(--wiki-foreground);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform .34s cubic-bezier(.3, .85, .35, 1);
+  pointer-events: none;
+}
+.wiki-search-label:focus-within::after { transform: scaleX(1); }
 #wiki-search {
   display: block;
   width: 100%;
@@ -294,7 +310,6 @@ button, input { font: inherit; }
   caret-color: var(--wiki-foreground);
 }
 #wiki-search::placeholder { color: var(--wiki-muted); }
-#wiki-search:focus-visible { border-bottom-color: var(--wiki-foreground); }
 .wiki-status { min-height: 1.3em; margin: 12px 0; color: var(--wiki-muted); font-size: 13px; }
 .wiki-note-list { display: grid; gap: 2px; }
 .wiki-folder { display: grid; gap: 2px; }
@@ -357,6 +372,15 @@ a.wiki-folder-name { text-decoration: none; border-radius: 5px; }
   font-size: 14px;
 }
 .wiki-note-link:hover, .wiki-note-link[aria-current="page"] { background: rgba(245, 245, 245, .1); }
+/* The keyboard cursor in the search results (↓ / ↑ move it, Enter opens it). */
+.wiki-note-link.is-cursor { background: rgba(245, 245, 245, .16); color: #fff; }
+/* Matched run inside a note name. */
+.wiki-note-link mark {
+  padding: 0 1px;
+  border-radius: 2px;
+  background: rgba(245, 245, 245, .2);
+  color: #fff;
+}
 /* A folder row's highlight is carried by the row itself, so it wraps the
    chevron too (the link alone starts after it). */
 .wiki-folder-row > .wiki-note-link:hover,
@@ -524,6 +548,7 @@ a.wiki-folder-name { text-decoration: none; border-radius: 5px; }
 @media (prefers-reduced-motion: reduce) {
   .wiki-loader-bar-fill { animation: none; width: 100%; transform: none; }
   .wiki-top { transition: none; }
+  .wiki-search-label::after { transition: none; }
 }
 
 /* The Architecture nav item opens the wiki's mind map in a full-screen panel
