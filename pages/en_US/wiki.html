@@ -37,8 +37,15 @@
         <label class="wiki-search-label">
           <input id="wiki-search" type="search" placeholder="Search notes" autocomplete="off">
         </label>
-        <p id="wiki-status" class="wiki-status" role="status" aria-live="polite">Loading notes...</p>
-        <nav id="wiki-note-list" class="wiki-note-list" aria-label="Notes"></nav>
+        <!-- Phone only: the drawer is a bar there, and this chevron drops the
+             note list out of it (see the ≤720px block in wiki.css). -->
+        <button id="wiki-list-toggle" class="wiki-list-toggle" type="button" aria-expanded="false" aria-controls="wiki-note-list" aria-label="Show notes" title="Show notes">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="wiki-sidebar-list">
+          <p id="wiki-status" class="wiki-status" role="status" aria-live="polite">Loading notes...</p>
+          <nav id="wiki-note-list" class="wiki-note-list" aria-label="Notes"></nav>
+        </div>
       </div>
     </aside>
     <div class="wiki-main">

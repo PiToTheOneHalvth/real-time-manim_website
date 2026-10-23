@@ -37,8 +37,14 @@
         <label class="wiki-search-label">
           <input id="wiki-search" type="search" placeholder="搜索笔记" autocomplete="off">
         </label>
-        <p id="wiki-status" class="wiki-status" role="status" aria-live="polite">正在加载笔记…</p>
-        <nav id="wiki-note-list" class="wiki-note-list" aria-label="Notes"></nav>
+        <!-- 手机端：侧栏变成顶部条，这个箭头把笔记列表从条上放下来（见 wiki.css 的 ≤720px 段）。 -->
+        <button id="wiki-list-toggle" class="wiki-list-toggle" type="button" aria-expanded="false" aria-controls="wiki-note-list" aria-label="显示笔记" title="显示笔记">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="wiki-sidebar-list">
+          <p id="wiki-status" class="wiki-status" role="status" aria-live="polite">正在加载笔记…</p>
+          <nav id="wiki-note-list" class="wiki-note-list" aria-label="Notes"></nav>
+        </div>
       </div>
     </aside>
     <div class="wiki-main">

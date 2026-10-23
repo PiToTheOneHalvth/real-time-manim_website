@@ -172,6 +172,9 @@ button, input { font: inherit; }
    padding). Holding it stops the drawer's contents from reflowing while the
    column narrows, so what the eye follows is the slide, not a squeeze. */
 .wiki-sidebar-inner { width: calc(var(--wiki-drawer-w) - 44px); }
+/* The chevron that drops the note list out of the bar is a phone-only control;
+   the desktop drawer keeps its own fixed toggle (see the ≤720px block). */
+.wiki-list-toggle { display: none; }
 .wiki-shell.is-toc-collapsed .wiki-sidebar {
   transform: translateX(calc(-1 * var(--wiki-drawer-w)));
   border-right-color: transparent;
@@ -497,12 +500,97 @@ a.wiki-folder-name { text-decoration: none; border-radius: 5px; }
   /* The taskbar wraps on its own when the brand and the nav stop fitting, so
      there is no stacked-header rule here any more. */
   .wiki-shell { display: block; }
-  .wiki-sidebar { position: relative; height: auto; max-height: 42svh; border-right: 0; border-bottom: 1px solid var(--wiki-line); }
-  /* One column: collapsing hides the sidebar outright, and its toggle returns
-     to the flow above the note instead of floating over it. */
-  .wiki-shell.is-toc-collapsed .wiki-sidebar { display: none; }
-  .wiki-sidebar-toggle { position: static; margin: 16px 6vw 0; }
-  .wiki-sidebar-grip { display: none; }
+  /* The drawer becomes a bar under the taskbar: one row holding the search and
+     a chevron, with the note list hanging out of it as an overlay. The note
+     starts at the top of the screen instead of below a tall block, and the bar
+     stays put while the note scrolls. */
+  .wiki-sidebar {
+    z-index: 4;
+    height: auto;
+    max-height: none;
+    overflow: visible;
+    padding: 12px 5vw;
+    border-right: 0;
+    border-bottom: 1px solid var(--wiki-line);
+    background: rgba(0, 0, 0, .9);
+    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
+  }
+  /* Collapsing has no meaning once the drawer is a bar, so the desktop state is
+     ignored here rather than leaving the bar hidden. */
+  .wiki-shell.is-toc-collapsed .wiki-sidebar { display: block; transform: none; }
+  .wiki-sidebar-inner {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 14px;
+    width: auto;
+  }
+  .wiki-sidebar-header, .wiki-sidebar-toggle, .wiki-sidebar-grip { display: none; }
+  /* iOS zooms the page in on a field smaller than 16px, so the bar's search is
+     set at 16 even though the rest of the drawer's type is 14. The extra
+     padding gives the field a finger-sized box (the label is the hit area). */
+  #wiki-search { padding: 7px 2px 6px; font-size: 16px; }
+  .wiki-list-toggle {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: 1px solid var(--wiki-line);
+    border-radius: 9px;
+    background: none;
+    color: var(--wiki-muted);
+    cursor: pointer;
+    touch-action: manipulation;
+    transition: color .18s ease, border-color .18s ease, background-color .18s ease;
+  }
+  .wiki-list-toggle svg { width: 16px; height: 16px; transition: transform .22s ease; }
+  .wiki-list-toggle[aria-expanded="true"] { color: #fff; border-color: rgba(245, 245, 245, .45); background: rgba(245, 245, 245, .08); }
+  .wiki-list-toggle[aria-expanded="true"] svg { transform: rotate(180deg); }
+  /* The list overlays the note instead of pushing it: opening it is a detour,
+     and picking a note closes it again (see wiki.js). It unfolds from under the
+     bar — max-height (plus a fade) rather than display, so the reveal is
+     animated and the box keeps its own shadow, which `overflow: hidden` does
+     not clip. */
+  .wiki-sidebar-list {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    display: flex;
+    flex-direction: column;
+    max-height: 0;
+    overflow: hidden;
+    padding: 0 5vw;
+    background: rgba(4, 4, 4, .98);
+    box-shadow: 0 28px 56px rgba(0, 0, 0, .7);
+    visibility: hidden;
+    opacity: 0;
+    transition: max-height .3s cubic-bezier(.3, .85, .35, 1), opacity .16s ease,
+      visibility 0s linear .3s;
+  }
+  .wiki-shell.is-list-open .wiki-sidebar-list {
+    max-height: 62svh;
+    visibility: visible;
+    opacity: 1;
+    transition: max-height .3s cubic-bezier(.3, .85, .35, 1), opacity .18s ease .04s,
+      visibility 0s;
+  }
+  /* The list itself is the scroller, so the status line above it stays put. Its
+     bar is hidden like the drawer's. */
+  .wiki-sidebar-list .wiki-note-list {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-bottom: 22px;
+    scrollbar-width: none;
+  }
+  .wiki-sidebar-list .wiki-note-list::-webkit-scrollbar { width: 0; height: 0; }
+  .wiki-sidebar-list .wiki-status { margin: 10px 0; }
+  /* Touch rows: the pointer-sized 28px of the desktop list is too short to hit. */
+  .wiki-note-link, .wiki-folder-name { padding-top: 10px; padding-bottom: 10px; }
+  .wiki-folder-arrow { height: 40px; }
   .wiki-article { padding: 38px 6vw 80px; }
 }
 
@@ -549,6 +637,8 @@ a.wiki-folder-name { text-decoration: none; border-radius: 5px; }
   .wiki-loader-bar-fill { animation: none; width: 100%; transform: none; }
   .wiki-top { transition: none; }
   .wiki-search-label::after { transition: none; }
+  .wiki-sidebar-list,
+  .wiki-shell.is-list-open .wiki-sidebar-list { transition: none; }
 }
 
 /* The Architecture nav item opens the wiki's mind map in a full-screen panel

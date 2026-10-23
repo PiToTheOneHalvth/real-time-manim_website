@@ -19,6 +19,8 @@
   const status = document.getElementById('wiki-status');
   const noteList = document.getElementById('wiki-note-list');
   const sidebarToggle = document.getElementById('wiki-sidebar-toggle');
+  const listToggle = document.getElementById('wiki-list-toggle');
+  const mobileLayout = window.matchMedia('(max-width: 720px)');
   const localHost = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
   const motionReduced = window.matchMedia('(prefers-reduced-motion: reduce)');
   let catalog = new Map();
@@ -61,6 +63,18 @@
     },
   };
   const ui = UI_STRINGS[shell.dataset.ui === 'zh' ? 'zh' : 'en'];
+
+  // On a phone the drawer is a bar and the note list hangs out of it as an
+  // overlay. This chevron, and focusing the search field, open it; picking a
+  // note, tapping anywhere else or resizing the window closes it. On a wide
+  // screen the chevron is hidden and none of this runs.
+  function setListOpen(open) {
+    if (!listToggle) return;
+    shell.classList.toggle('is-list-open', open);
+    listToggle.setAttribute('aria-expanded', String(open));
+    listToggle.setAttribute('aria-label', open ? ui.hideNotes : ui.showNotes);
+    listToggle.title = open ? ui.hideNotes : ui.showNotes;
+  }
 
   const escapeHTML = value => String(value).replace(/[&<>"']/g, character => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
@@ -772,7 +786,9 @@
       event.stopPropagation();
       search.value = '';
       updateList();
+      return;
     }
+    if (event.key === 'Escape' && shell.classList.contains('is-list-open')) setListOpen(false);
   }
 
   function markCurrent() {
@@ -998,6 +1014,12 @@
   function navigate(id, push = true) {
     const target = entryByID(id) ? id : noteID(entryPath);
     if (push) history.pushState({}, '', `wiki.html?note=${encodeURIComponent(target)}`);
+    // A pick ends the detour through the note list (phones only; a no-op when
+    // the list is already closed). Dropping focus closes the soft keyboard.
+    if (shell.classList.contains('is-list-open')) {
+      setListOpen(false);
+      if (mobileLayout.matches) search.blur();
+    }
     loadNote(target);
   }
 
@@ -1065,6 +1087,22 @@
       }
       search.addEventListener('input', updateList);
       search.addEventListener('keydown', handleSearchKey);
+      if (listToggle) {
+        listToggle.addEventListener('click', () => setListOpen(!shell.classList.contains('is-list-open')));
+        // Reaching for the field means looking for something, so the list opens
+        // with it; the note stays readable underneath. pointerdown covers a tap
+        // on a field that already has focus (a second focus event never comes).
+        search.addEventListener('pointerdown', () => { if (mobileLayout.matches) setListOpen(true); });
+        search.addEventListener('focus', () => { if (mobileLayout.matches) setListOpen(true); });
+        document.addEventListener('pointerdown', event => {
+          if (!mobileLayout.matches || !shell.classList.contains('is-list-open')) return;
+          if (event.target.closest('.wiki-sidebar')) return;
+          setListOpen(false);
+        }, true);
+        mobileLayout.addEventListener('change', () => {
+          if (!mobileLayout.matches) setListOpen(false);
+        });
+      }
       noteList.addEventListener('click', event => {
         const link = event.target.closest('.wiki-note-link');
         if (link) {
