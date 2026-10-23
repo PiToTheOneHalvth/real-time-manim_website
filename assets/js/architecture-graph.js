@@ -1209,7 +1209,32 @@
     graphView = transform;
   }
 
-  function render(nextGraph) {
+  // Let the browser paint (and the loading animation advance) between chunks of
+  // synchronous work. rAF gives a real frame; the timeout covers a frame that is
+  // not being animated (a background tab), where rAF never fires.
+  function paintBreak() {
+    return new Promise(resolve => {
+      let done = false;
+      const finish = () => { if (!done) { done = true; resolve(); } };
+      window.requestAnimationFrame(finish);
+      window.setTimeout(finish, 32);
+    });
+  }
+
+  // 420 synchronous ticks over 144 notes blocks the thread for a long beat — and
+  // that beat lands right when the panel's loading animation is on screen,
+  // because the graph runs in an iframe on the same thread. Settle in chunks so
+  // the animation keeps painting while the layout converges.
+  async function settleSimulation(simulation, ticks, owner) {
+    const chunk = 32;
+    for (let done = 0; done < ticks; done += chunk) {
+      for (let index = 0; index < chunk && done + index < ticks; index += 1) simulation.tick();
+      await paintBreak();
+      if (graph !== owner) return;   // a newer render took over
+    }
+  }
+
+  async function render(nextGraph) {
     exitLocalGraph();
     graph = nextGraph;
     if (simulation) simulation.stop();
@@ -1280,6 +1305,10 @@
     const links = edgeLayer.selectAll('line').data(visibleEdges).join('line')
       .attr('class', 'architecture-graph-edge')
       .attr('stroke-width', 1);
+    // Let the loading animation paint between the three big DOM builds below:
+    // edges, nodes, then the label overlay. Each one on its own is short enough
+    // to pass unnoticed; all three in a row is the hitch the panel used to show.
+    await paintBreak();
     const nodes = nodeLayer.selectAll('g').data(graph.nodes).join('g')
       .attr('class', 'architecture-graph-node')
       .attr('tabindex', 0)
@@ -1333,11 +1362,15 @@
         }
         openNote(node.href);
       });
+    // One more break: the handlers above are a block of their own; the dots and
+    // labels below are another.
+    await paintBreak();
     nodes.append('circle').attr('class', 'architecture-graph-dot').attr('r', radius);
     nodes.append('text').attr('class', 'architecture-graph-label').attr('x', 0).attr('text-anchor', 'middle').attr('dy', node => radius(node) + 8).text(node => node.title);
 
     // The label overlay: a non-interactive mirror of the labels (same data,
     // same geometry, same classes) rendered ABOVE the local-graph panel.
+    await paintBreak();
     labelOverlayWorld.selectAll('*').remove();
     overlayLabels = labelOverlayWorld.selectAll('g').data(graph.nodes).join('g')
       .attr('class', 'architecture-graph-node architecture-graph-label-copy')
@@ -1413,12 +1446,12 @@
       }));
 
     if (reducedMotion.matches) {
-      simulation.tick(SETTLE_TICKS);
+      await settleSimulation(simulation, SETTLE_TICKS, nextGraph);
       tick();
       fit(false);
     } else {
       simulation.alpha(.28);
-      for (let index = 0; index < SETTLE_TICKS; index += 1) simulation.tick();
+      await settleSimulation(simulation, SETTLE_TICKS, nextGraph);
       tick();
       simulation.alpha(0).restart();
       window.setTimeout(() => simulation?.stop(), 250);
@@ -1482,7 +1515,7 @@
     if (cached) {
       // Draw the stored graph straight away; the crawl below only corrects it.
       lastSignature = cached.hash;
-      render(cached);
+      await render(cached);
       setStatus(`${cached.nodes.length} notes | ${cached.edges.length} connections`);
     } else {
       setStatus('Reading wiki graph...');
@@ -1495,7 +1528,7 @@
         return;
       }
       lastSignature = next.hash;
-      render(next);
+      await render(next);
       setStatus(`${next.nodes.length} notes | ${next.edges.length} connections`);
     } catch (error) {
       console.error('architecture graph:', error);
