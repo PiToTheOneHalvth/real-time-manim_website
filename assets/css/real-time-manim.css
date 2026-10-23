@@ -692,6 +692,12 @@ a:focus-visible, button:focus-visible {
   user-select: none;
   transition: opacity 120ms ease;
 }
+/* Labels are annotations, not hit targets: the hover window opens only over a
+   node's dot (see architecture-graph.js). */
+.architecture-graph-label,
+.local-graph-label {
+  pointer-events: none;
+}
 .architecture-graph.labels-hidden .architecture-graph-label { opacity: 0; }
 .architecture-graph-node:hover .architecture-graph-label,
 .architecture-graph-node.is-hovered .architecture-graph-label,
@@ -725,6 +731,9 @@ a:focus-visible, button:focus-visible {
   line-height: 1.3;
   pointer-events: none;
 }
+/* The local-graph panel is drawn in the shared tooltip element, so a dot's
+   preview card is a second tooltip stacked above the panel. */
+.architecture-graph-tooltip.architecture-graph-hover-card { z-index: 6; }
 .architecture-graph-tooltip strong,
 .architecture-graph-tooltip span { display: block; }
 .architecture-graph-tooltip span { margin-top: 3px; color: rgba(245, 245, 245, .6); font-size: 12px; }

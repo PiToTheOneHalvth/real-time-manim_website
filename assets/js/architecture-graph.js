@@ -3,7 +3,15 @@
   if (!root || !window.d3) return;
 
   const d3 = window.d3;
-  const sourceRoot = new URL(root.dataset.sourceRoot || '../../wiki/en_US/', document.baseURI);
+  // The manual lives in another repository, served through a public CDN. CDN
+  // reachability varies by network — raw.githubusercontent.com is blocked on
+  // some, cdn.jsdelivr.net on others — so the element names a primary source
+  // plus any mirrors in data-source-mirror (whitespace/comma separated). A
+  // source that cannot be read falls through to the next (see readGraphSource).
+  const DEFAULT_SOURCE = 'https://cdn.jsdelivr.net/gh/BEGINWITHF/real-time-manim@main/RTM-Wiki/en_US/';
+  const SOURCES = [root.dataset.sourceRoot || DEFAULT_SOURCE, ...((root.dataset.sourceMirror || '').match(/[^\s,]+/g) || [])];
+  let sourceIndex = 0;
+  let sourceRoot = new URL(SOURCES[0], document.baseURI);
   const entryPath = root.dataset.entryPath || 'index.md';
   const manifestPath = root.dataset.manifestPath || 'manifest.json';
   const viewport = root.querySelector('.architecture-graph-viewport');
@@ -15,6 +23,12 @@
   const searchList = root.querySelector('.architecture-graph-search-list');
   const status = root.querySelector('.architecture-graph-status');
   const tooltip = root.querySelector('.architecture-graph-tooltip');
+  // The local-graph panel is drawn in `tooltip` itself, so the dots inside it
+  // need their own preview card, stacked above the panel.
+  const localHover = document.createElement('div');
+  localHover.className = 'architecture-graph-tooltip architecture-graph-hover-card';
+  localHover.hidden = true;
+  root.appendChild(localHover);
   // The global labels get a second, purely visual copy in an overlay svg
   // stacked BELOW the local-graph panel — the panel sits ABOVE the global
   // graph's annotations. The overlay mirrors the main svg (same viewBox,
@@ -79,6 +93,7 @@
   const LOCAL_GRAPH_GAP = 14;
   const LOCAL_GRAPH_WORLD = 1000;
   const LOCAL_GRAPH_SETTLE_TICKS = 300;
+  const GRAPH_FETCH_CONCURRENCY = 12;
 
   const escapeHTML = value => String(value).replace(/[&<>"']/g, character => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
@@ -139,30 +154,68 @@
     }
   }
 
+  // Moves to the next source in SOURCES. The crawl is redone from scratch, so
+  // no note from a host that failed can end up in the graph.
+  function useNextSource() {
+    if (sourceIndex >= SOURCES.length - 1) return false;
+    sourceIndex += 1;
+    sourceRoot = new URL(SOURCES[sourceIndex], document.baseURI);
+    return true;
+  }
+
+  // Crawls the note tree, falling through the source list until one answers.
   async function readGraphSource() {
+    for (;;) {
+      try {
+        return await crawlGraph();
+      } catch (error) {
+        if (!useNextSource()) throw error;
+        console.warn('architecture graph: source unavailable, trying', SOURCES[sourceIndex], error);
+      }
+    }
+  }
+
+  async function crawlGraph() {
     const manifest = JSON.parse(await text(new URL(manifestPath, sourceRoot)));
     if (!Array.isArray(manifest.files)) throw new Error('Wiki manifest must contain a files array.');
     const manifestPaths = manifest.files.filter(path => typeof path === 'string' && path.toLowerCase().endsWith('.md'));
     const documentsByPath = new Map();
-    const queue = [entryPath, ...manifestPaths];
-    while (queue.length) {
-      const path = queue.shift();
-      if (documentsByPath.has(path)) continue;
-      let markdown;
-      try {
-        markdown = await text(new URL(path, sourceRoot));
-      } catch (error) {
-        if (path === entryPath) throw error;
-        console.warn(`architecture graph: skipped missing note ${path}`);
-        continue;
+    // The notes are independent files: fetch them in bounded-concurrency waves
+    // instead of one request per round-trip.
+    const seen = new Set([entryPath, ...manifestPaths]);
+    let frontier = [entryPath, ...manifestPaths];
+    while (frontier.length) {
+      const wave = frontier.filter(path => !documentsByPath.has(path));
+      const discovered = [];
+      for (let index = 0; index < wave.length; index += GRAPH_FETCH_CONCURRENCY) {
+        const batch = wave.slice(index, index + GRAPH_FETCH_CONCURRENCY);
+        await Promise.all(batch.map(async path => {
+          let markdown;
+          try {
+            markdown = await text(new URL(path, sourceRoot));
+          } catch (error) {
+            if (path === entryPath) throw error;
+            console.warn(`architecture graph: skipped missing note ${path}`);
+            return;
+          }
+          documentsByPath.set(path, { path, markdown });
+          for (const link of markdownLinks(markdown)) {
+            const targetPath = resolve(path, link);
+            if (targetPath && !seen.has(targetPath)) {
+              seen.add(targetPath);
+              discovered.push(targetPath);
+            }
+          }
+        }));
       }
-      documentsByPath.set(path, { path, markdown });
-      for (const link of markdownLinks(markdown)) {
-        const targetPath = resolve(path, link);
-        if (targetPath && !documentsByPath.has(targetPath)) queue.push(targetPath);
-      }
+      frontier = discovered;
     }
-    const documents = [...documentsByPath.values()];
+    // Path order, not fetch order: the notes arrive in whatever order the
+    // network hands them back, and both the signature and the layout are
+    // built from this list. Unsorted, every live-reload crawl produced a
+    // different signature (so it re-rendered, which reads as the graph
+    // teleporting) and a different layout (so the re-render moved the nodes).
+    const documents = [...documentsByPath.values()].sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
     const files = new Set(documents.map(document => document.path));
     const outgoing = new Map(documents.map(document => [noteID(document.path), new Set()]));
     const incoming = new Map(documents.map(document => [noteID(document.path), new Set()]));
@@ -317,6 +370,23 @@
   function hideTooltip() {
     if (collapseTimer) return;
     tooltip.hidden = true;
+  }
+
+  // Preview card for a dot inside the local-graph panel.
+  function positionLocalHover(event) {
+    const bounds = root.getBoundingClientRect();
+    localHover.style.left = `${Math.max(10, Math.min(event.clientX - bounds.left + 14, bounds.width - localHover.offsetWidth - 12))}px`;
+    localHover.style.top = `${Math.max(10, Math.min(event.clientY - bounds.top + 14, bounds.height - localHover.offsetHeight - 12))}px`;
+  }
+
+  function showLocalHover(event, node) {
+    localHover.innerHTML = `<strong>${escapeHTML(node.title)}</strong><span class="architecture-graph-hint">${node.weight} connections</span>`;
+    localHover.hidden = false;
+    positionLocalHover(event);
+  }
+
+  function hideLocalHover() {
+    localHover.hidden = true;
   }
 
   function localGraphBounds() {
@@ -792,9 +862,15 @@
     localNodeSelections
       .on('pointerenter', (event, n) => {
         const main = graph.nodes.find(node => node.id === n.id);
-        if (main) highlight(main);
+        if (!main) return;
+        highlight(main);
+        showLocalHover(event, main);
+      })
+      .on('pointermove', (event, n) => {
+        if (!localHover.hidden) positionLocalHover(event);
       })
       .on('pointerleave', () => {
+        hideLocalHover();
         if (localGraphOpen) highlight(localGraphNode);
       })
       .on('contextmenu', (event, n) => {
@@ -857,6 +933,7 @@
   }
 
   function exitLocalGraph() {
+    hideLocalHover();
     if (collapseTimer) {
       // A collapse is mid-flight: cancel it and vanish the panel outright
       // (e.g. empty-space click during the shrink).
@@ -894,6 +971,7 @@
   // Right-clicking a DIFFERENT node still re-targets the panel.
   function collapseLocalGraph(clientX, clientY) {
     if (!localGraphOpen || !localGraphNode || collapseTimer) return;
+    hideLocalHover();
     const node = localGraphNode;
     if (localSim) { localSim.stop(); localSim = null; }
     localResize = null;
@@ -1090,11 +1168,16 @@
   function fit(animate = true) {
     if (!graph || !world.node() || !zoom) return;
     cancelGraphJelly();
+    const bounds = world.node().getBBox();
+    // Nothing measurable to fit (an empty graph, or a box that has collapsed —
+    // the panel closes and the iframe goes to 0×0): leave the view exactly as
+    // it is. Writing the viewBox first and bailing on the bounds afterwards
+    // left the transform describing a different box than the viewBox, and the
+    // next open drew the graph shoved to the bottom-right until it refitted.
+    if (!bounds.width || !bounds.height) return;
     const { width, height } = dimensions();
     svg.attr('viewBox', `0 0 ${width} ${height}`);
     labelOverlay.attr('viewBox', `0 0 ${width} ${height}`);
-    const bounds = world.node().getBBox();
-    if (!bounds.width || !bounds.height) return;
     const scale = Math.max(.34, .86 * Math.min(width / bounds.width, height / bounds.height));
     const transform = d3.zoomIdentity
       .translate(width / 2 - scale * (bounds.x + bounds.width / 2), height / 2 - scale * (bounds.y + bounds.height / 2))
@@ -1325,7 +1408,12 @@
     renderSearchOptions();
   }
 
+  let loading = false;
   async function load(force = false) {
+    // A crawl is already in flight — the localhost live-reload interval must
+    // not restart it mid-fetch (it would never finish).
+    if (loading) return;
+    loading = true;
     setStatus('Reading wiki graph...');
     try {
       const next = await readGraphSource();
@@ -1339,6 +1427,8 @@
     } catch (error) {
       console.error('architecture graph:', error);
       setStatus('Graph unavailable. Serve the site over HTTP to load the Markdown source.', true);
+    } finally {
+      loading = false;
     }
   }
 
@@ -1370,10 +1460,27 @@
     if (event.target.closest('.architecture-graph-tooltip')) return;
     exitLocalGraph();
   });
-  window.addEventListener('resize', () => {
+  // Auto-fit whenever the graph's own box changes — a window resize, the wiki's
+  // mind-map panel opening, or an iframe resize — not only window resizes.
+  // A size that has not actually changed is ignored, so the observer's first
+  // callback (and any no-op tick) cannot snap the view after it settles.
+  let refitSize = '';
+  const refit = () => {
+    // A collapsed box is not a size to fit: dimensions() clamps to 280×360, and
+    // the graph is not rendered while hidden, so a fit here only damaged the
+    // view (see fit()). Leave the stored size alone too, so the reopen that
+    // restores the panel's own size is correctly treated as "no change".
+    const rect = viewport.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    const { width, height } = dimensions();
+    const key = `${Math.round(width)}x${Math.round(height)}`;
+    if (key === refitSize) return;
+    refitSize = key;
     clearTimeout(reloadTimer);
     reloadTimer = window.setTimeout(() => fit(false), 120);
-  });
+  };
+  window.addEventListener('resize', refit);
+  if (typeof ResizeObserver !== 'undefined') new ResizeObserver(refit).observe(viewport);
 
   load();
   if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) window.setInterval(() => load(), 5000);
