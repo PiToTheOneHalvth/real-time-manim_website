@@ -69,12 +69,15 @@ button, code { font: inherit; }
   position: relative;
   z-index: 3;
   height: calc(100svh - var(--taskbar-h));
-  padding: clamp(24px, 4.4svh, 60px) var(--pad) clamp(20px, 2.6svh, 36px);
+  /* Spacing: a little air under the taskbar, a wide gap above the controls and a
+     tighter one below them, so the title and the mark sit in the optical centre
+     of what is left rather than floating. */
+  padding: clamp(28px, 5.4svh, 76px) var(--pad) clamp(24px, 3.4svh, 44px);
   display: grid;
-  grid-template-columns: minmax(0, 1.02fr) minmax(0, .98fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.06fr);
   grid-template-rows: minmax(0, 1fr) auto;
   column-gap: var(--gutter);
-  row-gap: clamp(20px, 3.6svh, 44px);
+  row-gap: clamp(28px, 5svh, 64px);
   align-items: center;
 }
 
@@ -85,12 +88,23 @@ button, code { font: inherit; }
   line-height: .86;
   letter-spacing: -.05em;
 }
-.hero-title span {
-  display: block;
-  animation: title-enter 600ms ease-out both;
+/* One line per word, and one span per letter: the letters of Real Time Manim
+   rise in one after another, top line first. */
+.hero-title .w { display: block; }
+.hero-title .c {
+  display: inline-block;
+  line-height: .86;
+  opacity: 0;
+  transform: translateY(40px);
+  animation: hero-letter-up 900ms cubic-bezier(.215, .61, .355, 1) forwards;
+  animation-delay: calc(var(--i, 0) * 50ms);
 }
-.hero-title span:nth-child(2) { animation-delay: 50ms; }
-.hero-title span:nth-child(3) { animation-delay: 100ms; }
+@keyframes hero-letter-up {
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
 
 /* Start-time stagger: Manim + 150ms, then social links + 100ms. */
 .social-links { animation: title-enter 600ms ease-out 250ms both; }
@@ -148,7 +162,7 @@ button, code { font: inherit; }
 }
 .installation-slot {
   justify-self: end;
-  width: calc(280 * var(--unit));
+  width: auto;
   max-width: 100%;
 }
 .social-links {
@@ -156,26 +170,26 @@ button, code { font: inherit; }
   align-items: center;
   justify-self: start;
   align-self: start;
-  padding: calc(4 * var(--unit)) calc(12 * var(--unit));
+  padding: calc(6 * var(--unit)) calc(16 * var(--unit));
   border-radius: 999px;
   background: var(--surface);
 }
 .social-links a {
   display: grid;
   place-items: center;
-  width: calc(44 * var(--unit));
-  height: calc(44 * var(--unit));
+  width: calc(52 * var(--unit));
+  height: calc(52 * var(--unit));
   border-radius: 50%;
 }
 .social-links img {
   display: block;
-  width: calc(20 * var(--unit));
-  height: calc(20 * var(--unit));
+  width: calc(24 * var(--unit));
+  height: calc(24 * var(--unit));
 }
 .social-links .wiki-icon {
   /* Preserve the PSD export's proportions within the shared icon space. */
-  width: calc(20 * var(--unit));
-  height: calc(20 * var(--unit));
+  width: calc(24 * var(--unit));
+  height: calc(24 * var(--unit));
   object-fit: contain;
 }
 .social-links a, .download, #copy-command { transition: opacity 160ms ease; }
@@ -188,31 +202,30 @@ a:focus-visible, button:focus-visible {
 .installation {
   position: relative;
   justify-self: end;
-  width: calc(280 * var(--unit));
+  width: auto;
   max-width: 100%;
-  display: grid;
-  height: calc(104 * var(--unit));
-  grid-template-rows: calc(44 * var(--unit)) calc(36 * var(--unit));
-  gap: calc(8 * var(--unit));
-  padding: calc(8 * var(--unit)) calc(12 * var(--unit));
+  display: flex;
+  align-items: center;
+  gap: calc(12 * var(--unit));
+  height: calc(64 * var(--unit));
+  padding: calc(8 * var(--unit)) calc(10 * var(--unit)) calc(8 * var(--unit)) calc(20 * var(--unit));
   border-radius: calc(20 * var(--unit));
   background: var(--surface);
 }
 .install-command {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: calc(8 * var(--unit));
-  min-height: calc(44 * var(--unit));
-  padding: 0 0 0 calc(12 * var(--unit));
-  font-size: calc(17 * var(--unit));
+  min-height: 0;
+  padding: 0;
+  font-size: calc(18 * var(--unit));
   white-space: nowrap;
 }
 #copy-command {
   display: grid;
   place-items: center;
-  width: calc(44 * var(--unit));
-  height: calc(44 * var(--unit));
+  width: calc(40 * var(--unit));
+  height: calc(40 * var(--unit));
   flex-shrink: 0;
   padding: 0;
   border: 0;
@@ -230,16 +243,18 @@ a:focus-visible, button:focus-visible {
 #copy-command[data-copied="true"] .check-icon { display: block; }
 .download {
   position: relative;
-  justify-self: stretch;
   display: grid;
   place-items: center;
-  padding: 0 calc(20 * var(--unit));
+  flex: none;
+  height: calc(48 * var(--unit));
+  padding: 0 calc(28 * var(--unit));
   border-radius: calc(12 * var(--unit));
   background: var(--foreground);
   color: var(--background);
   text-decoration: none;
   text-align: center;
-  font-size: calc(22 * var(--unit));
+  white-space: nowrap;
+  font-size: calc(21 * var(--unit));
 }
 .installation.is-banner .download {
   position: absolute;
@@ -1134,6 +1149,16 @@ body.architecture-graph-open { overflow: hidden; }
   }
   .social-slot { grid-column: 1; justify-self: start; }
   .installation-slot { grid-column: 1; justify-self: stretch; width: 100%; }
+  /* One row of command + copy + download is wider than a phone: fold it back
+     into two. */
+  .installation {
+    width: 100%;
+    height: auto;
+    flex-wrap: wrap;
+    row-gap: calc(8 * var(--unit));
+  }
+  .install-command { flex: 1 1 100%; justify-content: space-between; }
+  .download { flex: 1 1 100%; height: calc(44 * var(--unit)); padding: 0; }
   .taskbar { gap: 3vw; }
   .taskbar-nav { gap: calc(14 * var(--unit)); }
   .taskbar-nav a { font-size: calc(16 * var(--unit)); }
@@ -1187,7 +1212,7 @@ body.architecture-graph-open { overflow: hidden; }
   .real-life-details.reveal-visible > *, .next-generation.reveal-visible { animation: none; }
   .next-generation-section.reveal-pending .ng-fade-item { opacity: 1; transform: none; }
   .next-generation-section.reveal-visible .ng-fade-item { transition: none; }
-  .hero-title span, .social-links, .installation { animation: none; }
+  .hero-title .c, .social-links, .installation { animation: none; opacity: 1; transform: none; }
   .social-links a, .download, #copy-command, .taskbar a { transition: none; }
   .center-title { transition: none; }
   .diagram-recenter-btn { transition: none; }

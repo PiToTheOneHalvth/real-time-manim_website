@@ -89,7 +89,7 @@
     }
     logoBox.inkW = inkW;
     logoBox.inkH = inkH;
-    const w = (stageBox.w * 0.96) / inkW;
+    const w = (stageBox.w * 1.0) / inkW;
     const h = w / ratio;
     logoBox.w = w;
     logoBox.h = h;
