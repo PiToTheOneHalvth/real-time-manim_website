@@ -13,35 +13,59 @@
 </head>
 <body>
   <header class="wiki-taskbar">
-    <a class="wiki-brand" href="../en_US/real_time_manim.html">real-time-manim</a>
+    <a class="wiki-brand" href="../en_US/real_time_manim.html"><img class="wiki-brand-logo" src="../../assets/images/real-time-manim-icon.png" alt="" width="38" height="38">Real-Time-Manim</a>
     <nav class="wiki-nav" aria-label="Site">
-      <a href="../en_US/real_time_manim.html#architecture-heading">Architecture</a>
+      <button class="wiki-nav-button" type="button" id="wiki-mindmap-open">Architecture</button>
       <a href="../en_US/real_time_manim.html">Product</a>
+      <div class="wiki-lang-switch">
+        <button class="wiki-lang-toggle" type="button" id="wiki-lang-toggle" aria-haspopup="true" aria-expanded="false" aria-controls="wiki-lang-menu" aria-label="切换语言" title="切换语言"><img src="../../assets/images/language.png" alt="" width="20" height="20"></button>
+        <div class="wiki-lang-menu" id="wiki-lang-menu" hidden aria-label="语言">
+          <button class="wiki-lang-option" type="button" data-href="../en_US/wiki.html" hreflang="en" lang="en"><span class="wiki-lang-name">English</span><span class="wiki-lang-tick" aria-hidden="true">✓</span></button>
+          <button class="wiki-lang-option is-current" type="button" aria-current="true"><span class="wiki-lang-name">简体中文</span><span class="wiki-lang-tick" aria-hidden="true">✓</span></button>
+        </div>
+      </div>
     </nav>
     <!-- agent-only entry: zero-pixel button pointing to the agent wiki (wiki/agent/), not the normal wiki -->
     <button type="button" id="agent-wiki" data-agent-wiki-path="/Users/niuyingkai/PHormation codes/2026fall/real-time-manim_website/wiki/agent" aria-hidden="true" tabindex="-1" title="Agent wiki" style="position:absolute;width:0;height:0;padding:0;border:0;overflow:hidden"></button>
   </header>
-  <main class="wiki-shell" data-source-root="../../wiki/zh_CN/" data-entry-path="README.md" data-ui="zh">
+  <main class="wiki-shell" data-source-root="https://cdn.jsdelivr.net/gh/BEGINWITHF/real-time-manim@main/RTM-Wiki/zh_CN/" data-source-mirror="https://raw.githubusercontent.com/BEGINWITHF/real-time-manim/main/RTM-Wiki/zh_CN/" data-entry-path="README.md" data-manifest-path="manifest.json" data-ui="zh">
     <aside id="wiki-sidebar" class="wiki-sidebar" aria-label="Wiki notes">
-      <div class="wiki-sidebar-header">
-        <h1>Wiki</h1>
-        <div class="wiki-sidebar-actions">
-          <a class="wiki-open-graph" href="../en_US/real_time_manim.html#architecture-heading">Open graph</a>
-          <a class="wiki-lang" href="../en_US/wiki.html">EN</a>
+      <div class="wiki-sidebar-inner">
+        <div class="wiki-sidebar-header">
+          <h1>Wiki</h1>
         </div>
+        <label class="wiki-search-label">
+          <input id="wiki-search" type="search" placeholder="搜索笔记" autocomplete="off">
+        </label>
+        <p id="wiki-status" class="wiki-status" role="status" aria-live="polite">正在加载笔记…</p>
+        <nav id="wiki-note-list" class="wiki-note-list" aria-label="Notes"></nav>
       </div>
-      <button id="wiki-sidebar-toggle" class="wiki-sidebar-toggle" type="button" aria-expanded="true" aria-controls="wiki-sidebar" aria-label="Hide notes">
+    </aside>
+    <div class="wiki-main">
+      <!-- 侧栏会完全收起，所以开关按钮放在正文栏的左上角，而不是侧栏里。 -->
+      <button id="wiki-sidebar-toggle" class="wiki-sidebar-toggle" type="button" aria-expanded="true" aria-controls="wiki-sidebar" aria-label="隐藏笔记" title="隐藏笔记">
         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
       </button>
-      <label class="wiki-search-label">
-        <input id="wiki-search" type="search" placeholder="搜索笔记" autocomplete="off">
-      </label>
-      <p id="wiki-status" class="wiki-status" role="status" aria-live="polite">正在加载笔记…</p>
-      <nav id="wiki-note-list" class="wiki-note-list" aria-label="Notes"></nav>
-    </aside>
-    <article id="wiki-article" class="wiki-article" aria-live="polite">
-      <p class="wiki-loading">正在加载笔记…</p>
-    </article>
+      <article id="wiki-article" class="wiki-article" aria-live="polite">
+        <p class="wiki-loading">正在加载笔记…</p>
+      </article>
+    </div>
+    <div class="wiki-sidebar-grip" id="wiki-sidebar-grip" role="separator" aria-orientation="vertical" aria-label="调整侧栏宽度" tabindex="0" title="拖拽调整宽度 · 双击恢复默认"></div>
   </main>
+  <button class="wiki-top" id="wiki-top" type="button" aria-label="回到顶部" title="回到顶部">
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 15 12 9 18 15"/></svg>
+  </button>
+  <div class="wiki-mindmap" id="wiki-mindmap" hidden>
+    <div class="wiki-mindmap-panel">
+      <button class="wiki-mindmap-close" type="button" aria-label="Close graph" title="Close">✕</button>
+      <div class="wiki-mindmap-loader" id="wiki-mindmap-loader">
+        <div class="wiki-loader" role="status" aria-live="polite" aria-label="Loading graph">
+          <canvas class="wiki-loader-canvas" aria-hidden="true"></canvas>
+          <div class="wiki-loader-bar" aria-hidden="true"><span class="wiki-loader-bar-fill"></span></div>
+        </div>
+      </div>
+      <div class="wiki-mindmap-frame" id="wiki-mindmap-frame"></div>
+    </div>
+  </div>
 </body>
 </html>

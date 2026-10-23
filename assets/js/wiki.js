@@ -2,8 +2,16 @@
   const shell = document.querySelector('.wiki-shell');
   if (!shell) return;
 
-  const sourceRootRaw = shell.dataset.sourceRoot || '../../wiki/en_US/';
-  const sourceRoot = new URL(sourceRootRaw, document.baseURI);
+  // The manual lives in another repository, served through a public CDN. CDN
+  // reachability varies by network — raw.githubusercontent.com is blocked on
+  // some, cdn.jsdelivr.net on others — so the page lists a primary source plus
+  // any mirrors in data-source-mirror (whitespace/comma separated). A source
+  // that cannot be read falls through to the next one (see loadSource).
+  const DEFAULT_SOURCE = 'https://cdn.jsdelivr.net/gh/BEGINWITHF/real-time-manim@main/RTM-Wiki/en_US/';
+  let sourceRootRaw = shell.dataset.sourceRoot || DEFAULT_SOURCE;
+  const SOURCES = [sourceRootRaw, ...((shell.dataset.sourceMirror || '').match(/[^\s,]+/g) || [])];
+  let sourceIndex = 0;
+  let sourceRoot = new URL(sourceRootRaw, document.baseURI);
   const entryPath = shell.dataset.entryPath || 'index.md';
   const manifestPath = shell.dataset.manifestPath || 'manifest.json';
   const article = document.getElementById('wiki-article');
@@ -12,8 +20,11 @@
   const noteList = document.getElementById('wiki-note-list');
   const sidebarToggle = document.getElementById('wiki-sidebar-toggle');
   const localHost = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
-  let documents = new Map();
+  const motionReduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+  let catalog = new Map();
+  const markdownCache = new Map();
   let currentID = '';
+  let noteRequest = 0;
   let sourceSignature = '';
   let refreshTimer;
 
@@ -71,28 +82,12 @@
     };
   }
 
-  function extractLinks(markdown) {
-    const links = [];
-    const source = markdown.replace(/```[\s\S]*?```/g, '');
-    const markdownPattern = /(!?)\[([^\]]*)\]\(([^)]+)\)/g;
-    let match;
-    while ((match = markdownPattern.exec(source))) {
-      if (match[1] !== '!') {
-        const target = splitTarget(match[3]);
-        links.push({ ...target, vaultRelative: false, label: match[2] });
-      }
-    }
-    const wikilinkPattern = /\[\[([^\]]+)\]\]/g;
-    while ((match = wikilinkPattern.exec(source))) {
-      const [rawTarget, label] = match[1].split('|');
-      const target = splitTarget(rawTarget);
-      if (target.path) links.push({ ...target, path: target.path.endsWith('.md') ? target.path : `${target.path}.md`, vaultRelative: true, label: label || rawTarget });
-    }
-    return links;
-  }
+  // A remote source (e.g. GitHub raw) is worth caching; the localhost dev
+  // server keeps no-store so the 5s live-reload still sees edits.
+  const FETCH_CACHE = localHost ? 'no-store' : 'default';
 
   async function fetchText(url) {
-    const response = await fetch(url, { cache: 'no-store' });
+    const response = await fetch(url, { cache: FETCH_CACHE });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     return response.text();
   }
@@ -139,39 +134,33 @@
     });
   }
 
-  async function discover() {
+  // Only the manifest is fetched up front: it lists every note path, which is
+  // all the sidebar tree and search need. A note's Markdown is fetched on
+  // demand (see loadNote), so the first paint costs one small request instead
+  // of the whole vault.
+  async function loadCatalog() {
     const manifest = JSON.parse(await fetchText(new URL(manifestPath, sourceRoot)));
     if (!Array.isArray(manifest.files)) throw new Error('Wiki manifest must contain a files array.');
-    const manifestPaths = manifest.files.filter(path => typeof path === 'string' && path.toLowerCase().endsWith('.md'));
-    const found = new Map();
-    const queue = [entryPath, ...manifestPaths];
-    while (queue.length) {
-      const path = normalizePath(queue.shift());
-      if (found.has(path)) continue;
-      let markdown;
-      try {
-        markdown = await fetchText(new URL(path, sourceRoot));
-      } catch (error) {
-        if (path === entryPath) throw error;
-        continue;
-      }
-      found.set(path, { id: noteID(path), path, markdown });
-      for (const link of extractLinks(markdown)) {
-        const targetPath = resolvePath(path, link, found);
-        if (targetPath && !found.has(targetPath)) queue.push(targetPath);
-      }
-    }
-    return found;
+    const entries = new Map();
+    const add = path => {
+      if (typeof path !== 'string') return;
+      const normalized = normalizePath(path);
+      if (!normalized.toLowerCase().endsWith('.md') || entries.has(normalized)) return;
+      entries.set(normalized, { id: noteID(normalized), path: normalized });
+    };
+    add(entryPath);
+    manifest.files.forEach(add);
+    return entries;
   }
 
   function internalTarget(rawTarget, sourcePath) {
     const target = splitTarget(rawTarget);
     if (!target.path) return null;
     const link = { ...target, vaultRelative: false };
-    let path = resolvePath(sourcePath, link, documents);
+    let path = resolvePath(sourcePath, link, catalog);
     if (!path && !target.path.includes('/')) {
       const normalized = `${target.path.replace(/\.md$/i, '')}`;
-      const matches = [...documents.keys()].filter(candidate => noteID(candidate).split('/').pop() === normalized);
+      const matches = [...catalog.keys()].filter(candidate => noteID(candidate).split('/').pop() === normalized);
       if (matches.length === 1) path = matches[0];
     }
     if (!path) return null;
@@ -535,7 +524,7 @@
 
   function buildTree() {
     const root = { folders: new Map(), notes: [] };
-    [...documents.values()].sort((a, b) => a.id.localeCompare(b.id)).forEach(entry => {
+    [...catalog.values()].sort((a, b) => a.id.localeCompare(b.id)).forEach(entry => {
       const segments = entry.id.split('/');
       let node = root;
       for (let index = 0; index < segments.length; index += 1) {
@@ -593,7 +582,7 @@
 
   function renderFolderNode(node, container) {
     [...node.folders.values()].sort((a, b) => a.name.localeCompare(b.name)).forEach(folder => {
-      const folderEntry = documents.get(`${folder.path}/index.md`) || documents.get(`${folder.path}/README.md`);
+      const folderEntry = catalog.get(`${folder.path}/index.md`) || catalog.get(`${folder.path}/README.md`);
       const folderEl = document.createElement('div');
       folderEl.className = 'wiki-folder';
       folderEl.dataset.path = folder.path;
@@ -713,6 +702,146 @@
     });
   }
 
+  // ---- Loading indicator ----------------------------------------------------
+  // A gyro: two rings on shifted X/Y axes, revolved so the tilt reads as depth.
+  // Monochrome — the outer ring is solid, the inner is dashed, and the RTM icon
+  // sits at the centre. Drawn as a pure function of time (see drawGyro): any t
+  // gives one frame, the loop is seamless, and reduced motion freezes one.
+  const GYRO_W = 320;
+  const GYRO_H = 200;
+  const GYRO_DUR = 2.6;
+  const GYRO_TAU = Math.PI * 2;
+  const GYRO_CX = 160;
+  const GYRO_CY = 96;
+  const GYRO_TILT = 55 * Math.PI / 180;
+  const GYRO_ICON = 52;
+  const GYRO_INK = '#f5f5f5';
+  const GYRO_DIM = '#9a9a9a';
+  const gyroProject = (x, y, z, cx, cy, f) => { const s = f / (f + z); return [cx + x * s, cy + y * s, s]; };
+  const LOADER_HTML = '<div class="wiki-loader" role="status" aria-live="polite" aria-label="Loading"><canvas class="wiki-loader-canvas" aria-hidden="true"></canvas><div class="wiki-loader-bar" aria-hidden="true"><span class="wiki-loader-bar-fill"></span></div></div>';
+  const loaderIcon = new Image();
+  loaderIcon.decoding = 'async';
+  loaderIcon.src = new URL('../../assets/images/real-time-manim-icon.png', document.baseURI).href;
+  // One gyro per canvas: restarting it, or shutting it down, bumps the canvas's
+  // token so the previous animation loop closes itself.
+  const loaderRuns = new WeakMap();
+
+  function drawGyro(g, t) {
+    const phase = (((t % GYRO_DUR) + GYRO_DUR) % GYRO_DUR) / GYRO_DUR;   // seamless 0..1 loop
+    const spin = phase * GYRO_TAU;
+    const tilt = Math.sin(phase * GYRO_TAU) * GYRO_TILT;
+    const project = (x, y, z) => {
+      const x1 = x * Math.cos(spin) + z * Math.sin(spin);
+      const z1 = -x * Math.sin(spin) + z * Math.cos(spin);
+      const y2 = y * Math.cos(tilt) - z1 * Math.sin(tilt);
+      const z2 = y * Math.sin(tilt) + z1 * Math.cos(tilt);
+      return [x1, y2, z2];
+    };
+    const ring = (fn, n = 72) => {
+      const out = [];
+      for (let i = 0; i < n; i += 1) {
+        const p0 = project(...fn(i / n * GYRO_TAU));
+        const p1 = project(...fn((i + 1) / n * GYRO_TAU));
+        out.push([p0, p1, (p0[2] + p1[2]) / 2]);
+      }
+      return out;
+    };
+    const ringOuter = ring(a => [Math.cos(a) * 58, Math.sin(a) * 58, 0]);
+    const ringInner = ring(a => [0, Math.cos(a) * 44, Math.sin(a) * 44]);
+    // One stroke per contiguous front/back arc: it lets the logo sit between the
+    // halves and lets a dash pattern run cleanly. Each ring is otherwise one
+    // flat colour — no brightness split between the near and far side.
+    const strokeArc = (segments, front, color, width, dash) => {
+      let run = [];
+      const flush = () => {
+        if (run.length > 1) {
+          if (dash) g.setLineDash(dash);
+          g.beginPath();
+          run.forEach((point, index) => {
+            const q = gyroProject(point[0], point[1], point[2], GYRO_CX, GYRO_CY, 360);
+            if (index) g.lineTo(q[0], q[1]); else g.moveTo(q[0], q[1]);
+          });
+          g.strokeStyle = color;
+          g.lineWidth = width;
+          g.lineCap = 'round';
+          g.lineJoin = 'round';
+          g.stroke();
+          if (dash) g.setLineDash([]);
+          g.lineCap = 'butt';
+          g.lineJoin = 'miter';
+        }
+        run = [];
+      };
+      segments.forEach(([p0, p1, z]) => {
+        if ((z <= 0) === front) { if (!run.length) run.push(p0); run.push(p1); } else flush();
+      });
+      flush();
+    };
+    // back halves (the outer ring solid, the inner dashed)
+    strokeArc(ringOuter, false, GYRO_INK, 4);
+    strokeArc(ringInner, false, GYRO_DIM, 3, [7, 7]);
+    // a soft glow behind the logo, gently pulsing
+    const glowRadius = GYRO_ICON * 1.1;
+    const glow = g.createRadialGradient(GYRO_CX, GYRO_CY, GYRO_ICON * .35, GYRO_CX, GYRO_CY, glowRadius);
+    glow.addColorStop(0, `rgba(245, 245, 245, ${(.3 + .12 * Math.sin(phase * GYRO_TAU * 2)).toFixed(3)})`);
+    glow.addColorStop(1, 'rgba(245, 245, 245, 0)');
+    g.fillStyle = glow;
+    g.beginPath();
+    g.arc(GYRO_CX, GYRO_CY, glowRadius, 0, GYRO_TAU);
+    g.fill();
+    // the RTM icon at the centre (clipped to a disc so its square edge never shows)
+    if (loaderIcon.complete && loaderIcon.naturalWidth) {
+      g.save();
+      g.beginPath();
+      g.arc(GYRO_CX, GYRO_CY, GYRO_ICON / 2, 0, GYRO_TAU);
+      g.clip();
+      g.drawImage(loaderIcon, GYRO_CX - GYRO_ICON / 2, GYRO_CY - GYRO_ICON / 2, GYRO_ICON, GYRO_ICON);
+      g.restore();
+    } else {
+      g.beginPath();
+      g.arc(GYRO_CX, GYRO_CY, 8, 0, GYRO_TAU);
+      g.fillStyle = GYRO_INK;
+      g.fill();
+    }
+    // front halves
+    strokeArc(ringOuter, true, GYRO_INK, 4);
+    strokeArc(ringInner, true, GYRO_DIM, 3, [7, 7]);
+  }
+
+  function startGyro(canvas) {
+    if (!canvas) return;
+    const g = canvas.getContext('2d');
+    const run = (loaderRuns.get(canvas) || 0) + 1;
+    loaderRuns.set(canvas, run);
+    const started = performance.now();
+    const frame = now => {
+      if (loaderRuns.get(canvas) !== run || !canvas.isConnected) return;
+      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      const w = Math.round(canvas.clientWidth * dpr);
+      const h = Math.round(canvas.clientHeight * dpr);
+      if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+      const scale = w && h ? Math.min(w / GYRO_W, h / GYRO_H) : 1;
+      const t = motionReduced.matches ? GYRO_DUR * .25 : (now - started) / 1000;
+      g.setTransform(1, 0, 0, 1, 0, 0);
+      g.clearRect(0, 0, w, h);
+      g.setTransform(scale, 0, 0, scale, (w - GYRO_W * scale) / 2, (h - GYRO_H * scale) / 2);
+      g.imageSmoothingEnabled = true;
+      g.imageSmoothingQuality = 'high';
+      drawGyro(g, t);
+      if (!motionReduced.matches) requestAnimationFrame(frame);
+    };
+    requestAnimationFrame(frame);
+  }
+
+  function stopGyro(canvas) {
+    if (canvas) loaderRuns.set(canvas, (loaderRuns.get(canvas) || 0) + 1);
+  }
+
+  function showLoader() {
+    article.innerHTML = LOADER_HTML;
+    startGyro(article.querySelector('.wiki-loader-canvas'));
+  }
+
   function renderNote(entry) {
     const rawTitle = entry.markdown.replace(/^---\n[\s\S]*?\n---\n?/, '').match(/^#\s+(.+?)\s*$/m);
     const title = rawTitle ? rawTitle[1].replace(/[#*_`]/g, '').trim() : titleFromID(entry.id);
@@ -721,10 +850,12 @@
     document.title = `${title} | Real-Time Manim Wiki`;
     markCurrent();
     revealNote(entry.id);
+    // The heading is new on every note: re-arm the back-to-top trigger.
+    watchArticleTitle();
   }
 
   function entryByID(id) {
-    return [...documents.values()].find(entry => entry.id === id);
+    return [...catalog.values()].find(entry => entry.id === id);
   }
 
   async function loadNote(id) {
@@ -734,12 +865,26 @@
       return;
     }
     currentID = entry.id;
-    article.innerHTML = `<p class="wiki-loading">${ui.loadingNote}</p>`;
+    // Update the list at once: the fetch can take a moment, and the current
+    // highlight should not wait for it.
+    markCurrent();
+    revealNote(entry.id);
+    updateList();
+    showLoader();
+    // A newer navigation supersedes this one: a slow fetch must never overwrite
+    // the note the reader has since moved to.
+    const request = ++noteRequest;
     try {
-      if (!entry.markdown) entry.markdown = await fetchText(new URL(entry.path, sourceRoot));
-      renderNote(entry);
+      let markdown = markdownCache.get(entry.path);
+      if (markdown === undefined) {
+        markdown = await fetchText(new URL(entry.path, sourceRoot));
+        markdownCache.set(entry.path, markdown);
+      }
+      if (request !== noteRequest) return;
+      renderNote({ ...entry, markdown });
       updateList();
     } catch (error) {
+      if (request !== noteRequest) return;
       console.error('wiki note:', error);
       article.innerHTML = `<p class="wiki-error">${ui.noteError}</p>`;
     }
@@ -752,12 +897,15 @@
   }
 
   async function refreshSource(renderCurrent = true) {
-    const next = await discover();
-    const signature = [...next.values()].map(entry => `${entry.path}:${entry.markdown}`).join('\u0001');
+    const next = await loadCatalog();
+    const signature = [...next.keys()].join('\u0001');
     const changed = signature !== sourceSignature;
-    documents = next;
+    catalog = next;
     sourceSignature = signature;
     if (changed) {
+      for (const path of [...markdownCache.keys()]) {
+        if (!catalog.has(path)) markdownCache.delete(path);
+      }
       renderList();
       if (renderCurrent) await loadNote(currentID || new URLSearchParams(location.search).get('note') || noteID(entryPath));
     } else {
@@ -766,9 +914,36 @@
     return changed;
   }
 
+  // Moves to the next source in SOURCES, dropping everything read from the one
+  // that failed so notes from two hosts are never mixed.
+  function useNextSource() {
+    if (sourceIndex >= SOURCES.length - 1) return false;
+    sourceIndex += 1;
+    sourceRootRaw = SOURCES[sourceIndex];
+    sourceRoot = new URL(sourceRootRaw, document.baseURI);
+    catalog = new Map();
+    markdownCache.clear();
+    sourceSignature = '';
+    return true;
+  }
+
+  // Reads the note catalog, falling through the source list until one answers.
+  async function loadSource() {
+    for (;;) {
+      try {
+        await refreshSource(false);
+        return;
+      } catch (error) {
+        if (!useNextSource()) throw error;
+        console.warn('wiki: source unavailable, trying', sourceRootRaw, error);
+      }
+    }
+  }
+
   async function init() {
+    showLoader();
     try {
-      await refreshSource(false);
+      await loadSource();
       if (sidebarToggle) {
         const setTocState = (collapsed) => {
           shell.classList.toggle('is-toc-collapsed', collapsed);
@@ -818,6 +993,285 @@
       console.error('wiki:', error);
       article.innerHTML = `<p class="wiki-error">${ui.sourceError}</p>`;
     }
+  }
+
+  // ---- Sidebar width --------------------------------------------------------
+  // One custom property carries the drawer's width (--wiki-drawer-w in
+  // wiki.css): the grid column, the drawer's contents, the push-out offset, the
+  // fixed toggle and this grip all read it, so a drag stays in step everywhere.
+  const sidebarGrip = document.getElementById('wiki-sidebar-grip');
+  const SIDEBAR_MIN = 200;
+  const SIDEBAR_MAX = 480;
+  const SIDEBAR_DEFAULT = 280;
+
+  // Leave the note a usable column even in a narrow window.
+  function sidebarLimit() {
+    return Math.max(SIDEBAR_MIN + 40, Math.min(SIDEBAR_MAX, window.innerWidth - 380));
+  }
+
+  function setSidebarWidth(width, persist = true) {
+    const next = Math.round(Math.max(SIDEBAR_MIN, Math.min(sidebarLimit(), width)));
+    document.documentElement.style.setProperty('--wiki-drawer-w', `${next}px`);
+    if (persist) {
+      try { localStorage.setItem('wiki-sidebar-w', String(next)); } catch { /* private mode */ }
+    }
+    return next;
+  }
+
+  function currentSidebarWidth() {
+    const inline = parseFloat(document.documentElement.style.getPropertyValue('--wiki-drawer-w'));
+    if (Number.isFinite(inline)) return inline;
+    const computed = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--wiki-drawer-w'));
+    return Number.isFinite(computed) ? computed : SIDEBAR_DEFAULT;
+  }
+
+  if (sidebarGrip) {
+    let drag = null;
+    sidebarGrip.addEventListener('pointerdown', event => {
+      if (shell.classList.contains('is-toc-collapsed')) return;
+      event.preventDefault();
+      drag = { startX: event.clientX, startWidth: currentSidebarWidth() };
+      shell.classList.add('is-resizing-sidebar');
+      try { sidebarGrip.setPointerCapture(event.pointerId); } catch { /* unsupported */ }
+    });
+    sidebarGrip.addEventListener('pointermove', event => {
+      if (!drag) return;
+      setSidebarWidth(drag.startWidth + (event.clientX - drag.startX), false);
+    });
+    const finishDrag = event => {
+      if (!drag) return;
+      drag = null;
+      shell.classList.remove('is-resizing-sidebar');
+      try { sidebarGrip.releasePointerCapture(event.pointerId); } catch { /* already gone */ }
+      setSidebarWidth(currentSidebarWidth());
+    };
+    sidebarGrip.addEventListener('pointerup', finishDrag);
+    sidebarGrip.addEventListener('pointercancel', finishDrag);
+    sidebarGrip.addEventListener('dblclick', () => setSidebarWidth(SIDEBAR_DEFAULT));
+    sidebarGrip.addEventListener('keydown', event => {
+      if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+      event.preventDefault();
+      const step = (event.shiftKey ? 48 : 16) * (event.key === 'ArrowRight' ? 1 : -1);
+      setSidebarWidth(currentSidebarWidth() + step);
+    });
+    // Restore the width the reader last settled on.
+    try {
+      const saved = parseFloat(localStorage.getItem('wiki-sidebar-w'));
+      if (Number.isFinite(saved)) setSidebarWidth(saved, false);
+    } catch { /* private mode */ }
+  }
+
+  // ---- Back to top ----------------------------------------------------------
+  // The button waits off the right edge until the note's own title has scrolled
+  // out of view — the moment the reader has lost the page's heading — then it
+  // slides in to the bottom-right corner (see .wiki-top in wiki.css).
+  const topButton = document.getElementById('wiki-top');
+  let titleObserver = null;
+  let topFallbackBound = false;
+
+  function watchArticleTitle() {
+    if (!topButton) return;
+    if (titleObserver) { titleObserver.disconnect(); titleObserver = null; }
+    const setVisible = visible => topButton.classList.toggle('is-visible', visible);
+    const title = article.querySelector('h1');
+    if (!title || typeof IntersectionObserver === 'undefined') {
+      if (!topFallbackBound) {
+        topFallbackBound = true;
+        window.addEventListener('scroll', () => setVisible(window.scrollY > 240), { passive: true });
+      }
+      setVisible(window.scrollY > 240);
+      return;
+    }
+    const header = document.querySelector('.wiki-taskbar');
+    // Shrink the observation box by the sticky taskbar's height, so the button
+    // arrives when the title slides under the header rather than after it has
+    // left the viewport entirely.
+    const margin = header ? Math.round(header.getBoundingClientRect().height) : 0;
+    titleObserver = new IntersectionObserver(entries => {
+      const entry = entries[entries.length - 1];
+      setVisible(!entry.isIntersecting && entry.boundingClientRect.top < 0);
+    }, { rootMargin: `-${margin}px 0px 0px 0px`, threshold: 0 });
+    titleObserver.observe(title);
+  }
+
+  if (topButton) {
+    topButton.addEventListener('click', () => {
+      // The observer hides the button again once the title is back in view.
+      window.scrollTo({ top: 0, behavior: motionReduced.matches ? 'auto' : 'smooth' });
+    });
+  }
+
+  // ---- Architecture mind map panel ------------------------------------------
+  // The graph lives on its own page (mindmap.html) so its styles and scripts
+  // stay isolated; the iframe is created on first open, so the wiki itself
+  // stays fast. Reading and settling the graph takes a moment, so the panel
+  // covers it with the same gyro the note reader uses until the iframe posts
+  // that it has drawn (see the ready script in mindmap.html).
+  const mindmap = document.getElementById('wiki-mindmap');
+  const mindmapFrame = document.getElementById('wiki-mindmap-frame');
+  const mindmapLoader = document.getElementById('wiki-mindmap-loader');
+  const mindmapOpen = document.getElementById('wiki-mindmap-open');
+  // How long the opaque overlay stays over the graph after it reports ready,
+  // and how long it then takes to fade. The graph can still shift once more
+  // right after that report (the last simulation ticks, a refit as the panel
+  // settles), so the reader is only ever shown the finished layout.
+  const MINDMAP_HOLD = 1000;
+  const MINDMAP_FADE = 320;
+  let mindmapReady = false;
+  let mindmapLoaderOn = false;
+  let mindmapLoaderHold = 0;
+  let mindmapLoaderFade = 0;
+
+  function startMindmapLoader() {
+    if (!mindmapLoader) return;
+    window.clearTimeout(mindmapLoaderHold);
+    window.clearTimeout(mindmapLoaderFade);
+    mindmapLoaderHold = 0;
+    mindmapLoaderFade = 0;
+    mindmapLoaderOn = true;
+    mindmapLoader.hidden = false;
+    mindmapLoader.classList.remove('is-done');
+    startGyro(mindmapLoader.querySelector('.wiki-loader-canvas'));
+  }
+
+  function stopMindmapLoader() {
+    if (!mindmapLoader || !mindmapLoaderOn) return;
+    mindmapLoaderOn = false;
+    mindmapLoaderHold = window.setTimeout(() => {
+      mindmapLoaderHold = 0;
+      // Reveal and fade at once: the overlay goes out while the graph comes in.
+      mindmapFrame.classList.add('is-ready');
+      mindmapLoader.classList.add('is-done');
+      mindmapLoaderFade = window.setTimeout(() => {
+        mindmapLoaderFade = 0;
+        mindmapLoader.hidden = true;
+        // Only now stop the gyro, so the animation is still running through
+        // the fade instead of freezing behind it.
+        stopGyro(mindmapLoader.querySelector('.wiki-loader-canvas'));
+      }, MINDMAP_FADE);
+    }, MINDMAP_HOLD);
+  }
+
+  function hideMindmapLoader() {
+    if (!mindmapLoader) return;
+    window.clearTimeout(mindmapLoaderHold);
+    window.clearTimeout(mindmapLoaderFade);
+    mindmapLoaderHold = 0;
+    mindmapLoaderFade = 0;
+    mindmapLoaderOn = false;
+    stopGyro(mindmapLoader.querySelector('.wiki-loader-canvas'));
+    mindmapLoader.classList.remove('is-done');
+    mindmapLoader.hidden = true;
+  }
+
+  // Locking the page while the panel is open takes a classic scrollbar away,
+  // which widens the layout by its width — every column reflows 15px to the
+  // right the instant the panel opens, and back again when it closes. Pay the
+  // gap back as body padding so the layout width never changes; the overlay is
+  // fixed, so it cannot inherit that padding and gets the gap as a variable
+  // instead, which keeps the centred panel exactly where it was.
+  function lockPage(locked) {
+    const gap = locked ? Math.max(0, window.innerWidth - document.documentElement.clientWidth) : 0;
+    document.body.classList.toggle('wiki-mindmap-open', locked);
+    document.body.style.paddingRight = gap ? `${gap}px` : '';
+    document.documentElement.style.setProperty('--wiki-scrollbar-gap', `${gap}px`);
+  }
+
+  function closeMindmap() {
+    if (!mindmap || mindmap.hidden) return;
+    mindmap.hidden = true;
+    lockPage(false);
+    // A graph that is still loading when the panel closes should not keep a
+    // hidden animation (or a pending reveal) running.
+    hideMindmapLoader();
+  }
+
+  function openMindmap() {
+    if (!mindmap || !mindmapFrame) return;
+    mindmap.hidden = false;
+    lockPage(true);
+    if (!mindmapFrame.querySelector('iframe')) {
+      const frame = document.createElement('iframe');
+      frame.src = 'mindmap.html';
+      frame.title = 'Architecture graph';
+      // The frame stays transparent until the overlay steps aside, so the graph
+      // fades in with the reveal instead of popping in behind the loader (or,
+      // before the loader existed, as soon as the empty document loaded).
+      mindmapFrame.appendChild(frame);
+    }
+    if (mindmapReady) {
+      mindmapFrame.classList.add('is-ready');
+      stopMindmapLoader();
+    } else {
+      startMindmapLoader();
+    }
+  }
+
+  if (mindmapOpen) mindmapOpen.addEventListener('click', openMindmap);
+  if (mindmap) {
+    const mindmapClose = mindmap.querySelector('.wiki-mindmap-close');
+    if (mindmapClose) mindmapClose.addEventListener('click', closeMindmap);
+    mindmap.addEventListener('click', event => { if (event.target === mindmap) closeMindmap(); });
+    window.addEventListener('keydown', event => { if (event.key === 'Escape') closeMindmap(); });
+    // The graph's iframe owns focus after any interaction: it forwards Escape
+    // to close the panel, and reports when it has finished drawing.
+    window.addEventListener('message', event => {
+      if (!event.data) return;
+      if (event.data.type === 'wiki-mindmap-close') closeMindmap();
+      if (event.data.type === 'wiki-mindmap-ready') {
+        mindmapReady = true;
+        stopMindmapLoader();
+      }
+    });
+  }
+
+  // ---- Language switch ------------------------------------------------------
+  // The globe in the header raises a small panel listing the languages the wiki
+  // ships in. Each language has its own note tree, so picking another one opens
+  // that wiki at its home note (note ids cannot be carried across).
+  const langToggle = document.getElementById('wiki-lang-toggle');
+  const langMenu = document.getElementById('wiki-lang-menu');
+
+  function closeLangMenu(focusToggle = false) {
+    if (!langMenu || langMenu.hidden) return;
+    langMenu.hidden = true;
+    if (langToggle) {
+      langToggle.setAttribute('aria-expanded', 'false');
+      if (focusToggle) langToggle.focus();
+    }
+  }
+
+  function openLangMenu() {
+    if (!langMenu || !langMenu.hidden) return;
+    langMenu.hidden = false;
+    if (langToggle) langToggle.setAttribute('aria-expanded', 'true');
+    const option = langMenu.querySelector('.wiki-lang-option');
+    if (option) option.focus();
+  }
+
+  if (langToggle && langMenu) {
+    langToggle.addEventListener('click', () => {
+      if (langMenu.hidden) openLangMenu();
+      else closeLangMenu();
+    });
+    langMenu.addEventListener('click', event => {
+      const option = event.target.closest('.wiki-lang-option');
+      if (!option) return;
+      // The current language has no target: picking it just closes the panel.
+      if (option.dataset.href) {
+        location.href = option.dataset.href;
+        return;
+      }
+      closeLangMenu(true);
+    });
+    // A click anywhere else, or Escape, dismisses the panel.
+    document.addEventListener('click', event => {
+      if (langMenu.hidden || event.target.closest('.wiki-lang-switch')) return;
+      closeLangMenu();
+    });
+    window.addEventListener('keydown', event => {
+      if (event.key === 'Escape') closeLangMenu(true);
+    });
   }
 
   init();
