@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#000000">
+  <title>Real-Time Manim — 架构图谱</title>
+  <link rel="icon" type="image/png" href="../../assets/images/real-time-manim-icon.png">
+  <link rel="stylesheet" href="../../assets/css/real-time-manim.css">
+  <style>
+    /* Stand-alone mind map: the graph fills the page (it is embedded in the
+       wiki's Architecture panel over an iframe). */
+    .architecture-section { padding: 0; }
+    .architecture-graph {
+      position: fixed;
+      inset: 0;
+      min-height: 0;
+      border: 0;
+      border-radius: 0;
+    }
+  </style>
+  <script src="../../assets/js/vendor/d3.v7.min.js" defer></script>
+  <script src="../../assets/js/architecture-graph.js" defer></script>
+</head>
+<body>
+  <section class="architecture-section" aria-label="Architecture graph">
+    <div class="architecture-graph" data-source-root="https://cdn.jsdelivr.net/gh/BEGINWITHF/real-time-manim@main/RTM-Wiki/zh_CN/" data-source-mirror="https://raw.githubusercontent.com/BEGINWITHF/real-time-manim/main/RTM-Wiki/zh_CN/" data-entry-path="README.md" data-manifest-path="manifest.json">
+      <div class="architecture-graph-toolbar">
+        <label class="architecture-graph-search-label">
+          <input class="architecture-graph-search" type="search" placeholder="搜索笔记" autocomplete="off">
+          <span class="architecture-graph-search-hint" aria-hidden="true"><kbd>right-click</kbd> open local graph</span>
+          <ul class="architecture-graph-search-list" hidden></ul>
+        </label>
+        <span class="architecture-graph-status" role="status" aria-live="polite">正在读取 Wiki 图谱…</span>
+        <button class="architecture-graph-refresh" type="button" aria-label="Refresh graph" title="Refresh graph">
+          <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M20 11a8 8 0 0 0-14.9-4L3 10m0-5v5h5M4 13a8 8 0 0 0 14.9 4L21 14m0 5v-5h-5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <button class="architecture-graph-recenter" type="button" aria-label="Recenter graph" title="Recenter graph">
+          <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M9 3v6H3M15 3v6h6M9 21v-6H3M15 21v-6h6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <button class="architecture-graph-fullscreen" type="button" aria-label="Open fullscreen graph" title="Fullscreen graph">
+          <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M9 3H3v6M15 3h6v6M9 21H3v-6M15 21h6v-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+      <div class="architecture-graph-viewport">
+        <svg role="img" aria-label="Interactive graph of wiki note connections"></svg>
+        <div class="architecture-graph-tooltip" role="tooltip" hidden></div>
+      </div>
+    </div>
+  </section>
+  <script>
+    // Escape inside the graph (the iframe owns focus after any interaction)
+    // asks the wiki page to close the panel.
+    window.addEventListener('keydown', event => {
+      if (event.key === 'Escape') window.parent.postMessage({ type: 'wiki-mindmap-close' }, '*');
+    });
+    // Tell the wiki page once the graph has finished drawing, so the panel's
+    // loading overlay can step aside. The graph shows itself by drawing a node,
+    // or by reporting that it could not read the source; the timeout is a
+    // backstop so the overlay can never stick.
+    (() => {
+      const root = document.querySelector('.architecture-graph');
+      let sent = false;
+      const signal = () => {
+        if (sent) return;
+        sent = true;
+        window.parent.postMessage({ type: 'wiki-mindmap-ready' }, '*');
+      };
+      const drawn = () => {
+        if (root.querySelector('.architecture-graph-dot')) return true;
+        const status = root.querySelector('.architecture-graph-status');
+        return !!(status && status.dataset.state === 'error');
+      };
+      if (drawn()) return signal();
+      const observer = new MutationObserver(() => {
+        if (drawn()) { observer.disconnect(); signal(); }
+      });
+      observer.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-state'] });
+      window.setTimeout(() => { observer.disconnect(); signal(); }, 15000);
+    })();
+  </script>
+</body>
+</html>

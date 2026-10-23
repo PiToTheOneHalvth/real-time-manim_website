@@ -12,10 +12,9 @@ pages/
     try.html                       Try Real-Time Manim placeholder
     wiki.html                      Dynamic Markdown wiki and note reader
     phormation.html                Club PHormation page
-  zh_CN/                           Chinese pages (empty until requested)
+  zh_CN/                           Chinese pages (wiki + mind map)
 wiki/
-  en_US/                           Wiki notes: markdown + manifest.json
-  zh_CN/                           Chinese notes (empty until requested)
+  agent/                           Agent-facing reference (see AGENTS.md, llms.txt)
 assets/
   css/main.css                    Shared minimal layout
 docs/
@@ -27,8 +26,10 @@ reference_for_real_time_manim/
 The Real-Time Manim desktop page is implemented with its own stylesheet
 (`assets/css/real-time-manim.css`) and clipboard script
 (`assets/js/real-time-manim.js`). The architecture section contains a live
-Obsidian-style graph sourced from `wiki/en_US/`; `pages/en_US/wiki.html`
-provides the same-origin dynamic Markdown reader for graph-node clicks. The
+Obsidian-style graph whose notes come from the separate real-time-manim
+repository (`RTM-Wiki/`), served over cdn.jsdelivr.net with
+raw.githubusercontent.com as a fallback; `pages/en_US/wiki.html` provides the
+same-origin dynamic Markdown reader for graph-node clicks. The
 other three HTML files remain empty until their designs are requested. Mobile
 layout is implemented for the product and wiki surfaces.
 
