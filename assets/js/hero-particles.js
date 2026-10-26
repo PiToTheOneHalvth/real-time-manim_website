@@ -235,6 +235,7 @@
         phase: Math.random() * TAU,
         speed: random(0.0004, 0.0013),
         drift: random(0.4, 1.4),
+        spun: false,
       });
     }
   }
@@ -390,8 +391,9 @@
       const target = targetAt(p, seconds, spinUp, shrink);
       let tx = target[0];
       let ty = target[1];
+      const released = seconds >= markReleaseAt(p);
       // The dust keeps breathing; a placed dot locks in.
-      const breathe = seconds >= markReleaseAt(p) ? 0 : formed;
+      const breathe = released ? 0 : formed;
       tx += wobbleX * breathe;
       ty += wobbleY * breathe;
 
@@ -413,10 +415,28 @@
 
       const pull = p.k * caught * pullScale(p, seconds);
       const damping = caught > 0.002 ? p.damping : 0.978;
+      if (released && !p.spun) {
+        // One tangential kick at release: the dot leaves on a curve rather than
+        // a straight line to its slot, and the spring does the rest, so every
+        // particle visibly turns on the way in but still locks exactly in place.
+        p.spun = true;
+        const dx = p.x - tx;
+        const dy = p.y - ty;
+        const distance = Math.hypot(dx, dy) || 1;
+        const kick = Math.min(9, 3.5 + distance * 0.016);
+        p.vx += (-dy / distance) * kick;
+        p.vy += (dx / distance) * kick;
+      }
       p.vx = (p.vx + (tx - p.x) * pull) * damping;
       p.vy = (p.vy + (ty - p.y) * pull) * damping;
       p.x += p.vx * dt;
       p.y += p.vy * dt;
+      if (released && Math.hypot(tx - p.x, ty - p.y) < 1.1) {
+        p.x = tx;
+        p.y = ty;
+        p.vx *= 0.45;
+        p.vy *= 0.45;
+      }
 
       // The orbits fade the far side of their tube; the dust settles back to a
       // faint veil so it never competes with the mark.
