@@ -195,254 +195,84 @@ function updateManteraction() {
 }
 const social = document.querySelector('.social-links');
 const installation = document.querySelector('.installation');
-const socialSlot = document.querySelector('.social-slot');
-const installationSlot = document.querySelector('.installation-slot');
 const banner = document.querySelector('.banner-background');
-const bannerLeft = document.querySelector('.banner-left');
-const bannerRight = document.querySelector('.banner-right');
-const bannerResult = document.querySelector('.banner-result');
-const download = document.querySelector('.download');
-const centerTitle = document.querySelector('.center-title');
+const bannerTitle = banner.querySelector('.banner-title');
+const bannerSocial = banner.querySelector('.banner-social');
+const bannerDownload = banner.querySelector('.banner-download');
+// The controls turn into a bar over one and a half viewports: first the
+// background particles stream across the top (network-background.js listens for
+// this), then the bar itself wipes in from the right, its contents travelling
+// with the wipe. The hero controls are not moved or frozen: they simply scroll
+// away.
+const BANNER_SWEEP_SCREENS = 1.5;
 let controlGeometry;
-const CENTER_TITLE_FADE_MS = 600;
-let reverseTitleFadeActive = false;
-let reverseTitleFadeTimer = 0;
-let previousBannerProgress = 0;
 
-function cancelReverseTitleFade() {
-  clearTimeout(reverseTitleFadeTimer);
-  reverseTitleFadeTimer = 0;
-  reverseTitleFadeActive = false;
-}
-
-function startReverseTitleFade() {
-  if (reverseTitleFadeActive) return;
-  reverseTitleFadeActive = true;
-  centerTitle.classList.remove('is-visible');
-  if (reducedMotion.matches) {
-    reverseTitleFadeActive = false;
-    return;
-  }
-  reverseTitleFadeTimer = setTimeout(() => {
-    reverseTitleFadeTimer = 0;
-    reverseTitleFadeActive = false;
-    updateSlogan();
-  }, CENTER_TITLE_FADE_MS);
-}
-
-// The merged-banner center title returns to the top of the page.
-centerTitle.addEventListener('click', () => {
+bannerTitle.addEventListener('click', () => {
   window.scrollTo({ top: 0, behavior: reducedMotion.matches ? 'auto' : 'smooth' });
 });
 
-function drawLiquidBanner(g, progress, height) {
-  const scale = g.height / 52;
-  const lerp = (a, b) => a + (b - a) * progress;
-  const width = window.innerWidth;
-  const middle = width / 2;
-  // Outer edges approach the viewport progressively, retaining their initial
-  // inset and rounding. Inner edges stretch farther to meet at the top first.
-  const reach = Math.sin(Math.PI * progress) * width * .20;
-  const left = {
-    start: lerp(g.left, 0), end: lerp(g.left + g.width, middle + 40 * scale) + reach,
-    height: lerp(g.height, height), outer: lerp(g.height / 2, 0),
-    inner: lerp(g.height / 2, 0) + Math.sin(Math.PI * progress) * 60 * scale,
-    top: g.height / 2 * Math.max(0, 1 - progress * 5) ** 2,
-  };
-  const right = {
-    start: lerp(g.right, middle - 40 * scale) - reach,
-    end: lerp(g.right + g.rightWidth, width),
-    height: lerp(g.rightHeight / 2, height), outer: lerp(20 * scale, 0),
-    inner: lerp(20 * scale, 0) + Math.sin(Math.PI * progress) * 60 * scale, top: 0,
-  };
-  function profile(x, shape, mirrored) {
-    if (x < shape.start || x > shape.end) return null;
-    const u = mirrored ? shape.end - x : x - shape.start;
-    const span = shape.end - shape.start;
-    const outer = Math.min(shape.outer, span / 2);
-    const inner = Math.min(shape.inner, span / 2);
-    const arc = (distance, radius) => radius > 0 && distance < radius
-      ? 1 - Math.sqrt(Math.max(0, 1 - (1 - distance / radius) ** 2)) : 0;
-    const topRadius = Math.min(shape.top, span / 2);
-    return {
-      x,
-      top: shape.top * Math.max(arc(u, topRadius), arc(span - u, topRadius)),
-      bottom: shape.height - Math.max(
-        outer * arc(u, outer),
-        // The inward edge becomes an elongated liquid neck at the top.
-        Math.min(shape.height - shape.top, inner) * arc(span - u, inner)
-      ),
-    };
-  }
-  const xs = new Set([left.start, left.end, right.start, right.end]);
-  for (let x = Math.min(left.start, right.start); x <= Math.max(left.end, right.end); x += 1) xs.add(x);
-  const coordinates = [...xs].sort((a, b) => a - b);
-  const a = coordinates.map(x => profile(x, left, false));
-  const b = coordinates.map(x => profile(x, right, true));
-  const paths = samples => {
-    const segments = [];
-    let run = [];
-    const flush = () => {
-      if (run.length) segments.push(`M ${run.map(p => `${p.x} ${p.top}`).join(' L ')} L ${run.reverse().map(p => `${p.x} ${p.bottom}`).join(' L ')} Z`);
-      run = [];
-    };
-    for (const sample of samples) sample ? run.push(sample) : flush();
-    flush();
-    return segments;
-  };
-  const connected = left.end >= right.start;
-  // Smooth union creates one new contour, with no internal splice. It always
-  // encloses the source silhouettes; remove them only after this cover exists.
-  const softness = 8 * scale * Math.sin(Math.PI * progress) ** 2;
-  const smoothMax = (x, y) => {
-    if (!softness) return Math.max(x, y);
-    const overlap = Math.max(0, softness - Math.abs(x - y)) / softness;
-    return Math.max(x, y) + softness * overlap ** 2 / 4;
-  };
-  const union = a.map((p, i) => {
-    const q = b[i];
-    if (!p || !q) return p || q;
-    return { x: p.x, top: Math.min(p.top, q.top), bottom: smoothMax(p.bottom, q.bottom) };
-  });
-  bannerLeft.setAttribute('d', paths(a).join(' '));
-  bannerRight.setAttribute('d', paths(b).join(' '));
-  bannerRight.removeAttribute('transform');
-  bannerResult.setAttribute('d', connected ? paths(union).join(' ') : '');
-  bannerLeft.style.visibility = connected ? 'hidden' : 'visible';
-  bannerRight.style.visibility = connected ? 'hidden' : 'visible';
+function smoothstep(value) {
+  return value * value * (3 - 2 * value);
 }
 
 function measureControls() {
-  social.classList.remove('is-pinned', 'is-banner');
-  installation.classList.remove('is-banner');
-  social.style.left = '';
-  social.style.top = '';
-  installation.style.left = '';
-  installation.style.top = '';
-  installation.style.height = '';
-  // Release old pixel measurements before measuring a resized layout.
-  socialSlot.style.width = '';
-  socialSlot.style.height = '';
-  installationSlot.style.height = '';
+  // Only document positions matter now: the bar is its own element.
   const left = social.getBoundingClientRect();
   const right = installation.getBoundingClientRect();
-  const button = download.getBoundingClientRect();
-  socialSlot.style.height = `${left.height}px`;
-  socialSlot.style.width = `${left.width}px`;
-  installationSlot.style.height = `${right.height}px`;
   controlGeometry = {
-    left: left.left, width: left.width, height: left.height,
-    pinAt: left.top + window.scrollY,
-    right: right.left, rightWidth: right.width, rightHeight: right.height,
-    installTop: right.top + window.scrollY,
-    installTop: right.top + window.scrollY,
-    mergeAt: right.top + window.scrollY + right.height / 2,
+    mergeAt: Math.min(left.top, right.top) + window.scrollY,
     bottom: Math.max(left.bottom, right.bottom) + window.scrollY,
-    buttonTop: button.top - right.top, buttonWidth: button.width, buttonHeight: button.height,
-    scale: left.height / 52,
   };
 }
 
-function applyBannerState(progress) {
-  const g = controlGeometry;
-  const lerp = (a, b) => a + (b - a) * progress;
-  const height = 60 * g.scale;
-  const bannerTop = lerp(0, (height - g.height) / 2);
-  banner.hidden = false;
-  // The SVG paths and both controls use the same scroll-derived progress, so
-  // dragging the page never leaves an element in a time-based middle state.
-  banner.style.setProperty('--banner-top', `${bannerTop}px`);
-  banner.style.setProperty('--banner-height', `${height}px`);
-  // The center title rides the merged banner's vertical center line.
-  centerTitle.style.setProperty('--banner-center-y', `${height / 2}px`);
-  social.style.left = `${g.left}px`;
-  social.style.top = `${bannerTop}px`;
-  installation.style.left = `${lerp(g.right, window.innerWidth - g.rightWidth - 12 * g.scale)}px`;
-  // At progress 0, this is exactly the installation panel's natural viewport
-  // position when its midpoint reaches the top edge. Further scroll is carried
-  // by --command-shift while the panel itself stays in the banner.
-  installation.style.top = `${-g.rightHeight / 2}px`;
-  installation.style.height = `${g.rightHeight}px`;
-  installation.style.setProperty('--download-top', `${lerp(g.buttonTop, g.rightHeight / 2 + (height - 34 * g.scale) / 2)}px`);
-  installation.style.setProperty('--download-width', `${lerp(g.buttonWidth, 132 * g.scale)}px`);
-  installation.style.setProperty('--download-height', `${lerp(g.buttonHeight, 34 * g.scale)}px`);
-  installation.style.setProperty('--download-radius', `${lerp(12, 12) * g.scale}px`);
-  installation.style.setProperty('--download-font-size', `${lerp(22, 18) * g.scale}px`);
-  // Keep the command scrolling upward after the lower panel pins.
-  installation.style.setProperty('--command-shift', `${-(window.scrollY - g.mergeAt)}px`);
-  drawLiquidBanner(g, progress, height);
-}
-
-function clearBannerStyles() {
-  social.style.left = '';
-  social.style.top = '';
-  installation.style.left = '';
-  installation.style.top = '';
-  installation.style.height = '';
-  installation.style.removeProperty('--download-top');
-  installation.style.removeProperty('--download-width');
-  installation.style.removeProperty('--download-height');
-  installation.style.removeProperty('--download-radius');
-  installation.style.removeProperty('--download-font-size');
-  installation.style.removeProperty('--command-shift');
-  banner.style.removeProperty('--banner-top');
-  banner.style.removeProperty('--banner-height');
-  centerTitle.style.removeProperty('--banner-center-y');
-}
-
 function updateBanner() {
-  if (!controlGeometry) return;
   const g = controlGeometry;
-  const pinned = window.scrollY >= g.pinAt;
-  const merged = window.scrollY >= g.mergeAt;
-  const morphDistance = window.innerHeight * .15;
-  const scrollProgress = Math.max(0, Math.min(1, (window.scrollY - g.mergeAt) / morphDistance));
-  const progress = reducedMotion.matches && merged ? 1 : scrollProgress;
-  const goingUp = scrollProgress < previousBannerProgress;
-  const goingDown = scrollProgress > previousBannerProgress;
+  if (!g) return;
+  const distance = Math.max(1, window.innerHeight * BANNER_SWEEP_SCREENS);
+  const progress = reducedMotion.matches
+    ? (window.scrollY >= g.mergeAt ? 1 : 0)
+    : Math.max(0, Math.min(1, (window.scrollY - g.mergeAt) / distance));
+  // The bar's fill follows the stream's right edge: wherever the particles have
+  // cleared, the bar is already there, so no black seam opens between them.
+  const travel = Math.max(0, Math.min(1, (progress - 0.12) / 0.74));
+  const bandRight = Math.max(0, (window.innerWidth * 2 + 640) * (1 - travel));
+  const wipe = Math.max(0, Math.min(1, 1 - bandRight / window.innerWidth));
+  const open = progress > 0;
 
-  // On the return path, finish fading out the centered brand before allowing
-  // the taskbar to morph back into the social/download controls. If the user
-  // reverses direction during that fade, cancel the hold and follow the drag.
-  if (goingDown) cancelReverseTitleFade();
-  if (goingUp && previousBannerProgress >= 1 && scrollProgress < 1) startReverseTitleFade();
+  banner.hidden = !open;
+  banner.style.setProperty('--banner-wipe', `${(1 - wipe) * 100}%`);
+  const front = window.innerWidth * (1 - wipe);
+  banner.style.setProperty('--banner-front', `${front}px`);
+  banner.style.setProperty('--banner-feather', `${Math.min(1, wipe * 10)}`);
+  banner.inert = !open;
+  banner.style.pointerEvents = wipe > 0.01 ? 'auto' : 'none';
+  banner.setAttribute('aria-hidden', open ? 'false' : 'true');
 
-  if (reverseTitleFadeActive) {
-    social.classList.add('is-pinned', 'is-banner');
-    installation.classList.add('is-banner');
-    command.parentElement.inert = true;
-    applyBannerState(1);
-    previousBannerProgress = scrollProgress;
-    return;
+  // The fill is clipped from the right; each cluster fades in once that hard
+  // edge has travelled past its left side, so nothing is sliced mid-glyph.
+  // A cluster is only interactive after its own fade has begun.
+  const setCluster = (element, reveal) => {
+    element.style.setProperty('--reveal', `${reveal}`);
+    element.inert = reveal < 0.5;
+    element.style.pointerEvents = reveal < 0.5 ? 'none' : 'auto';
+  };
+  if (open) {
+    const reveal = element => {
+      const box = element.getBoundingClientRect();
+      const fade = Math.max(1, Math.min(64, box.left));
+      return smoothstep(Math.max(0, Math.min(1, (box.left - front) / fade)));
+    };
+    setCluster(bannerSocial, reveal(bannerSocial));
+    setCluster(bannerTitle, reveal(bannerTitle));
+    setCluster(bannerDownload, reveal(bannerDownload));
+  } else {
+    setCluster(bannerSocial, 0);
+    setCluster(bannerTitle, 0);
+    setCluster(bannerDownload, 0);
   }
 
-  social.classList.toggle('is-pinned', pinned);
-  social.classList.toggle('is-banner', merged);
-  installation.classList.toggle('is-banner', merged);
-  // The command has scrolled away; prevent keyboard focus behind the banner.
-  command.parentElement.inert = merged;
-
-  if (merged) {
-    applyBannerState(progress);
-    if (progress >= 1) {
-      social.classList.add('entrance-complete');
-      installation.classList.add('entrance-complete');
-      centerTitle.classList.add('is-visible');
-    } else {
-      centerTitle.classList.remove('is-visible');
-    }
-    previousBannerProgress = scrollProgress;
-    return;
-  }
-
-  clearBannerStyles();
-  social.classList.remove('is-banner');
-  installation.classList.remove('is-banner');
-  centerTitle.classList.remove('is-visible');
-  social.style.left = pinned ? `${g.left}px` : '';
-  social.style.top = pinned ? '0px' : '';
-  banner.hidden = true;
-  previousBannerProgress = scrollProgress;
+  // network-background.js turns this into the top-edge sweep.
+  window.dispatchEvent(new CustomEvent('rtm-banner-sweep', { detail: { progress } }));
 }
 
 function seekSlogan() {
@@ -507,6 +337,9 @@ sloganVideo.addEventListener('loadeddata', updateSlogan);
 sloganVideo.addEventListener('seeked', seekSlogan);
 reducedMotion.addEventListener('change', updateSlogan);
 measureSlogan();
+// The network script registers its sweep listener after this file runs, so
+// re-publish the current progress once the deferred batch has finished.
+requestAnimationFrame(updateBanner);
 const futureResizeObserver = new ResizeObserver(() => {
   measureFuture();
   updateFuture();

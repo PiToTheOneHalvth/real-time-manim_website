@@ -3,7 +3,7 @@
   --background: #000000;
   --foreground: #F5F5F5;
   --surface: #292929;
-  --banner-fill: #44444a;
+  --banner-fill: #17171a;
   --band: rgba(245, 245, 245, .10);
   --hairline: rgba(245, 245, 245, .18);
   --unit: clamp(.75px, .069444vw, 1.5px);
@@ -270,23 +270,6 @@ a:focus-visible, button:focus-visible {
   white-space: nowrap;
   font-size: calc(21 * var(--unit));
 }
-.installation.is-banner .download {
-  position: absolute;
-  right: calc(12 * var(--unit));
-  top: var(--download-top);
-  width: var(--download-width);
-  height: var(--download-height);
-  padding: 0;
-  display: grid;
-  place-items: center;
-  border-radius: var(--download-radius);
-  background: var(--foreground);
-  color: var(--background);
-  font-size: var(--download-font-size);
-}
-.installation.is-banner .install-command {
-  transform: translateY(var(--command-shift));
-}
 .copy-status {
   position: absolute;
   right: 0;
@@ -301,34 +284,88 @@ a:focus-visible, button:focus-visible {
   height: var(--slogan-height, 200svh);
   margin-bottom: var(--slogan-tail, 0px);
 }
-.social-links.is-pinned, .social-links.is-banner, .installation.is-banner {
-  position: fixed;
-  margin: 0;
-}
-.social-links.is-pinned { top: 0; }
-.social-links.is-banner, .installation.is-banner { background: transparent; }
+/* The top bar the hero controls become. It is its own element, wiped in from
+   the right: --banner-wipe is the clipped left edge, 100% (hidden) → 0 (full).
+   Only the fill is clipped; the contents sit in their own layer and fade in as
+   the wipe passes each of them, so no word is ever cut in half. It sits above
+   the page and the hero so it can take over as they scroll away. */
 .banner-background {
   position: fixed;
   left: 0;
   top: 0;
-  width: 100vw;
-  height: var(--banner-height, calc(104 * var(--unit)));
-  z-index: 2;
+  width: 100%;
+  height: calc(74 * var(--unit));
+  z-index: 4;
   pointer-events: none;
 }
-.banner-liquid {
-  display: block;
-  overflow: visible;
-  fill: var(--banner-fill);
+.banner-background::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
+  background-color: var(--banner-fill);
+  background-image: linear-gradient(180deg, #303036, #111113);
+  border-bottom: 1px solid rgba(245, 245, 245, .24);
+  box-shadow: inset 0 1px 0 rgba(245, 245, 245, .07);
+  clip-path: inset(0 0 0 var(--banner-wipe, 100%));
 }
-/* Center brand title: shift-down fade-in at the center of the merged top
-   banner once the hero controls merge into it; on reverse, it fades out before
-   the taskbar morphs back to the social/download controls. */
-.center-title {
-  position: fixed;
-  top: var(--banner-center-y, calc(30 * var(--unit)));
-  left: 50%;
-  z-index: 4;
+.banner-background::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  --feather: min(160px, 32vw);
+  left: calc(var(--banner-front, 100%) - var(--feather));
+  width: calc(var(--feather) + 2px);
+  box-sizing: border-box;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(180deg, #303036, #111113);
+  border-bottom: 1px solid rgba(245, 245, 245, .24);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000);
+  mask-image: linear-gradient(90deg, transparent, #000);
+  opacity: var(--banner-feather, 0);
+}
+.banner-inner {
+  position: relative;
+  z-index: 2;
+  height: 100%;
+  padding: 0 var(--pad);
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  column-gap: calc(20 * var(--unit));
+  pointer-events: none;
+}
+.banner-social {
+  display: flex;
+  align-items: center;
+  justify-self: start;
+  padding-left: calc(16 * var(--unit));
+  opacity: var(--reveal, 0);
+  pointer-events: none;
+}
+.banner-social a {
+  display: grid;
+  place-items: center;
+  width: calc(52 * var(--unit));
+  height: calc(52 * var(--unit));
+  border-radius: 50%;
+  transition: opacity 160ms ease;
+}
+.banner-social a:hover { opacity: .65; }
+.banner-social img {
+  display: block;
+  width: calc(24 * var(--unit));
+  height: calc(24 * var(--unit));
+}
+.banner-social .wiki-icon {
+  width: calc(24 * var(--unit));
+  height: calc(24 * var(--unit));
+  object-fit: contain;
+}
+.banner-title {
+  justify-self: center;
   margin: 0;
   padding: 0;
   border: 0;
@@ -340,21 +377,26 @@ a:focus-visible, button:focus-visible {
   letter-spacing: -.045em;
   white-space: nowrap;
   cursor: pointer;
-  opacity: 0;
-  visibility: hidden;
-  transform: translate(-50%, calc(-50% - .6em));
-  transition:
-    opacity 600ms ease-out,
-    transform 600ms cubic-bezier(.22, .61, .36, 1),
-    visibility 0s linear 600ms;
+  opacity: var(--reveal, 0);
+  pointer-events: none;
 }
-.center-title.is-visible {
-  opacity: 1;
-  visibility: visible;
-  transform: translate(-50%, -50%);
-  transition-delay: 0s;
+.banner-title:hover { color: rgba(245, 245, 245, .65); }
+.banner-download {
+  justify-self: end;
+  display: grid;
+  place-items: center;
+  height: calc(48 * var(--unit));
+  padding: 0 calc(28 * var(--unit));
+  border-radius: calc(12 * var(--unit));
+  background: var(--foreground);
+  color: var(--background);
+  text-decoration: none;
+  white-space: nowrap;
+  font-size: calc(21 * var(--unit));
+  opacity: var(--reveal, 0);
+  pointer-events: none;
 }
-.center-title:hover { opacity: .65; }
+.banner-download:hover { background: rgba(245, 245, 245, .85); }
 .slogan-pin {
   position: sticky;
   top: var(--slogan-top, 0px);
@@ -1145,6 +1187,14 @@ body.architecture-graph-open { overflow: hidden; }
 }
 
 @media (max-width: 600px) {
+  /* The bar at phone width: the three icons on the left and Download on the
+     right; the brand has no room between them, so it steps out. */
+  .banner-inner { grid-template-columns: 1fr auto; column-gap: calc(10 * var(--unit)); }
+  .banner-title { display: none; }
+  .banner-social { padding-left: calc(4 * var(--unit)); }
+  .banner-social a { width: calc(44 * var(--unit)); height: calc(44 * var(--unit)); }
+  .banner-social img, .banner-social .wiki-icon { width: calc(22 * var(--unit)); height: calc(22 * var(--unit)); }
+  .banner-download { height: calc(38 * var(--unit)); padding: 0 calc(18 * var(--unit)); font-size: calc(18 * var(--unit)); }
   /* One column: the mark gets its own band under the wordmark instead of a
      narrow half, and the hero grows past the viewport if it must. */
   .hero {
@@ -1228,7 +1278,6 @@ body.architecture-graph-open { overflow: hidden; }
   .next-generation-section.reveal-visible .ng-fade-item { transition: none; }
   .hero-title .c, .social-links, .installation { animation: none; opacity: 1; transform: none; }
   .social-links a, .download, #copy-command, .taskbar a { transition: none; }
-  .center-title { transition: none; }
   .diagram-recenter-btn { transition: none; }
 }
 
