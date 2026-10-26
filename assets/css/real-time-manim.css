@@ -135,6 +135,20 @@ button, code { font: inherit; }
     transform: translateX(0);
   }
 }
+/* The page's own background: a faint network of drifting points and the lines
+   between them, drawn by network-background.js on a canvas fixed behind every
+   section. It sits at -1, so it paints above the black page and below all
+   content without needing each section to be positioned. */
+.network-background {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
 /* The figures are drawn by hero-particles.js: this canvas covers the hero and
    the particles assemble on .hero-stage's box, which is all the layout they
    need. The canvas paints behind the hero's own content (the hero is a
