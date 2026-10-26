@@ -397,6 +397,13 @@ a:focus-visible, button:focus-visible {
   pointer-events: none;
 }
 .banner-download:hover { background: rgba(245, 245, 245, .85); }
+
+/* The reset homepage ends after the opening and the top bar. This is the empty
+   scroll stage the bar transition plays over — no content sections live here. */
+.scroll-runway {
+  height: 270svh;
+  pointer-events: none;
+}
 .slogan-pin {
   position: sticky;
   top: var(--slogan-top, 0px);
