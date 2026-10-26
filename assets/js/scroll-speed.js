@@ -8,8 +8,8 @@
 // prefers-reduced-motion opts out entirely.
 (() => {
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
-  const MAX_SPEED = 720;   // px/s — the fastest the page may travel under a wheel
-  const LEAD = 340;        // px a flick may get ahead of the page before it is cut
+  const MAX_SPEED = 480;   // px/s — the fastest the page may travel under a wheel
+  const LEAD = 180;        // px a flick may get ahead of the page before it is cut
   let enabled = !reduced.matches;
   let target = window.scrollY;
   let last = 0;
@@ -40,6 +40,7 @@
     if (!delta) return;
     if (event.deltaMode === 1) delta *= 16;
     else if (event.deltaMode === 2) delta *= window.innerHeight;
+    delta = clamp(delta, -220, 220);
     event.preventDefault();
 
     const current = window.scrollY;
