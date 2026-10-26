@@ -25,11 +25,19 @@ reference_for_real_time_manim/
 
 The Real-Time Manim desktop page is implemented with its own stylesheet
 (`assets/css/real-time-manim.css`) and clipboard script
-(`assets/js/real-time-manim.js`). The architecture section contains a live
-Obsidian-style graph whose notes come from the separate real-time-manim
-repository (`RTM-Wiki/`), served over cdn.jsdelivr.net with
-raw.githubusercontent.com as a fallback; `pages/en_US/wiki.html` provides the
-same-origin dynamic Markdown reader for graph-node clicks. The
+(`assets/js/real-time-manim.js`). The live homepage is currently the reset
+stage: the hero opening and the top bar only, followed by an empty scroll
+runway — the older content sections (slogan, real-life, next generation,
+starts-from, architecture, Manteraction) were removed on 2026-10-26 and kept
+verbatim in `pages/en_US/real_time_manim_full.html`, which loads its own frozen
+assets (`real-time-manim.full.css`, `real-time-manim.full.js`,
+`hero-particles.full.js`, `network-background.full.js`).
+The live page keeps the hero particle opening (`assets/js/hero-particles.js`)
+and the linked-particle background (`assets/js/network-background.js`); the
+full page still contains the architecture graph whose notes come from the
+separate real-time-manim repository (`RTM-Wiki/`), served over
+cdn.jsdelivr.net with raw.githubusercontent.com as a fallback. `pages/en_US/wiki.html`
+provides the same-origin dynamic Markdown reader for graph-node clicks. The
 other three HTML files remain empty until their designs are requested. Mobile
 layout is implemented for the product and wiki surfaces.
 
