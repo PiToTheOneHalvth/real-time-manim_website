@@ -61,9 +61,10 @@ const bannerTitle = banner.querySelector('.banner-title');
 const bannerSocial = banner.querySelector('.banner-social');
 const bannerDownload = banner.querySelector('.banner-download');
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
-// One and a half viewports of scroll for the whole hand-off: the particles
-// sweep the top, then the bar follows their right edge in from the right.
-const BANNER_SWEEP_SCREENS = 1.5;
+// The hand-off is timed to finish with the particle stage: 1.28 viewports
+// puts the full wipe right at the sticky stage's release, so the bar is
+// completely open when that stage is scrolled to its end.
+const BANNER_SWEEP_SCREENS = 0.70;
 let controlGeometry;
 let scrollFrame = 0;
 
@@ -90,11 +91,10 @@ function updateBanner() {
   const progress = reducedMotion.matches
     ? (window.scrollY >= g.mergeAt ? 1 : 0)
     : Math.max(0, Math.min(1, (window.scrollY - g.mergeAt) / distance));
-  // The bar's fill follows the stream's right edge: wherever the particles have
-  // cleared, the bar is already there, so no black seam opens between them.
-  const travel = Math.max(0, Math.min(1, (progress - 0.12) / 0.74));
-  const bandRight = Math.max(0, (window.innerWidth * 2 + 640) * (1 - travel));
-  const wipe = Math.max(0, Math.min(1, 1 - bandRight / window.innerWidth));
+  // The bar no longer follows the particle band (there is no sideways band):
+  // it is still fully retracted at the stack's resting content position, and
+  // finishes at the stage's release.
+  const wipe = smoothstep(Math.max(0, Math.min(1, (progress - 0.45) / 0.41)));
   const open = progress > 0;
 
   banner.hidden = !open;

@@ -158,83 +158,44 @@
   // right-to-left wipe. `phase` comes from the page's scroll progress. The band
   // is four copies of every field point, so the stream is dense enough to read
   // as a curtain rather than a dotted line.
+  // The bar hand-off is one breathing pulse, not a sideways sweep:
+  // the field disperses, gathers into a small cluster above the middle of the
+  // viewport, then disperses back to its resting places. The bar wipes in
+  // independently while the cluster is gathering.
   function drawSweep(now, phase) {
-    const COPIES = 4;
-    const gather = smooth(clamp(phase / 0.12, 0, 1));
-    const travel = clamp((phase - 0.12) / 0.74, 0, 1);
-    const spread = width + 640;
-    const offset = (width + 320) - travel * (width * 2 + 640);
-    const bandAlpha = smooth(clamp(phase / 0.06, 0, 1)) *
-      (1 - smooth(clamp((phase - 0.86) / 0.1, 0, 1)));
-    const fieldAlpha = smooth(clamp((phase - 0.9) / 0.1, 0, 1));
-    const total = Math.max(1, dots.length * COPIES);
-    const points = [];
+    const cx = width / 2;
+    const cy = height * 0.42;
+    let factor;
+    if (phase < 0.4) {
+      factor = 1 + 0.65 * smooth(clamp((phase - 0.12) / 0.28, 0, 1));
+    } else if (phase < 0.65) {
+      factor = 1.65 - 1.53 * smooth(clamp((phase - 0.4) / 0.25, 0, 1));
+    } else {
+      factor = 0.12 + 0.88 * smooth(clamp((phase - 0.65) / 0.27, 0, 1));
+    }
+    // A twist that starts and ends at zero, so the resting field comes back
+    // exactly where it left.
+    const spin = 0.55 * Math.sin(Math.PI * clamp((phase - 0.12) / 0.8, 0, 1));
+    const cos = Math.cos(spin);
+    const sin = Math.sin(spin);
+    const rest = new Array(dots.length * 2);
 
     for (let i = 0; i < dots.length; i++) {
       const dot = dots[i];
-      for (let copy = 0; copy < COPIES; copy++) {
-        const slot = i * COPIES + copy;
-        // A shallow wave keeps the band from reading as a ruler.
-        const wave = Math.sin(slot * 0.55 + now * 0.0014) * 3;
-        const bandX = -320 + ((slot + 0.5) / total) * spread + offset;
-        const bandY = clamp(8 + dot.band * 56 + (copy - 1.5) * 7 + wave, 2, 72);
-        points.push(dot.x + (bandX - dot.x) * gather, dot.y + (bandY - dot.y) * gather);
-      }
+      rest[i * 2] = dot.x;
+      rest[i * 2 + 1] = dot.y;
+      const dx = dot.x - cx;
+      const dy = dot.y - cy;
+      dot.x = cx + (dx * cos - dy * sin) * factor;
+      dot.y = cy + (dx * sin + dy * cos) * factor;
     }
 
-    if (bandAlpha > 0.004) {
-      // Trails run to the right of each point: the direction of travel.
-      ctx.strokeStyle = `rgba(${INK}, ${0.05 * bandAlpha})`;
-      ctx.lineWidth = 0.75;
-      ctx.beginPath();
-      for (let i = 0; i < points.length; i += 2) {
-        ctx.moveTo(points[i] + 14, points[i + 1]);
-        ctx.lineTo(points[i], points[i + 1]);
-      }
-      ctx.stroke();
+    drawLinks(linkDistance() * clamp(factor, 0.26, 1.1));
+    drawDots(now);
 
-      // Only immediate neighbours are joined, and very faintly: at three
-      // copies per point a full 64px mesh would read as a hard lattice.
-      const streamLink = 20;
-      const streamLink2 = streamLink * streamLink;
-      for (const bucket of buckets) bucket.length = 0;
-      for (let i = 0; i < points.length; i += 2) {
-        for (let j = i + 2; j < points.length; j += 2) {
-          const dx = points[i] - points[j];
-          const dy = points[i + 1] - points[j + 1];
-          const distance2 = dx * dx + dy * dy;
-          if (distance2 > streamLink2) continue;
-          const strength = 1 - Math.sqrt(distance2) / streamLink;
-          const index = Math.min(LINK_STEPS - 1, Math.floor(strength * LINK_STEPS));
-          buckets[index].push(points[i], points[i + 1], points[j], points[j + 1]);
-        }
-      }
-      for (let i = 0; i < LINK_STEPS; i++) {
-        const bucket = buckets[i];
-        if (!bucket.length) continue;
-        ctx.strokeStyle = `rgba(${INK}, ${(0.02 + (i / (LINK_STEPS - 1)) * 0.07) * bandAlpha})`;
-        ctx.lineWidth = 0.75;
-        ctx.beginPath();
-        for (let j = 0; j < bucket.length; j += 4) {
-          ctx.moveTo(bucket[j], bucket[j + 1]);
-          ctx.lineTo(bucket[j + 2], bucket[j + 3]);
-        }
-        ctx.stroke();
-      }
-
-      for (let i = 0; i < points.length; i += 2) {
-        const dot = dots[Math.floor(i / (2 * COPIES))];
-        const twinkle = 0.82 + 0.18 * Math.sin(now * dot.pulse + dot.phase);
-        ctx.fillStyle = `rgba(${INK}, ${clamp(dot.alpha * 1.3, 0, 0.95) * twinkle * bandAlpha})`;
-        ctx.beginPath();
-        ctx.arc(points[i], points[i + 1], dot.radius * 1.05, 0, TAU);
-        ctx.fill();
-      }
-    }
-
-    if (fieldAlpha > 0) {
-      drawLinks(linkDistance(), fieldAlpha);
-      drawDots(now, fieldAlpha);
+    for (let i = 0; i < dots.length; i++) {
+      dots[i].x = rest[i * 2];
+      dots[i].y = rest[i * 2 + 1];
     }
   }
 
@@ -321,10 +282,8 @@
   }
 
   window.addEventListener('resize', resize);
-  window.addEventListener('rtm-banner-sweep', event => {
-    const detail = event.detail || {};
-    sweepTarget = clamp(Number(detail.progress) || 0, 0, 1);
-  });
+  // The background no longer gathers into the bar-hand-off pulse: the field
+  // keeps its resting drift, and the bar wipes on its own.
   window.addEventListener('pointermove', event => {
     if (event.pointerType && event.pointerType !== 'mouse') return;
     pointer.x = event.clientX;
