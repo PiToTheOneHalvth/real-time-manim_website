@@ -10,17 +10,25 @@
   <link rel="stylesheet" href="../../assets/css/real-time-manim.css">
   <script src="../../assets/js/real-time-manim.js" defer></script>
   <script src="../../assets/js/scroll-speed.js" defer></script>
+  <script src="../../assets/js/scroll-snap.js" defer></script>
   <script src="../../assets/js/hero-particles.js" defer></script>
   <script src="../../assets/js/network-background.js" defer></script>
+  <script src="../../assets/js/stack-particles.js" defer></script>
+  <script src="../../assets/js/shape-particles.js" defer></script>
 </head>
 <body>
   <canvas id="network-background" class="network-background" aria-hidden="true"></canvas>
   <header class="taskbar">
-    <nav class="taskbar-nav" aria-label="Site">
-      <a href="wiki.html">Wiki</a>
-      <a href="try.html">Try</a>
-      <a href="manteraction.html">Manteraction</a>
-    </nav>
+    <div class="taskbar-left">
+      <a class="taskbar-brand" href="real_time_manim.html" aria-label="Real-Time Manim home">
+        <img src="../../assets/images/real-time-manim-icon.png" width="40" height="40" alt="">
+      </a>
+      <nav class="taskbar-nav" aria-label="Site">
+        <a href="wiki.html">Wiki</a>
+        <a href="try.html">Try</a>
+        <a href="manteraction.html">Manteraction</a>
+      </nav>
+    </div>
     <a class="taskbar-download" href="https://pypi.org/project/real-time-manim/">Download</a>
     <!-- agent-only entry: zero-pixel button pointing to the agent wiki (wiki/agent/), not the normal wiki -->
     <button type="button" id="agent-wiki" data-agent-wiki-path="/Users/niuyingkai/PHormation codes/2026fall/real-time-manim_website/wiki/agent" aria-hidden="true" tabindex="-1" title="Agent wiki" style="position:absolute;width:0;height:0;padding:0;border:0;overflow:hidden"></button>
@@ -76,13 +84,49 @@
           <img class="wiki-icon" src="../../assets/images/wiki.png" width="36" height="36" alt="">
         </a>
       </div>
-      <button class="banner-title" type="button" aria-label="Back to top" title="Back to top">real-time-manim</button>
+      <button class="banner-title" type="button" aria-label="Back to top" title="Back to top">
+        <img class="banner-logo" src="../../assets/images/real-time-manim-icon.png" width="30" height="30" alt="">
+        <span>Real-Time-Manim</span>
+      </button>
       <a class="banner-download" href="https://pypi.org/project/real-time-manim/">Download</a>
     </div>
   </div>
-  <!-- The live homepage is deliberately only the opening and the top bar. The
-       full page was removed on 2026-10-26 and saved as
-       pages/en_US/real_time_manim_full.html (with real-time-manim.full.css/.js). -->
-  <div class="scroll-runway" aria-hidden="true"></div>
+  <!-- The stack: Python, C and Vulkan. It is the second page; the opening's
+       particles fall into the marks. The full page was removed on 2026-10-26
+       and saved as pages/en_US/real_time_manim_full.html. -->
+  <section class="stack-section" aria-labelledby="stack-heading">
+    <canvas class="stack-particles" aria-hidden="true"></canvas>
+    <div class="stack-inner">
+      <div class="stack-art">
+        <figure class="stack-mark stack-mark-python" data-rotate="-9">
+          <img src="../../assets/images/python.svg" width="86" height="86" alt="Python">
+        </figure>
+        <figure class="stack-mark stack-mark-c" data-rotate="0">
+          <img src="../../assets/images/c.svg" width="86" height="86" alt="C">
+        </figure>
+        <figure class="stack-mark stack-mark-vulkan" data-rotate="0">
+          <img src="../../assets/images/vulkan.svg" width="86" height="86" alt="Vulkan">
+        </figure>
+      </div>
+      <div class="stack-copy">
+        <p class="stack-eyebrow">The stack</p>
+        <h2 class="stack-heading" id="stack-heading">Python in.<br>Vulkan out.</h2>
+        <p class="stack-lead">Real-Time-Manim is not a Manim fork. It keeps the scene you already write and replaces the road from that scene to the screen.</p>
+        <p>Python stays the authoring layer. Mobjects, animations, updaters, rate functions — the same ManimCE API, the same files. You don't learn a second way to describe a scene.</p>
+        <p>C is the bridge. The frame crosses one thin native boundary, where each mobject becomes vertices once; the hot path stays compiled and the render loop never re-interprets the scene.</p>
+        <p>Vulkan is the renderer. Every shape gets its own pipeline, the GPU is addressed directly, and the swapchain presents a frame the moment it exists. Cairo and OpenGL are no longer on the path.</p>
+        <p class="stack-contract">Three layers, one contract: the Manim data model.</p>
+      </div>
+    </div>
+  </section>
+  <!-- The particle stage after the stack: the same dots leave the Python, C and
+       Vulkan marks and become the wireframe solids and flat figures. Decorative,
+       so the whole section is aria-hidden. -->
+  <section class="shape-section" aria-hidden="true">
+    <div class="shape-stage">
+      <canvas class="shape-particles"></canvas>
+    </div>
+  </section>
+
 </body>
 </html>
