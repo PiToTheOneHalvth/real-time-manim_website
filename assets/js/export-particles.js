@@ -349,7 +349,6 @@
     frame = 0;
     if (state === 'forming' && now - formStart >= FORM_MS) {
       state = 'screen';
-      section.classList.remove('is-forming');
       section.classList.add('is-screen');
       startVideo();
     } else if (state === 'collapsing' && now - collapseStart >= COLLAPSE_MS) {
@@ -454,7 +453,7 @@
     formStart = performance.now();
     startedVideo = false;
     section.classList.remove('is-collapsing', 'is-listing', 'is-list', 'is-screen', 'is-playing');
-    section.classList.add('is-active', 'is-forming');
+    section.classList.add('is-active');
     if (stackSection) stackSection.classList.add('is-exporting');
     queue();
   }
@@ -472,7 +471,7 @@
     }
     state = 'idle';
     startedVideo = false;
-    section.classList.remove('is-active', 'is-forming', 'is-collapsing', 'is-listing', 'is-list', 'is-screen', 'is-playing', 'is-handing-off');
+    section.classList.remove('is-active', 'is-collapsing', 'is-listing', 'is-list', 'is-screen', 'is-playing', 'is-handing-off');
     if (stackSection) stackSection.classList.remove('is-exporting');
     ctx.clearRect(0, 0, width, height);
   }

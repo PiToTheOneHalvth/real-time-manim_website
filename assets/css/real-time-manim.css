@@ -604,19 +604,10 @@ a:focus-visible, button:focus-visible {
   column-gap: var(--gutter);
   row-gap: clamp(40px, 8svh, 90px);
   align-items: center;
-  transition: opacity 400ms ease;
 }
-.export-section.is-handing-off .export-inner { opacity: 0; }
 .export-copy {
   grid-column: 1 / 7;
   max-width: var(--measure);
-  transition: opacity 520ms ease, transform 620ms ease;
-}
-/* While the swarm is still crossing the page the copy waits; it arrives with
-   the finished monitor instead of sitting under the flight. */
-.export-section.is-forming .export-copy {
-  opacity: 0;
-  transform: translateY(12px);
 }
 .export-eyebrow {
   margin: 0 0 1.3em;
@@ -713,7 +704,6 @@ a:focus-visible, button:focus-visible {
   border-radius: inherit;
   background: radial-gradient(circle at 50% 46%, rgba(245, 245, 245, .055), transparent 62%);
   color: rgba(245, 245, 245, .52);
-  transition: opacity 360ms ease;
 }
 .export-section.is-playing .export-placeholder { opacity: 0; }
 .export-placeholder-mark {
@@ -741,7 +731,6 @@ a:focus-visible, button:focus-visible {
   list-style: none;
   visibility: hidden;
   opacity: 0;
-  transition: opacity 280ms ease;
 }
 .export-section.is-listing .export-list,
 .export-section.is-list .export-list {
@@ -754,13 +743,8 @@ a:focus-visible, button:focus-visible {
   gap: calc(16 * var(--unit));
   padding: clamp(7px, calc(9 * var(--unit)), 11px) 0;
   border-top: 1px solid rgba(245, 245, 245, .11);
-  opacity: 0;
-  transition: opacity 380ms ease;
-  transition-delay: calc(var(--i) * 42ms + 160ms);
 }
 .export-row:last-child { border-bottom: 1px solid rgba(245, 245, 245, .11); }
-.export-section.is-listing .export-row,
-.export-section.is-list .export-row { opacity: 1; }
 .export-row-index {
   padding-top: .15em;
   font-size: clamp(9px, calc(10 * var(--unit)), 11px);
@@ -809,9 +793,6 @@ a:focus-visible, button:focus-visible {
   .export-monitor,
   .export-video,
   .export-placeholder,
-  .export-row,
-  .export-list,
-  .export-copy,
   .export-inner { transition: none !important; }
 }
 
