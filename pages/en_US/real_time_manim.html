@@ -14,6 +14,7 @@
   <script src="../../assets/js/hero-particles.js" defer></script>
   <script src="../../assets/js/network-background.js" defer></script>
   <script src="../../assets/js/stack-particles.js" defer></script>
+  <script src="../../assets/js/export-particles.js" defer></script>
   <script src="../../assets/js/shape-particles.js" defer></script>
 </head>
 <body>
@@ -119,9 +120,76 @@
       </div>
     </div>
   </section>
-  <!-- The particle stage after the stack: the same dots leave the Python, C and
-       Vulkan marks and become the wireframe solids and flat figures. Decorative,
-       so the whole section is aria-hidden. -->
+  <!-- Export: the stack's dots travel right and become a monitor. The screen is
+       the video slot; when the clip ends the monitor compresses into a line,
+       and the line unfolds into the export methods (all from wiki/agent/
+       runtime.md). -->
+  <section class="export-section" aria-labelledby="export-heading">
+    <canvas class="export-particles" aria-hidden="true"></canvas>
+    <div class="export-inner">
+      <div class="export-copy">
+        <p class="export-eyebrow">Export</p>
+        <h2 class="export-heading" id="export-heading">The window<br>is the file.</h2>
+        <p class="export-lead">A window pops out instantly. The same window is the file — it records the frame you already see.</p>
+        <p>No headless pass at the end: RTM reads the Vulkan framebuffer and hands it to ffmpeg while the scene runs, so the picture on screen and the frames in the mp4 are the same pixels.</p>
+        <p>Hide the window and the readback runs faster than real time; show it and the capture is live. Either way a 60 fps mp4 lands when the scene ends.</p>
+        <p class="export-contract">One scene. Every output.</p>
+      </div>
+      <div class="export-visual">
+        <div class="export-monitor">
+          <div class="export-screen">
+            <video class="export-video" src="../../assets/videos/export-window.mp4" muted playsinline preload="metadata" aria-label="Export demo: a window pops out and records instantly"></video>
+            <div class="export-placeholder" aria-hidden="true">
+              <span class="export-placeholder-mark"></span>
+              <span class="export-placeholder-label">Video slot</span>
+              <code>assets/videos/export-window.mp4</code>
+            </div>
+          </div>
+        </div>
+        <ol class="export-list" aria-label="Ways to export a Real-Time-Manim scene">
+          <li class="export-row" style="--i:0">
+            <span class="export-row-index">01</span>
+            <span class="export-row-copy"><code>fast_record_scene()</code><span>Offline and fastest: framebuffer to ffmpeg, hidden by default.</span></span>
+          </li>
+          <li class="export-row" style="--i:1">
+            <span class="export-row-index">02</span>
+            <span class="export-row-copy"><code>record_scene()</code><span>Real-time capture of the window the user is watching.</span></span>
+          </li>
+          <li class="export-row" style="--i:2">
+            <span class="export-row-index">03</span>
+            <span class="export-row-copy"><code>start_record() / stop_record()</code><span>Wrap one section by hand inside <code>construct()</code>.</span></span>
+          </li>
+          <li class="export-row" style="--i:3">
+            <span class="export-row-index">04</span>
+            <span class="export-row-copy"><code>enable_fast_record()</code><span>The fast path without a visible window.</span></span>
+          </li>
+          <li class="export-row" style="--i:4">
+            <span class="export-row-index">05</span>
+            <span class="export-row-copy"><code>Timeline.render_mp4()</code><span>Walk the schedule and encode it frame by frame.</span></span>
+          </li>
+          <li class="export-row" style="--i:5">
+            <span class="export-row-index">06</span>
+            <span class="export-row-copy"><code>FrameServer.export_frames()</code><span>Any list of times becomes a folder of PNGs.</span></span>
+          </li>
+          <li class="export-row" style="--i:6">
+            <span class="export-row-index">07</span>
+            <span class="export-row-copy"><code>FrameServer.save_frame()</code><span>One frame, synchronously, at any <code>t</code>.</span></span>
+          </li>
+          <li class="export-row" style="--i:7">
+            <span class="export-row-index">08</span>
+            <span class="export-row-copy"><code>FramePreview</code><span>Scrub, play or save a still without rendering a video.</span></span>
+          </li>
+          <li class="export-row" style="--i:8">
+            <span class="export-row-index">09</span>
+            <span class="export-row-copy"><code>export_srt()</code><span>The subtitle track beside the recording.</span></span>
+          </li>
+        </ol>
+      </div>
+    </div>
+  </section>
+  <!-- The particle stage after the export page: the same dots leave the export
+       list and become the wireframe solids and flat figures. Decorative, so the
+       whole section is aria-hidden. -->
   <section class="shape-section" aria-hidden="true">
     <div class="shape-stage">
       <canvas class="shape-particles"></canvas>
