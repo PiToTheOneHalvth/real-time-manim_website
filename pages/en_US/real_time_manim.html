@@ -15,7 +15,9 @@
   <script src="../../assets/js/network-background.js" defer></script>
   <script src="../../assets/js/stack-particles.js" defer></script>
   <script src="../../assets/js/export-particles.js" defer></script>
-  <script src="../../assets/js/shape-particles.js" defer></script>
+  <script src="../../assets/js/architecture-particles.js" defer></script>
+  <script src="../../assets/js/vendor/d3.v7.min.js" defer></script>
+  <script src="../../assets/js/architecture-graph.js" defer></script>
 </head>
 <body>
   <canvas id="network-background" class="network-background" aria-hidden="true"></canvas>
@@ -187,12 +189,44 @@
       </div>
     </div>
   </section>
-  <!-- The particle stage after the export page: the same dots leave the export
-       list and become the wireframe solids and flat figures. Decorative, so the
-       whole section is aria-hidden. -->
-  <section class="shape-section" aria-hidden="true">
-    <div class="shape-stage">
-      <canvas class="shape-particles"></canvas>
+  <!-- The fourth page: the live wiki architecture graph. The export list's
+       dots slide down and become the frame around the graph window. -->
+  <section class="wiki-architecture-section" aria-labelledby="architecture-heading">
+    <canvas class="architecture-particles" aria-hidden="true"></canvas>
+    <div class="wiki-architecture-inner">
+      <div class="wiki-architecture-head">
+        <div class="wiki-architecture-title">
+          <p class="wiki-architecture-eyebrow">Architecture</p>
+          <h2 class="wiki-architecture-heading" id="architecture-heading">The wiki,<br>in one graph.</h2>
+        </div>
+        <div class="wiki-architecture-copy">
+          <p class="wiki-architecture-lead">Every note in the Real-Time-Manim wiki, linked as it is written. Drag the map, search a title, or open a note in the reader.</p>
+          <p class="wiki-architecture-note">Hover or tap a dot for its connections. Right-click a node for the local graph.</p>
+        </div>
+      </div>
+      <div class="architecture-graph" data-source-root="https://raw.githubusercontent.com/BEGINWITHF/real-time-manim/main/RTM-Wiki/en_US/" data-source-mirror="https://cdn.jsdelivr.net/gh/BEGINWITHF/real-time-manim@main/RTM-Wiki/en_US/" data-entry-path="README.md" data-manifest-path="manifest.json">
+        <div class="architecture-graph-toolbar">
+          <label class="architecture-graph-search-label">
+            <input class="architecture-graph-search" type="search" placeholder="Search notes" autocomplete="off">
+            <span class="architecture-graph-search-hint" aria-hidden="true"><kbd>right-click</kbd> open local graph</span>
+            <ul class="architecture-graph-search-list" hidden></ul>
+          </label>
+          <span class="architecture-graph-status" role="status" aria-live="polite">Reading wiki graph...</span>
+          <button class="architecture-graph-refresh" type="button" aria-label="Refresh graph" title="Refresh graph">
+            <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M20 11a8 8 0 0 0-14.9-4L3 10m0-5v5h5M4 13a8 8 0 0 0 14.9 4L21 14m0 5v-5h-5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <button class="architecture-graph-recenter" type="button" aria-label="Recenter graph" title="Recenter graph">
+            <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M9 3v6H3M15 3v6h6M9 21v-6H3M15 21v-6h6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <button class="architecture-graph-fullscreen" type="button" aria-label="Open fullscreen graph" title="Fullscreen graph">
+            <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M9 3H3v6M15 3h6v6M9 21H3v-6M15 21h6v-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+        </div>
+        <div class="architecture-graph-viewport">
+          <svg role="img" aria-label="Interactive graph of wiki note connections"></svg>
+          <div class="architecture-graph-tooltip" role="tooltip" hidden></div>
+        </div>
+      </div>
     </div>
   </section>
 

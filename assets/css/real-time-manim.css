@@ -810,6 +810,109 @@ a:focus-visible, button:focus-visible {
   .export-inner { transition: none !important; }
 }
 
+/* Fourth page: the live wiki architecture graph. The export list's dots are
+   reused as the window frame; the graph itself is the old D3 note map. */
+.wiki-architecture-section {
+  position: relative;
+  height: 100svh;
+  min-height: 100svh;
+  padding: calc(var(--taskbar-h) + clamp(20px, 3svh, 32px)) var(--pad) clamp(40px, 5svh, 56px);
+  display: flex;
+  align-items: stretch;
+  border-top: 1px solid var(--hairline);
+}
+.architecture-particles {
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 450ms ease;
+}
+.wiki-architecture-section.is-active .architecture-particles { opacity: 1; }
+.wiki-architecture-inner {
+  position: relative;
+  z-index: 3;
+  width: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(20px, 3svh, 32px);
+}
+.wiki-architecture-head {
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  column-gap: var(--gutter);
+  align-items: end;
+}
+.wiki-architecture-eyebrow {
+  margin: 0 0 1.1em;
+  font-size: calc(11 * var(--unit));
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: rgba(245, 245, 245, .45);
+}
+.wiki-architecture-heading {
+  margin: 0;
+  font-size: var(--heading);
+  font-weight: 700;
+  line-height: .98;
+  letter-spacing: -.03em;
+}
+.wiki-architecture-copy {
+  max-width: 30em;
+  justify-self: end;
+}
+.wiki-architecture-lead {
+  margin: 0;
+  font-size: var(--lead);
+  line-height: 1.4;
+}
+.wiki-architecture-note {
+  margin: .9em 0 0;
+  font-size: calc(12 * var(--unit));
+  letter-spacing: .04em;
+  color: rgba(245, 245, 245, .48);
+}
+.wiki-architecture-section .architecture-graph {
+  flex: 1 1 auto;
+  height: auto;
+  min-height: 0;
+  border-color: rgba(245, 245, 245, .09);
+  background: #0c0c0c;
+}
+@media (max-width: 900px) {
+  .wiki-architecture-section {
+    height: auto;
+    min-height: 0;
+    display: block;
+    padding-bottom: var(--section-y);
+  }
+  .wiki-architecture-inner { height: auto; }
+  .wiki-architecture-head {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: clamp(18px, 3svh, 28px);
+  }
+  .wiki-architecture-copy {
+    justify-self: start;
+    max-width: var(--measure);
+  }
+  .architecture-particles { display: none; }
+  .wiki-architecture-section .architecture-graph {
+    flex: none;
+    height: clamp(420px, 62svh, 560px);
+    margin-top: clamp(28px, 5svh, 44px);
+    border-color: rgba(245, 245, 245, .20);
+  }
+  .wiki-architecture-section .architecture-graph-search-hint { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .architecture-particles { display: none; }
+  .wiki-architecture-section .architecture-graph { border-color: rgba(245, 245, 245, .20); }
+}
+
 .slogan-pin {
   position: sticky;
   top: var(--slogan-top, 0px);
