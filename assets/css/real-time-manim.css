@@ -812,7 +812,7 @@ a:focus-visible, button:focus-visible {
   .export-inner { transition: none !important; }
 }
 
-/* Fifth page: the live wiki architecture graph. The shape page's dots are
+/* Fourth page: the live wiki architecture graph. The export list's dots are
    reused as the window frame; the graph itself is the old D3 note map. */
 .wiki-architecture-section {
   position: relative;
@@ -834,6 +834,7 @@ a:focus-visible, button:focus-visible {
   transition: opacity 450ms ease;
 }
 .wiki-architecture-section.is-active .architecture-particles { opacity: 1; }
+.wiki-architecture-section.is-handing-off .architecture-particles { opacity: 0; }
 .wiki-architecture-inner {
   position: relative;
   z-index: 3;
@@ -884,6 +885,11 @@ a:focus-visible, button:focus-visible {
   min-height: 0;
   border-color: rgba(245, 245, 245, .09);
   background: #0c0c0c;
+  transition: opacity 400ms ease;
+}
+.wiki-architecture-section.is-handing-off .architecture-graph {
+  opacity: 0;
+  pointer-events: none;
 }
 @media (max-width: 900px) {
   .wiki-architecture-section {
