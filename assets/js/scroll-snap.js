@@ -1,12 +1,12 @@
 // Gentle magnetic scroll correction for the homepage.
 //
 // The page has a few places that read best when they sit exactly in the
-// viewport: the opening, the stack content, the export content, the particle
-// stage fully in view, the stage release where the top bar is fully open, the
-// wiki architecture page, and the page bottom. After the wheel/keyboard stops,
-// if the page is within SNAP px of one of those, it glides to it over a short
-// ease instead of hard-snapping. Any new wheel/touch/key press cancels the
-// glide; reduced motion opts out entirely.
+// viewport: the opening, the stack content, the export content, the wiki
+// architecture page, the particle stage fully in view, and the stage release
+// (the page bottom). After the wheel/keyboard stops, if the page is within SNAP
+// px of one of those, it glides to it over a short ease instead of
+// hard-snapping. Any new wheel/touch/key press cancels the glide; reduced motion
+// opts out entirely.
 (() => {
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
   const stack = document.querySelector('.stack-section');
@@ -61,7 +61,6 @@
     }
     if (architecture) {
       add(architecture.getBoundingClientRect().top + window.scrollY);
-      add(maxScroll());
     }
     points.sort((a, b) => a - b);
   }
