@@ -241,6 +241,23 @@
     };
   }
 
+  // Give every row the same starting point as the particle line, so the text
+  // fans out of the line with the dots instead of appearing after them. lineY
+  // is null on the no-particle path, which uses a short rise.
+  function prepareRows(lineY) {
+    if (!rows.length) return;
+    const base = list.getBoundingClientRect();
+    rows.forEach((row, i) => {
+      const center = base.top + row.offsetTop + row.offsetHeight / 2;
+      const rise = lineY == null ? 14 : lineY - center;
+      row.style.setProperty('--rise', `${rise.toFixed(1)}px`);
+      row.style.setProperty('--row-delay', `${i * 8}ms`);
+    });
+    // Flush the new transform into the before-change style: the transition must
+    // start from the line, not from the previous list's fallback.
+    void list.offsetWidth;
+  }
+
   function paint(now) {
     if (!particles.length) return;
     if (!width || !height) resizeCanvas();
@@ -357,6 +374,7 @@
     } else if (state === 'line' && now - lineStart >= LINE_HOLD_MS) {
       state = 'listing';
       listStart = now;
+      prepareRows(lineBox().y);
       section.classList.add('is-listing');
     } else if (state === 'listing' && now - listStart >= LIST_MS) {
       state = 'list';
@@ -430,6 +448,7 @@
       simpleTimer = setTimeout(() => {
         simpleTimer = 0;
         state = 'list';
+        prepareRows(null);
         section.classList.add('is-listing', 'is-list');
         // Phones have no sticky stage to re-align the list; if the monitor was
         // near the top when the clip ended, nudge the list clear of the bar.

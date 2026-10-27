@@ -743,8 +743,21 @@ a:focus-visible, button:focus-visible {
   gap: calc(16 * var(--unit));
   padding: clamp(7px, calc(9 * var(--unit)), 11px) 0;
   border-top: 1px solid rgba(245, 245, 245, .11);
+  opacity: 0;
+  transform: translateY(var(--rise, 12px));
 }
 .export-row:last-child { border-bottom: 1px solid rgba(245, 245, 245, .11); }
+/* The transition lives only in the final state: setting --rise before the
+   class arrives positions the row on the line without animating there first;
+   adding the class then flies it out of the line with the dots. */
+.export-section.is-listing .export-row,
+.export-section.is-list .export-row {
+  opacity: 1;
+  transform: none;
+  transition:
+    transform 720ms cubic-bezier(.2, .7, .2, 1) var(--row-delay, 0ms),
+    opacity 460ms ease calc(var(--row-delay, 0ms) + 40ms);
+}
 .export-row-index {
   padding-top: .15em;
   font-size: clamp(9px, calc(10 * var(--unit)), 11px);
@@ -793,6 +806,7 @@ a:focus-visible, button:focus-visible {
   .export-monitor,
   .export-video,
   .export-placeholder,
+  .export-row,
   .export-inner { transition: none !important; }
 }
 
