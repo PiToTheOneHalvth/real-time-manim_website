@@ -1,4 +1,4 @@
-// The fifth page: the shape page's dots slide down and become the frame of
+// The fourth page: the export list's dots slide down and become the frame of
 // the live wiki architecture graph. The graph itself is the old D3 note map;
 // this script only draws its window edge, so the graph stays interactive.
 (() => {
@@ -38,6 +38,7 @@
   let formStart = 0;
   let frame = 0;
   let lastScrollY = typeof window.scrollY === 'number' ? window.scrollY : 0;
+  let lastDots = [];
   let lastBox = { w: 0, h: 0 };
 
   function resizeCanvas() {
@@ -177,16 +178,16 @@
   }
 
   function captureSeeds() {
-    // The shape page is the previous resting place; the export list and stack
-    // are fallbacks for a deep link that never drew the figures.
-    const shapeDots = window.rtmShapeDots ? window.rtmShapeDots() : [];
+    // The export page is the previous resting place; the shape page and stack
+    // are fallbacks if someone deep-links in from the other direction.
     const exportDots = window.rtmExportDots ? window.rtmExportDots() : [];
-    const dots = shapeDots.length ? shapeDots : exportDots;
+    const shapeDots = window.rtmShapeDots ? window.rtmShapeDots() : [];
+    const dots = exportDots.length ? exportDots : shapeDots;
     seeds = particles.map((_, i) => {
       if (!dots.length) return [random(0, width), -random(0, height * .5)];
       const dot = dots[i % dots.length];
       let y = dot[1];
-      // Deep links can leave the figures far above the viewport; let the batch
+      // Deep links can leave the list far above the viewport; let the batch
       // enter from the nearest edge instead of waiting out of frame.
       if (y < -height) y = -20 - random(0, 80);
       else if (y > height * 1.2) y = height + 20;
@@ -207,6 +208,7 @@
     }
 
     for (const bucket of buckets) bucket.length = 0;
+    lastDots = [];
     ctx.globalCompositeOperation = 'lighter';
     ctx.clearRect(0, 0, width, height);
 
@@ -233,6 +235,7 @@
       if (alpha < .03) continue;
       const index = Math.min(BUCKETS - 1, Math.max(0, Math.round(alpha * (BUCKETS - 1))));
       buckets[index].push(x, y, point.s);
+      lastDots.push([x, y]);
     }
 
     ctx.fillStyle = 'rgba(245, 245, 245, .032)';
@@ -288,14 +291,13 @@
     state = 'forming';
     formStart = performance.now();
     section.classList.add('is-active');
-    if (shapeSection) shapeSection.classList.add('is-handing-off');
-    else if (exportSection) exportSection.classList.add('is-handing-off');
+    if (exportSection) exportSection.classList.add('is-handing-off');
     queue();
   }
 
   function reset() {
     state = 'idle';
-    section.classList.remove('is-active');
+    section.classList.remove('is-active', 'is-handing-off');
     if (shapeSection) shapeSection.classList.remove('is-handing-off');
     if (exportSection) exportSection.classList.remove('is-handing-off');
     ctx.clearRect(0, 0, width, height);
@@ -336,6 +338,9 @@
       if (buildFrame() && state === 'frame') paint(performance.now());
     }).observe(graph);
   }
+
+  // The shape page starts from these exact frame dots.
+  window.rtmArchDots = () => lastDots;
 
   resizeCanvas();
   onScroll();
