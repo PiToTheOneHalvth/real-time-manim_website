@@ -1,16 +1,17 @@
 // Gentle magnetic scroll correction for the homepage.
 //
 // The page has a few places that read best when they sit exactly in the
-// viewport: the opening, the particle stage fully in view, the stage release
-// where the top bar is fully open, and the stack. After the wheel/keyboard
-// stops, if the page is within SNAP px of one of those, it glides to it over a
-// short ease instead of hard-snapping. Any new wheel/touch/key press cancels
-// the glide; reduced motion opts out entirely.
+// viewport: the opening, the stack content, the export content, the particle
+// stage fully in view, and the stage release where the top bar is fully open.
+// After the wheel/keyboard stops, if the page is within SNAP px of one of
+// those, it glides to it over a short ease instead of hard-snapping. Any new
+// wheel/touch/key press cancels the glide; reduced motion opts out entirely.
 (() => {
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
   const shape = document.querySelector('.shape-section');
   const stage = shape ? shape.querySelector('.shape-stage') : null;
   const stack = document.querySelector('.stack-section');
+  const exportSection = document.querySelector('.export-section');
   const points = [];
   let frame = 0;
   let idle = 0;
@@ -49,6 +50,12 @@
       // resting place. On desktop the bottom is only a few px past the stack,
       // so the stack content is the better stop.
       if (maxScroll() - top > 200) add(maxScroll());
+    }
+    if (exportSection) {
+      const inner = exportSection.querySelector('.export-inner');
+      // The bar is fully open by the export page, so stop with the eyebrow just
+      // below it instead of under it.
+      if (inner) add(inner.getBoundingClientRect().top + window.scrollY - 96);
     }
     points.sort((a, b) => a - b);
   }

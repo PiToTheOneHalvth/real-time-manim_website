@@ -1,4 +1,4 @@
-// The stage between the opening and the stack. The bar logo's particles are
+// The particle stage after the export page. The export list's dots are
 // scrubbed by the scroll wheel: as the stage comes in, they stream down into a
 // large wireframe torus, a ring of dust and seven smaller solids/figures placed
 // at random. The scroll drives the formation, the turn, the mesh and the orbit, so
@@ -285,26 +285,34 @@
     draw();
   }
 
-  // The stage follows the stack; the scrub starts when its top enters the
-  // viewport and ends at the bottom of the page.
+  // The stage follows the export page: the dots only leave the export list once
+  // that section is three quarters gone, and the formation finishes at the
+  // sticky stage's release (the bottom of the page on desktop).
   function progress() {
     const top = section.getBoundingClientRect().top + window.scrollY;
-    return clamp((window.scrollY - (top - window.innerHeight)) / Math.max(1, section.offsetHeight), 0, 1);
+    const start = top - window.innerHeight * .25;
+    const end = top + section.offsetHeight - window.innerHeight;
+    return clamp((window.scrollY - start) / Math.max(1, end - start), 0, 1);
   }
 
   function draw() {
     const isReduced = reduced.matches;
     const p = isReduced ? 1 : progress();
     const stageRect = stage.getBoundingClientRect();
+    const stageVisible = stageRect.top < height && stageRect.bottom > 0;
+    const exportEl = document.querySelector('.export-section');
+    const stackEl = document.querySelector('.stack-section');
+    if (exportEl) exportEl.classList.toggle('is-handing-off', !isReduced && stageVisible && p > .02);
+    if (stackEl) stackEl.classList.toggle('is-handing-off', !isReduced && stageVisible && p > .03);
     if (!isReduced && (stageRect.bottom < -120 || stageRect.top > height + 120)) {
       ctx.clearRect(0, 0, width, height);
       return;
     }
 
-    const stackDots = window.rtmStackDots ? window.rtmStackDots() : [];
-    const stackEl = document.querySelector('.stack-section');
-    const stageVisible = stageRect.top < height && stageRect.bottom > 0;
-    if (stackEl) stackEl.classList.toggle('is-handing-off', !isReduced && stageVisible && p > .03);
+    // The export list is the previous resting place; fall back to the stack if
+    // someone deep-links past the export page.
+    const exportDots = window.rtmExportDots ? window.rtmExportDots() : [];
+    const stackDots = exportDots.length ? exportDots : (window.rtmStackDots ? window.rtmStackDots() : []);
 
     const hero = document.querySelector('.hero-stage');
     const heroRect = hero ? hero.getBoundingClientRect() : null;
