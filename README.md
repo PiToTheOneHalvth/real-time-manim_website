@@ -28,9 +28,9 @@ reference_for_real_time_manim/
 The Real-Time Manim desktop page is implemented with its own stylesheet
 (`assets/css/real-time-manim.css`) and clipboard script
 (`assets/js/real-time-manim.js`). The live homepage currently runs: the hero
-opening, the top-bar hand-off, the stack section, the export page, and a
-1.5-screen particle geometry stage. The stack's Python/C/Vulkan marks are
-assembled by `assets/js/stack-particles.js` from `assets/images/python.svg`,
+opening, the top-bar hand-off, the stack section, the export page, and the live
+wiki architecture graph. The stack's Python/C/Vulkan marks are assembled by
+`assets/js/stack-particles.js` from `assets/images/python.svg`,
 `assets/images/c.svg` and `assets/images/vulkan.svg`; the three marks are
 enlarged and overlap (Python tilted top-left, C centre-right, Vulkan V
 bottom-left), with no frames, no captions and no numbering — the design note on
@@ -49,21 +49,24 @@ unfolds into the nine export routes from `wiki/agent/runtime.md`:
 `enable_fast_record`, `Timeline.render_mp4`, `FrameServer.export_frames`,
 `FrameServer.save_frame`, `FramePreview` and `export_srt`. Without a clip the
 page demonstrates the same collapse on a short timer, and
-`window.rtmExportDots()` exposes the final list dots. `assets/js/shape-particles.js`
-then starts from those dots, falls back to the stack dots on a deep link, and
-begins only once the export page is three quarters gone; the export canvas and
-copy fade as the shape takes over. It flies the batch into a large wireframe
-torus and seven smaller solids and flat figures (cube, sphere, pyramid,
-octahedron, circle, triangle, hexagon) placed at random. They turn, draw a faint
-mesh, a dust ring orbits the torus, and the whole field is scrubbed by the
-scroll wheel — formation, turn and final field all follow the scroll, with no
-pulse or scale breathing, and the stage is still whenever the wheel is.
-`assets/js/scroll-snap.js` adds a gentle magnetic settle at the opening, the
-stack content (40px from the top), the export content (96px from the top, below
-the open bar), the stage fully in view, the stage release (the page bottom), and
-on a phone the page bottom; it only acts after the wheel stops within ~150px of
-one of those. The particle background is `assets/js/network-background.js`,
-wheel speed is capped by `assets/js/scroll-speed.js`, and the magnetic settle is
+`window.rtmExportDots()` exposes the final list dots.
+`assets/js/architecture-particles.js` continues the same batch: it takes those
+dots, slides them down, and closes them into a two-ring frame with corner
+brackets around the wiki graph window. The frame is drawn behind the page
+content, so the export list stays readable during the hand-off. The fourth page
+is the wiki architecture graph, back from the old homepage:
+`assets/js/architecture-graph.js` and `assets/js/vendor/d3.v7.min.js` read the
+RTM Wiki manifest (raw.githubusercontent.com, with cdn.jsdelivr.net as the
+mirror) and render the interactive note map with search, drag/zoom, refresh,
+recenter, fullscreen, hover tooltips and the right-click local graph. The earlier
+shape-geometry stage is preserved in `assets/js/shape-particles.js` and its CSS,
+but the live page no longer loads it. `assets/js/scroll-snap.js` adds a gentle
+magnetic settle at the opening, the stack content (40px from the top), the export
+content (96px from the top, below the open bar), the architecture page and the
+page bottom; it only acts after the wheel stops within ~150px of one of those.
+The particle background is `assets/js/network-background.js`, wheel speed is
+capped by `assets/js/scroll-speed.js` (and wheel events inside the graph are left
+to D3 so zoom and page scroll do not fight), and the magnetic settle is
 `assets/js/scroll-snap.js`. The older content sections (slogan, real-life,
 next generation, starts-from, architecture, Manteraction) were removed on
 2026-10-26 and kept verbatim in `pages/en_US/real_time_manim_full.html`, which
