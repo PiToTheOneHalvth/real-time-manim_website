@@ -35,6 +35,9 @@
 
   window.addEventListener('wheel', event => {
     if (!enabled || event.ctrlKey) return;
+    // The architecture graph owns the wheel inside its window: D3 uses it to
+    // zoom. Letting the page advance at the same time would fight the graph.
+    if (event.target instanceof Element && event.target.closest('.architecture-graph')) return;
     if (Math.abs(event.deltaX) > Math.abs(event.deltaY)) return;
     let delta = event.deltaY;
     if (!delta) return;

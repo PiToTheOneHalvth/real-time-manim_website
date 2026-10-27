@@ -1,17 +1,16 @@
 // Gentle magnetic scroll correction for the homepage.
 //
 // The page has a few places that read best when they sit exactly in the
-// viewport: the opening, the stack content, the export content, the particle
-// stage fully in view, and the stage release where the top bar is fully open.
-// After the wheel/keyboard stops, if the page is within SNAP px of one of
-// those, it glides to it over a short ease instead of hard-snapping. Any new
-// wheel/touch/key press cancels the glide; reduced motion opts out entirely.
+// viewport: the opening, the stack content, the export content, the wiki
+// architecture page, and the page bottom. After the wheel/keyboard stops, if
+// the page is within SNAP px of one of those, it glides to it over a short ease
+// instead of hard-snapping. Any new wheel/touch/key press cancels the glide;
+// reduced motion opts out entirely.
 (() => {
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
-  const shape = document.querySelector('.shape-section');
-  const stage = shape ? shape.querySelector('.shape-stage') : null;
   const stack = document.querySelector('.stack-section');
   const exportSection = document.querySelector('.export-section');
+  const architecture = document.querySelector('.wiki-architecture-section');
   const points = [];
   let frame = 0;
   let idle = 0;
@@ -34,11 +33,6 @@
       if (!points.some(p => Math.abs(p - value) < 2)) points.push(value);
     };
     add(0);
-    if (shape && stage) {
-      const top = shape.getBoundingClientRect().top + window.scrollY;
-      add(top);                                             // stage fully in view
-      add(top + shape.offsetHeight - stage.offsetHeight);    // stage release / bar open
-    }
     if (stack) {
       const top = stack.getBoundingClientRect().top + window.scrollY;
       const inner = stack.querySelector('.stack-inner');
@@ -56,6 +50,10 @@
       // The bar is fully open by the export page, so stop with the eyebrow just
       // below it instead of under it.
       if (inner) add(inner.getBoundingClientRect().top + window.scrollY - 96);
+    }
+    if (architecture) {
+      add(architecture.getBoundingClientRect().top + window.scrollY);
+      add(maxScroll());
     }
     points.sort((a, b) => a - b);
   }
