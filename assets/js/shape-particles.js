@@ -1,3 +1,6 @@
+// Preserved from the earlier fourth page. The live page no longer loads this
+// file; the fourth page is now architecture-particles.js + the wiki graph.
+//
 // The particle stage after the export page. The export list's dots are
 // scrubbed by the scroll wheel: as the stage comes in, they stream down into a
 // large wireframe torus, a ring of dust and seven smaller solids/figures placed
