@@ -1,8 +1,8 @@
-// The particle stage after the export page. The export list's dots are
-// scrubbed by the scroll wheel: as the stage comes in, they stream down into a
-// large wireframe torus, a ring of dust and seven smaller solids/figures placed
-// at random. The scroll drives the formation, the turn, the mesh and the orbit, so
-// the stage is perfectly still whenever the wheel is.
+// The particle stage after the wiki architecture page. The architecture
+// frame's dots are scrubbed by the scroll wheel: as the stage comes in, they
+// stream down into a large wireframe torus, a ring of dust and seven smaller
+// solids/figures placed at random. The scroll drives the formation, the turn,
+// the mesh and the orbit, so the stage is perfectly still whenever the wheel is.
 (() => {
   const section = document.querySelector('.shape-section');
   if (!section) return;
@@ -301,19 +301,22 @@
     const p = isReduced ? 1 : progress();
     const stageRect = stage.getBoundingClientRect();
     const stageVisible = stageRect.top < height && stageRect.bottom > 0;
-    const exportEl = document.querySelector('.export-section');
-    const stackEl = document.querySelector('.stack-section');
-    if (exportEl) exportEl.classList.toggle('is-handing-off', !isReduced && stageVisible && p > .02);
-    if (stackEl) stackEl.classList.toggle('is-handing-off', !isReduced && stageVisible && p > .03);
+    const architectureEl = document.querySelector('.wiki-architecture-section');
+    if (architectureEl) architectureEl.classList.toggle('is-handing-off', !isReduced && stageVisible && p > .02);
     if (!isReduced && (stageRect.bottom < -120 || stageRect.top > height + 120)) {
       ctx.clearRect(0, 0, width, height);
       return;
     }
 
-    // The export list is the previous resting place; fall back to the stack if
-    // someone deep-links past the export page.
+    // The architecture frame is the previous resting place; fall back to the
+    // export list or the stack if someone deep-links past those pages.
+    const archDots = window.rtmArchDots ? window.rtmArchDots() : [];
     const exportDots = window.rtmExportDots ? window.rtmExportDots() : [];
-    const stackDots = exportDots.length ? exportDots : (window.rtmStackDots ? window.rtmStackDots() : []);
+    const stackDots = archDots.length
+      ? archDots
+      : exportDots.length
+        ? exportDots
+        : (window.rtmStackDots ? window.rtmStackDots() : []);
 
     const hero = document.querySelector('.hero-stage');
     const heroRect = hero ? hero.getBoundingClientRect() : null;
