@@ -1,6 +1,3 @@
-// Preserved from the earlier fourth page. The live page no longer loads this
-// file; the fourth page is now architecture-particles.js + the wiki graph.
-//
 // The particle stage after the export page. The export list's dots are
 // scrubbed by the scroll wheel: as the stage comes in, they stream down into a
 // large wireframe torus, a ring of dust and seven smaller solids/figures placed
@@ -27,6 +24,7 @@
   let height = 0;
   let dpr = 1;
   let scrollFrame = 0;
+  let lastDots = [];
 
   const line = (a, b, n) => {
     const out = [];
@@ -330,6 +328,7 @@
       ? heroRect.top + heroRect.height / 2
       : hasBar ? Math.max(barRect.bottom + 6, 84) : 84;
     let dotIndex = 0;
+    const dots = [];
     for (const bucket of buckets) bucket.length = 0;
 
     ctx.clearRect(0, 0, width, height);
@@ -407,6 +406,7 @@
         const size = prop.size * (slot.dim === 3 ? .75 + .5 * depth : 1);
         const index = Math.min(BUCKETS - 1, Math.max(0, Math.round(alpha * (BUCKETS - 1))));
         buckets[index].push(x, y, size);
+        dots.push([x, y]);
       }
     }
 
@@ -425,6 +425,7 @@
       if (alpha < .03) continue;
       const index = Math.min(BUCKETS - 1, Math.max(0, Math.round(alpha * (BUCKETS - 1))));
       buckets[index].push(x, y, d.size * (.7 + .5 * depth));
+      dots.push([x, y]);
     }
 
     ctx.strokeStyle = 'rgba(245, 245, 245, .06)';
@@ -461,6 +462,7 @@
     }
     ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = 'source-over';
+    lastDots = dots;
   }
 
   function queue() {
@@ -470,6 +472,9 @@
       draw();
     });
   }
+
+  // The architecture page reuses these exact figure positions as its seeds.
+  window.rtmShapeDots = () => lastDots;
 
   window.addEventListener('scroll', queue, { passive: true });
   window.addEventListener('resize', resize, { passive: true });

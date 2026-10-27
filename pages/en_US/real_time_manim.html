@@ -15,6 +15,7 @@
   <script src="../../assets/js/network-background.js" defer></script>
   <script src="../../assets/js/stack-particles.js" defer></script>
   <script src="../../assets/js/export-particles.js" defer></script>
+  <script src="../../assets/js/shape-particles.js" defer></script>
   <script src="../../assets/js/architecture-particles.js" defer></script>
   <script src="../../assets/js/vendor/d3.v7.min.js" defer></script>
   <script src="../../assets/js/architecture-graph.js" defer></script>
@@ -189,8 +190,16 @@
       </div>
     </div>
   </section>
-  <!-- The fourth page: the live wiki architecture graph. The export list's
-       dots slide down and become the frame around the graph window. -->
+  <!-- The particle geometry page: the same dots leave the export list and
+       become the wireframe torus and seven figures. The architecture page then
+       reuses its last dots as the graph frame. -->
+  <section class="shape-section" aria-hidden="true">
+    <div class="shape-stage">
+      <canvas class="shape-particles"></canvas>
+    </div>
+  </section>
+  <!-- The fifth page: the live wiki architecture graph. The shape page's dots
+       slide down and become the frame around the graph window. -->
   <section class="wiki-architecture-section" aria-labelledby="architecture-heading">
     <canvas class="architecture-particles" aria-hidden="true"></canvas>
     <div class="wiki-architecture-inner">
