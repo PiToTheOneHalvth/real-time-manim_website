@@ -1,4 +1,4 @@
-// The fourth page: the export list's dots slide down and become the frame of
+// The fifth page: the shape page's dots slide down and become the frame of
 // the live wiki architecture graph. The graph itself is the old D3 note map;
 // this script only draws its window edge, so the graph stays interactive.
 (() => {
@@ -7,6 +7,7 @@
   const canvas = section.querySelector('.architecture-particles');
   const graph = section.querySelector('.architecture-graph');
   const exportSection = document.querySelector('.export-section');
+  const shapeSection = document.querySelector('.shape-section');
   if (!canvas || !graph) return;
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
@@ -176,12 +177,16 @@
   }
 
   function captureSeeds() {
-    const dots = window.rtmExportDots ? window.rtmExportDots() : [];
+    // The shape page is the previous resting place; the export list and stack
+    // are fallbacks for a deep link that never drew the figures.
+    const shapeDots = window.rtmShapeDots ? window.rtmShapeDots() : [];
+    const exportDots = window.rtmExportDots ? window.rtmExportDots() : [];
+    const dots = shapeDots.length ? shapeDots : exportDots;
     seeds = particles.map((_, i) => {
       if (!dots.length) return [random(0, width), -random(0, height * .5)];
       const dot = dots[i % dots.length];
       let y = dot[1];
-      // Deep links can leave the list far above the viewport; let the batch
+      // Deep links can leave the figures far above the viewport; let the batch
       // enter from the nearest edge instead of waiting out of frame.
       if (y < -height) y = -20 - random(0, 80);
       else if (y > height * 1.2) y = height + 20;
@@ -283,13 +288,15 @@
     state = 'forming';
     formStart = performance.now();
     section.classList.add('is-active');
-    if (exportSection) exportSection.classList.add('is-handing-off');
+    if (shapeSection) shapeSection.classList.add('is-handing-off');
+    else if (exportSection) exportSection.classList.add('is-handing-off');
     queue();
   }
 
   function reset() {
     state = 'idle';
     section.classList.remove('is-active');
+    if (shapeSection) shapeSection.classList.remove('is-handing-off');
     if (exportSection) exportSection.classList.remove('is-handing-off');
     ctx.clearRect(0, 0, width, height);
   }
