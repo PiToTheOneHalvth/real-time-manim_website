@@ -1,4 +1,4 @@
-// Magic UI-style morphing headline for the final collage page. Two stacked
+// Magic UI-style morphing headline for the collage page. Two stacked
 // layers cross-fade through blur and opacity; each layer keeps its word while
 // visible, so the text never jumps when the cycle swaps.
 (() => {

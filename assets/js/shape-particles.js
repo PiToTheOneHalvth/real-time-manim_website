@@ -286,12 +286,12 @@
     draw();
   }
 
-  // The stage follows the export page: the dots only leave the export list once
-  // that section is three quarters gone, and the formation finishes at the
-  // sticky stage's release (the bottom of the page on desktop).
+  // The shape stage is the last page, after the collage pin. Its formation
+  // starts when the section itself reaches the viewport (so no dots are drawn
+  // over the collage) and finishes at the sticky stage's release.
   function progress() {
     const top = section.getBoundingClientRect().top + window.scrollY;
-    const start = top - window.innerHeight * .25;
+    const start = top;
     const end = top + section.offsetHeight - window.innerHeight;
     return clamp((window.scrollY - start) / Math.max(1, end - start), 0, 1);
   }

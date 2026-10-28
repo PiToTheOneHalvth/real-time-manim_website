@@ -1,9 +1,12 @@
-// The final page: slice the generated wiki collage into its 21x17 frame cells
-// and let them surface one by one over the full-screen page. The text overlay
-// is plain DOM; only the tiles animate.
+// The fifth page: slice the generated collage into its 21x17 frame cells and
+// scrub their opacity from the scroll position. The page pins for one extra
+// screen, so scrolling down fades the tiles in one by one (bottom-biased but
+// randomly ordered) and scrolling back up fades them out again. No transforms,
+// no timers: the wheel is the only clock.
 (() => {
   const section = document.querySelector('.wiki-collage-section');
   if (!section) return;
+  const pin = section.querySelector('.wiki-collage-pin');
   const grid = section.querySelector('.wiki-collage-grid');
   if (!grid) return;
 
@@ -16,12 +19,15 @@
   const CH = 90;
   const GAP = 2;
   const MARGIN = 8;
+  const FADE = .10;
   const src = new URL(
     grid.dataset.image || '../../assets/images/feature-collage.jpg?v=2',
     document.baseURI,
   ).href;
+  const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
   const fragment = document.createDocumentFragment();
+  const tiles = [];
   for (let i = 0; i < COLS * ROWS; i++) {
     const col = i % COLS;
     const row = Math.floor(i / COLS);
@@ -36,33 +42,61 @@
     tile.style.backgroundImage = `url("${src}")`;
     tile.style.backgroundSize = `${IW / CW * 100}% ${IH / CH * 100}%`;
     tile.style.backgroundPosition = `${x / (IW - CW) * 100}% ${y / (IH - CH) * 100}%`;
-    // Bottom rows get a head start, but the exact order is random: no neat
-    // wave, no transform, just each frame fading up from the bottom.
-    const delay = Math.round((ROWS - 1 - row) * 65 + Math.random() * 850);
-    tile.style.setProperty('--d', `${delay}ms`);
+    // Bottom rows start surfacing first, but each cell gets its own random
+    // slot, so the wall never settles into a neat row-by-row wave. The highest
+    // threshold is below 1 - FADE, which leaves every tile fully lit at the end
+    // of the pin.
+    const depth = (ROWS - 1 - row) / (ROWS - 1); // 0 at the bottom, 1 at the top
+    const threshold = depth * .55 + Math.random() * .27;
+    tiles.push({ el: tile, threshold, shown: -1 });
     fragment.appendChild(tile);
   }
   grid.appendChild(fragment);
 
-  const reveal = () => section.classList.add('is-revealed');
+  // Clear the inline values so the reduced-motion CSS can show every tile.
+  const showAll = () => {
+    for (const tile of tiles) {
+      if (tile.shown === 1) continue;
+      tile.shown = 1;
+      tile.el.style.opacity = '';
+    }
+  };
 
-  if (reduced.matches) {
-    reveal();
-    return;
-  }
+  let painting = 0;
+  const paint = () => {
+    painting = 0;
+    if (reduced.matches) {
+      showAll();
+      return;
+    }
+    const pinHeight = pin ? pin.offsetHeight : window.innerHeight;
+    const travel = Math.max(1, section.offsetHeight - pinHeight);
+    const progress = clamp(-section.getBoundingClientRect().top / travel, 0, 1);
+    for (const tile of tiles) {
+      const value = Math.round(clamp((progress - tile.threshold) / FADE, 0, 1) * 1000) / 1000;
+      if (value === tile.shown) continue;
+      tile.shown = value;
+      tile.el.style.opacity = value;
+    }
+  };
 
-  if ('IntersectionObserver' in window) {
-    const observer = new IntersectionObserver(entries => {
-      if (!entries.some(entry => entry.isIntersecting)) return;
-      observer.disconnect();
-      reveal();
-    }, { threshold: .2 });
-    observer.observe(section);
-  } else {
-    reveal();
+  const queue = () => {
+    if (painting) return;
+    painting = requestAnimationFrame(paint);
+  };
+
+  paint();
+  window.addEventListener('scroll', queue, { passive: true });
+  window.addEventListener('resize', queue, { passive: true });
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', queue, { passive: true });
   }
 
   reduced.addEventListener('change', () => {
-    if (reduced.matches) reveal();
+    if (reduced.matches) {
+      showAll();
+    } else {
+      paint();
+    }
   });
 })();

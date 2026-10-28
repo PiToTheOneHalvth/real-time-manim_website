@@ -921,15 +921,22 @@ a:focus-visible, button:focus-visible {
   .wiki-architecture-section .architecture-graph { border-color: rgba(245, 245, 245, .20); }
 }
 
-/* Sixth and last page: a full-screen mosaic of one frame from every wiki
-   sample clip. The copy floats on top; the frame tiles emerge one by one. */
+/* Fifth page: a full-screen mosaic of one frame from every sample clip. The
+   page is two screens tall: the first screen pins the mosaic while the scroll
+   scrubs the tiles in one by one, and the second releases into the final shape
+   page. Scrolling back up scrubs them out in reverse. */
 .wiki-collage-section {
   position: relative;
-  height: 100svh;
-  min-height: 100svh;
+  height: 200svh;
   padding: 0;
-  overflow: hidden;
   border-top: 1px solid var(--hairline);
+  background: #050505;
+}
+.wiki-collage-pin {
+  position: sticky;
+  top: 0;
+  height: 100svh;
+  overflow: hidden;
   background: #050505;
 }
 .wiki-collage-stage {
@@ -953,12 +960,6 @@ a:focus-visible, button:focus-visible {
   display: block;
   background-repeat: no-repeat;
   opacity: 0;
-  transition: opacity 900ms ease;
-  transition-delay: var(--d, 0ms);
-  will-change: opacity;
-}
-.wiki-collage-section.is-revealed .wiki-collage-tile {
-  opacity: 1;
 }
 .wiki-collage-overlay {
   position: absolute;
