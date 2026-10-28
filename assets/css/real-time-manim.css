@@ -921,6 +921,91 @@ a:focus-visible, button:focus-visible {
   .wiki-architecture-section .architecture-graph { border-color: rgba(245, 245, 245, .20); }
 }
 
+/* Sixth and last page: one frame from every wiki sample clip, stitched into a
+   single mosaic. The text is static; only the image carries the scale. */
+.wiki-collage-section {
+  position: relative;
+  min-height: 100svh;
+  padding: calc(var(--taskbar-h) + clamp(10px, 1.4svh, 18px)) var(--pad) clamp(24px, 3.6svh, 36px);
+  display: flex;
+  align-items: stretch;
+  border-top: 1px solid var(--hairline);
+}
+.wiki-collage-inner {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(12px, 1.8svh, 20px);
+}
+.wiki-collage-head {
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  column-gap: var(--gutter);
+  align-items: end;
+}
+.wiki-collage-eyebrow {
+  margin: 0 0 1.1em;
+  font-size: calc(11 * var(--unit));
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: rgba(245, 245, 245, .45);
+}
+.wiki-collage-heading {
+  margin: 0;
+  font-size: clamp(30px, 4.2vw, 76px);
+  font-weight: 700;
+  line-height: .98;
+  letter-spacing: -.03em;
+}
+.wiki-collage-copy {
+  max-width: 30em;
+  justify-self: end;
+}
+.wiki-collage-lead {
+  margin: 0;
+  font-size: var(--lead);
+  line-height: 1.4;
+}
+.wiki-collage-lead strong {
+  font-weight: 700;
+  color: var(--foreground);
+}
+.wiki-collage-caption {
+  margin: .9em 0 0;
+  font-size: calc(11 * var(--unit));
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: rgba(245, 245, 245, .45);
+}
+.wiki-collage-figure {
+  margin: 0;
+  display: flex;
+  align-items: flex-start;
+  min-height: 0;
+}
+.wiki-collage-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid rgba(245, 245, 245, .14);
+  background: #141414;
+}
+@media (max-width: 900px) {
+  .wiki-collage-section {
+    min-height: 100svh;
+    display: block;
+    padding-bottom: var(--section-y);
+  }
+  .wiki-collage-head {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: clamp(16px, 3svh, 24px);
+  }
+  .wiki-collage-copy {
+    justify-self: start;
+    max-width: var(--measure);
+  }
+}
+
 .slogan-pin {
   position: sticky;
   top: var(--slogan-top, 0px);
