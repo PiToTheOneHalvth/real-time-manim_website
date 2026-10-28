@@ -969,8 +969,8 @@ a:focus-visible, button:focus-visible {
   padding: calc(var(--taskbar-h) + clamp(16px, 2.4svh, 28px)) var(--pad) clamp(24px, 4svh, 48px);
   pointer-events: none;
   background:
-    linear-gradient(180deg, rgba(0, 0, 0, .88) 0, rgba(0, 0, 0, .55) 30%, rgba(0, 0, 0, 0) 64%),
-    linear-gradient(90deg, rgba(0, 0, 0, .42), rgba(0, 0, 0, 0) 58%);
+    linear-gradient(180deg, rgba(0, 0, 0, .62) 0, rgba(0, 0, 0, .28) 30%, rgba(0, 0, 0, 0) 58%),
+    linear-gradient(90deg, rgba(0, 0, 0, .3), rgba(0, 0, 0, 0) 58%);
 }
 .wiki-collage-head {
   display: grid;
@@ -983,7 +983,8 @@ a:focus-visible, button:focus-visible {
   font-size: calc(11 * var(--unit));
   letter-spacing: .22em;
   text-transform: uppercase;
-  color: rgba(245, 245, 245, .55);
+  color: rgba(245, 245, 245, .62);
+  text-shadow: 0 1px 10px rgba(0, 0, 0, .9);
 }
 .wiki-collage-heading {
   margin: 0;
@@ -991,7 +992,7 @@ a:focus-visible, button:focus-visible {
   font-weight: 700;
   line-height: .98;
   letter-spacing: -.03em;
-  text-shadow: 0 2px 24px rgba(0, 0, 0, .45);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .85), 0 2px 26px rgba(0, 0, 0, .75);
 }
 .wiki-collage-copy {
   max-width: 30em;
@@ -1001,7 +1002,7 @@ a:focus-visible, button:focus-visible {
   margin: 0;
   font-size: var(--lead);
   line-height: 1.4;
-  text-shadow: 0 1px 16px rgba(0, 0, 0, .5);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .8), 0 2px 18px rgba(0, 0, 0, .8);
 }
 .wiki-collage-lead strong {
   font-weight: 700;
@@ -1012,7 +1013,8 @@ a:focus-visible, button:focus-visible {
   font-size: clamp(9px, calc(11 * var(--unit)), 12px);
   letter-spacing: .12em;
   text-transform: uppercase;
-  color: rgba(245, 245, 245, .55);
+  color: rgba(245, 245, 245, .62);
+  text-shadow: 0 1px 8px rgba(0, 0, 0, .9);
 }
 .wiki-collage-fullsize {
   color: rgba(245, 245, 245, .82);
@@ -1033,8 +1035,8 @@ a:focus-visible, button:focus-visible {
   .wiki-collage-overlay {
     padding-top: calc(var(--taskbar-h) + 22px);
     background:
-      linear-gradient(180deg, rgba(0, 0, 0, .9) 0, rgba(0, 0, 0, .62) 42%, rgba(0, 0, 0, 0) 74%),
-      linear-gradient(90deg, rgba(0, 0, 0, .3), rgba(0, 0, 0, 0) 70%);
+      linear-gradient(180deg, rgba(0, 0, 0, .72) 0, rgba(0, 0, 0, .38) 42%, rgba(0, 0, 0, 0) 74%),
+      linear-gradient(90deg, rgba(0, 0, 0, .24), rgba(0, 0, 0, 0) 70%);
   }
   .wiki-collage-head {
     grid-template-columns: minmax(0, 1fr);
