@@ -29,27 +29,28 @@ The Real-Time Manim desktop page is implemented with its own stylesheet
 (`assets/css/real-time-manim.css`) and clipboard script
 (`assets/js/real-time-manim.js`). The live homepage currently runs: the hero
 opening, the top-bar hand-off, the stack section, the export page, the live wiki
-architecture graph, and the particle geometry stage last. The stack's
-Python/C/Vulkan marks are assembled by `assets/js/stack-particles.js` from
-`assets/images/python.svg`, `assets/images/c.svg` and
-`assets/images/vulkan.svg`; the three marks are enlarged and overlap (Python
-tilted top-left, C centre-right, Vulkan V bottom-left), with no frames, no
-captions and no numbering — the design note on the right carries the names and
-roles. The marks stay drawn as particles (the SVGs are hidden sampling targets;
-reduced motion or no JS shows them) until the export page reuses them. The marks
-form from the hero's big M, and `assets/js/export-particles.js` continues the
-same batch: it takes the settled stack dots (`window.rtmStackDots()`), flies
-them right into a monitor built from its own normalized point set (bezel, chin,
-neck, base, LED), and leaves the screen interior to a real DOM video slot. The
-clip belongs at `assets/videos/export-window.mp4`; until it is supplied, the
-screen shows a dashed "Video slot" placeholder with that path. When the clip
-ends the monitor compresses from both sides into a horizontal line, the video
-fades, and the line unfolds into the nine export routes from
-`wiki/agent/runtime.md`: `fast_record_scene`, `record_scene`,
-`start_record`/`stop_record`, `enable_fast_record`, `Timeline.render_mp4`,
-`FrameServer.export_frames`, `FrameServer.save_frame`, `FramePreview` and
-`export_srt`. Without a clip the page demonstrates the same collapse on a short
-timer, and `window.rtmExportDots()` exposes the final list dots.
+architecture graph, the particle geometry stage, and the final wiki-collage
+page. The stack's Python/C/Vulkan marks are assembled by
+`assets/js/stack-particles.js` from `assets/images/python.svg`,
+`assets/images/c.svg` and `assets/images/vulkan.svg`; the three marks are
+enlarged and overlap (Python tilted top-left, C centre-right, Vulkan V
+bottom-left), with no frames, no captions and no numbering — the design note on
+the right carries the names and roles. The marks stay drawn as particles (the
+SVGs are hidden sampling targets; reduced motion or no JS shows them) until the
+export page reuses them. The marks form from the hero's big M, and
+`assets/js/export-particles.js` continues the same batch: it takes the settled
+stack dots (`window.rtmStackDots()`), flies them right into a monitor built from
+its own normalized point set (bezel, chin, neck, base, LED), and leaves the
+screen interior to a real DOM video slot. The clip belongs at
+`assets/videos/export-window.mp4`; until it is supplied, the screen shows a
+dashed "Video slot" placeholder with that path. When the clip ends the monitor
+compresses from both sides into a horizontal line, the video fades, and the line
+unfolds into the nine export routes from `wiki/agent/runtime.md`:
+`fast_record_scene`, `record_scene`, `start_record`/`stop_record`,
+`enable_fast_record`, `Timeline.render_mp4`, `FrameServer.export_frames`,
+`FrameServer.save_frame`, `FramePreview` and `export_srt`. Without a clip the
+page demonstrates the same collapse on a short timer, and
+`window.rtmExportDots()` exposes the final list dots.
 `assets/js/architecture-particles.js` continues the same batch into the fourth
 page: it takes those dots, slides them down, and closes them into a two-ring
 frame with corner brackets around the wiki graph window. The frame is drawn
@@ -60,18 +61,24 @@ RTM Wiki manifest (cdn.jsdelivr.net, with raw.githubusercontent.com as the
 mirror) and render the interactive note map with search, drag/zoom, refresh,
 recenter, fullscreen, hover tooltips and the right-click local graph. The graph
 page exposes its last frame dots as `window.rtmArchDots()`.
-`assets/js/shape-particles.js` then continues the same batch into the fifth and
-last page: it takes the architecture frame dots (falling back to the export list
-or the stack on a deep link) and flies them into a large wireframe torus and
-seven smaller solids and flat figures (cube, sphere, pyramid, octahedron,
-circle, triangle, hexagon) placed at random. They turn, draw a faint mesh, a
-dust ring orbits the torus, and the whole field is scrubbed by the scroll wheel,
-ending at the page bottom. The architecture graph fades via `is-handing-off` as
-the shape figures take over. `assets/js/scroll-snap.js` adds a gentle magnetic
-settle at the opening, the stack content (40px from the top), the export content
-(96px from the top, below the open bar), the architecture page, the particle
-stage fully in view, and the stage release (the page bottom); it only acts after
-the wheel stops within ~150px of one of those. The particle background is
+`assets/js/shape-particles.js` then continues the same batch into the fifth
+page: it takes the architecture frame dots (falling back to the export list or
+the stack on a deep link) and flies them into a large wireframe torus and seven
+smaller solids and flat figures (cube, sphere, pyramid, octahedron, circle,
+triangle, hexagon) placed at random. They turn, draw a faint mesh, a dust ring
+orbits the torus, and the whole field is scrubbed by the scroll wheel, ending at
+the stage release. The architecture graph fades via `is-handing-off` as the
+shape figures take over. The sixth and last page is a static collage:
+`assets/images/wiki-feature-collage.jpg`, a 3416×1578 mosaic of 351 frames — one
+from every sample clip in the RTM wiki — arranged 21×17. Each clip was sampled
+at four points (18/38/58/78%), scored for non-black content, and the best frame
+kept; failed CDN loads were retried and fall back to raw.githubusercontent.com.
+The six unused cells at the end of the grid are a closing label block, not empty
+frames. `assets/js/scroll-snap.js` adds a gentle magnetic settle at the opening,
+the stack content (40px from the top), the export content (96px from the top,
+below the open bar), the architecture page, the particle stage fully in view,
+the stage release, the collage page and the page bottom; it only acts after the
+wheel stops within ~150px of one of those. The particle background is
 `assets/js/network-background.js`, wheel speed is capped by
 `assets/js/scroll-speed.js` (and wheel events inside the graph are left to D3 so
 zoom and page scroll do not fight), and the magnetic settle is
