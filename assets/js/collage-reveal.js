@@ -36,8 +36,9 @@
     tile.style.backgroundImage = `url("${src}")`;
     tile.style.backgroundSize = `${IW / CW * 100}% ${IH / CH * 100}%`;
     tile.style.backgroundPosition = `${x / (IW - CW) * 100}% ${y / (IH - CH) * 100}%`;
-    // A centre-out wave: the middle of the wall lands first, the corners last.
-    const delay = Math.round((Math.abs(col - 10) + Math.abs(row - 8)) * 34 + (i % 7) * 11);
+    // Bottom rows get a head start, but the exact order is random: no neat
+    // wave, no transform, just each frame fading up from the bottom.
+    const delay = Math.round((ROWS - 1 - row) * 65 + Math.random() * 850);
     tile.style.setProperty('--d', `${delay}ms`);
     fragment.appendChild(tile);
   }
