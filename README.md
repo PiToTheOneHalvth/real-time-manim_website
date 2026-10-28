@@ -59,7 +59,10 @@ is the wiki architecture graph, back from the old homepage:
 `assets/js/architecture-graph.js` and `assets/js/vendor/d3.v7.min.js` read the
 RTM Wiki manifest (cdn.jsdelivr.net, with raw.githubusercontent.com as the
 mirror) and render the interactive note map with search, drag/zoom, refresh,
-recenter, fullscreen, hover tooltips and the right-click local graph. Both
+recenter, fullscreen, hover tooltips and the right-click local graph. Wheel zoom
+is click-armed: a click inside the graph gives it the wheel, while a click or
+wheel outside releases it, so an unarmed graph lets the page scroll normally;
+the wiki's mind-map panel drops the focus when it closes. Both
 particle scenes also run on phones: the narrow layout stacks the copy,
 monitor/list and graph, and the fixed particle canvases follow the live DOM
 rects, so the monitor bezel and graph frame stay aligned at any width. Only
