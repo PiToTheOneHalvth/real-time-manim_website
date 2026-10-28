@@ -69,16 +69,18 @@ triangle, hexagon) placed at random. They turn, draw a faint mesh, a dust ring
 orbits the torus, and the whole field is scrubbed by the scroll wheel, ending at
 the stage release. The architecture graph fades via `is-handing-off` as the
 shape figures take over. The sixth and last page is a full-screen collage:
-`assets/images/wiki-feature-collage.jpg`, a 3416×1578 mosaic of 351 frames — one
+`assets/images/feature-collage.jpg`, a 3416×1578 mosaic of 351 frames — one
 from every sample clip in the RTM wiki — arranged 21×17. Each clip was sampled
 at four points (18/38/58/78%), scored for non-black content, and the best frame
 kept; failed CDN loads were retried and fall back to raw.githubusercontent.com.
 The six unused cells at the end of the grid are a closing label block, not empty
 frames. `assets/js/collage-reveal.js` slices the JPEG into its 21×17 cells and
-lets the tiles surface one by one over the whole page; the copy is a static
-overlay on top, centred, with no background scrim — just text shadows — and an
-`open full size` link. It reads “351 sample clips from the test suite — a lot of
-tests, one frame each.”
+lets the tiles surface one by one over the whole page. The copy is a static
+overlay on top, centred, with no background scrim — just text shadows. The
+headline uses a Magic UI-style two-layer morph (`assets/js/collage-morph.js`):
+every feature / test / demo, one frame, cross-fading through blur and opacity
+with a short hold. The eyebrow and lead say test suite/tests, and the caption
+links to the full-size JPEG.
 `assets/js/scroll-snap.js` adds a gentle magnetic settle at the opening,
 the stack content (40px from the top), the export content (96px from the top,
 below the open bar), the architecture page, the particle stage fully in view,
