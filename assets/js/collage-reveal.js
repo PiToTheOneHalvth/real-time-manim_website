@@ -1,8 +1,8 @@
 // The fifth page: slice the generated collage into its 21x17 frame cells and
 // scrub their opacity from the scroll position. The page pins for one extra
-// screen, so scrolling down fades the tiles in one by one (bottom-biased but
-// randomly ordered) and scrolling back up fades them out again. No transforms,
-// no timers: the wheel is the only clock.
+// screen, so scrolling down fades the tiles in one by one in a random order
+// with no row or column bias, and scrolling back up fades them out again. No
+// transforms, no timers: the wheel is the only clock.
 (() => {
   const section = document.querySelector('.wiki-collage-section');
   if (!section) return;
@@ -42,16 +42,23 @@
     tile.style.backgroundImage = `url("${src}")`;
     tile.style.backgroundSize = `${IW / CW * 100}% ${IH / CH * 100}%`;
     tile.style.backgroundPosition = `${x / (IW - CW) * 100}% ${y / (IH - CH) * 100}%`;
-    // Bottom rows start surfacing first, but each cell gets its own random
-    // slot, so the wall never settles into a neat row-by-row wave. The highest
-    // threshold is below 1 - FADE, which leaves every tile fully lit at the end
-    // of the pin.
-    const depth = (ROWS - 1 - row) / (ROWS - 1); // 0 at the bottom, 1 at the top
-    const threshold = depth * .55 + Math.random() * .27;
-    tiles.push({ el: tile, threshold, shown: -1 });
+    tiles.push({ el: tile, threshold: 0, shown: -1 });
     fragment.appendChild(tile);
   }
   grid.appendChild(fragment);
+
+  // Every cell gets a random slot in the reveal: no row or column leads, and
+  // the order is different on each load. The slots themselves are spread evenly
+  // through the pin so the wall fills at a steady pace; shuffling them makes the
+  // sequence random without clumping. The highest threshold stays below
+  // 1 - FADE, which leaves every tile fully lit at the end of the pin.
+  const slot = .82 / Math.max(1, tiles.length - 1);
+  tiles
+    .map(tile => ({ tile, key: Math.random() }))
+    .sort((a, b) => a.key - b.key)
+    .forEach((entry, i) => {
+      entry.tile.threshold = (i + Math.random() * .95) * slot;
+    });
 
   // Clear the inline values so the reduced-motion CSS can show every tile.
   const showAll = () => {
