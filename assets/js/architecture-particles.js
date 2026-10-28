@@ -13,7 +13,6 @@
   if (!ctx) return;
 
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
-  const narrow = window.matchMedia('(max-width: 900px)');
   const TAU = Math.PI * 2;
   const BUCKETS = 7;
   const buckets = Array.from({ length: BUCKETS }, () => []);
@@ -284,7 +283,7 @@
 
   function form() {
     if (state !== 'idle') return;
-    if (narrow.matches || reduced.matches) return;
+    if (reduced.matches) return;
     if (!particles.length) buildParticles();
     if (!buildFrame()) return;
     captureSeeds();
@@ -307,7 +306,7 @@
     const rect = section.getBoundingClientRect();
     const up = window.scrollY < lastScrollY - 2;
     if (state !== 'idle' && up && rect.top > height * .72) reset();
-    if (state === 'idle' && !narrow.matches && !reduced.matches && rect.top < height * .7 && rect.bottom > -80) {
+    if (state === 'idle' && !reduced.matches && rect.top < height * .7 && rect.bottom > -80) {
       form();
     }
     if (state !== 'idle') queue();
@@ -317,7 +316,7 @@
   window.addEventListener('scroll', onScroll, { passive: true });
   window.addEventListener('resize', () => {
     resizeCanvas();
-    if (narrow.matches || reduced.matches) {
+    if (reduced.matches) {
       reset();
       return;
     }
@@ -332,7 +331,7 @@
   // A frame built for the old box would no longer hug the edge.
   if (typeof ResizeObserver !== 'undefined') {
     new ResizeObserver(() => {
-      if (narrow.matches || reduced.matches) return;
+      if (reduced.matches) return;
       const rect = graph.getBoundingClientRect();
       if (Math.abs(rect.width - lastBox.w) < 1 && Math.abs(rect.height - lastBox.h) < 1) return;
       if (buildFrame() && state === 'frame') paint(performance.now());

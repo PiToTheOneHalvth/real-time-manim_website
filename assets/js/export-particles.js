@@ -21,7 +21,6 @@
   if (!ctx) return;
 
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
-  const narrow = window.matchMedia('(max-width: 900px)');
   const TAU = Math.PI * 2;
   const BUCKETS = 7;
   const buckets = Array.from({ length: BUCKETS }, () => []);
@@ -442,7 +441,7 @@
     if (video) video.pause();
     section.classList.remove('is-playing');
     section.classList.add('is-collapsing');
-    if (narrow.matches || reduced.matches) {
+    if (reduced.matches) {
       state = 'collapsing';
       clearTimeout(simpleTimer);
       simpleTimer = setTimeout(() => {
@@ -450,10 +449,6 @@
         state = 'list';
         prepareRows(null);
         section.classList.add('is-listing', 'is-list');
-        // Phones have no sticky stage to re-align the list; if the monitor was
-        // near the top when the clip ended, nudge the list clear of the bar.
-        const top = list.getBoundingClientRect().top;
-        if (top < 96) window.scrollTo(0, window.scrollY + top - 96);
       }, 420);
       return;
     }
@@ -465,7 +460,7 @@
 
   function form() {
     if (state !== 'idle') return;
-    if (narrow.matches || reduced.matches) return;
+    if (reduced.matches) return;
     if (!particles.length) buildParticles();
     captureSeeds();
     state = 'forming';
@@ -500,13 +495,7 @@
     const up = window.scrollY < lastScrollY - 2;
     if (state !== 'idle' && up && rect.top > height * .72) reset();
     if (!reduced.matches && state === 'idle' && rect.top < height * .7 && rect.bottom > -80) {
-      if (narrow.matches) {
-        // Phones keep the DOM monitor; the video still ends into the list.
-        state = 'screen';
-        startVideo();
-      } else {
-        form();
-      }
+      form();
     }
     if (state === 'screen') startVideo();
     if (state !== 'idle') queue();
@@ -536,7 +525,7 @@
 
   window.addEventListener('scroll', onScroll, { passive: true });
   window.addEventListener('resize', () => {
-    if (narrow.matches || reduced.matches) return;
+    if (reduced.matches) return;
     resizeCanvas();
     if (particles.length && state !== 'idle') paint(performance.now());
   }, { passive: true });

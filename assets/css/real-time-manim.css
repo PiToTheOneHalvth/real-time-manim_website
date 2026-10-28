@@ -796,7 +796,6 @@ a:focus-visible, button:focus-visible {
   }
   .export-inner { grid-template-columns: minmax(0, 1fr); row-gap: clamp(32px, 5svh, 48px); }
   .export-copy, .export-visual { grid-column: 1; }
-  .export-particles { display: none; }
   .export-visual { margin-top: 0; align-items: start; }
   .export-monitor { max-width: 560px; margin: 0 auto; align-self: start; }
   .export-list { max-width: 560px; margin: 0 auto; }
@@ -907,7 +906,6 @@ a:focus-visible, button:focus-visible {
     justify-self: start;
     max-width: var(--measure);
   }
-  .architecture-particles { display: none; }
   .wiki-architecture-section .architecture-graph {
     flex: none;
     height: clamp(420px, 62svh, 560px);
