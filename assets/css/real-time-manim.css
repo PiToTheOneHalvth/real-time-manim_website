@@ -983,12 +983,25 @@ a:focus-visible, button:focus-visible {
   align-items: flex-start;
   min-height: 0;
 }
+.wiki-collage-link {
+  display: block;
+  width: 100%;
+  text-decoration: none;
+}
+.wiki-collage-link:focus-visible {
+  outline: 2px solid var(--foreground);
+  outline-offset: 3px;
+}
+.wiki-collage-link:hover .wiki-collage-image {
+  border-color: rgba(245, 245, 245, .32);
+}
 .wiki-collage-image {
   display: block;
   width: 100%;
   height: auto;
   border: 1px solid rgba(245, 245, 245, .14);
   background: #141414;
+  transition: border-color 160ms ease;
 }
 @media (max-width: 900px) {
   .wiki-collage-section {

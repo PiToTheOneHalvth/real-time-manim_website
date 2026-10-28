@@ -74,7 +74,8 @@ from every sample clip in the RTM wiki — arranged 21×17. Each clip was sample
 at four points (18/38/58/78%), scored for non-black content, and the best frame
 kept; failed CDN loads were retried and fall back to raw.githubusercontent.com.
 The six unused cells at the end of the grid are a closing label block, not empty
-frames. `assets/js/scroll-snap.js` adds a gentle magnetic settle at the opening,
+frames; clicking the image opens the full-size JPEG.
+`assets/js/scroll-snap.js` adds a gentle magnetic settle at the opening,
 the stack content (40px from the top), the export content (96px from the top,
 below the open bar), the architecture page, the particle stage fully in view,
 the stage release, the collage page and the page bottom; it only acts after the
