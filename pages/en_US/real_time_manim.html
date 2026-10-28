@@ -19,6 +19,7 @@
   <script src="../../assets/js/shape-particles.js" defer></script>
   <script src="../../assets/js/vendor/d3.v7.min.js" defer></script>
   <script src="../../assets/js/architecture-graph.js" defer></script>
+  <script src="../../assets/js/collage-reveal.js" defer></script>
 </head>
 <body>
   <canvas id="network-background" class="network-background" aria-hidden="true"></canvas>
@@ -237,10 +238,14 @@
       <canvas class="shape-particles"></canvas>
     </div>
   </section>
-  <!-- The sixth and last page: one frame from every sample clip in the wiki.
-       The collage is a static image generated from the 351 wiki videos. -->
+  <!-- The sixth and last page: a full-screen mosaic of one frame from every
+       wiki sample clip. The tiles are slices of the generated collage; they
+       reveal one by one over the page, with the copy on top. -->
   <section class="wiki-collage-section" aria-labelledby="collage-heading">
-    <div class="wiki-collage-inner">
+    <div class="wiki-collage-stage" aria-hidden="true">
+      <div class="wiki-collage-grid" data-image="../../assets/images/wiki-feature-collage.jpg?v=2"></div>
+    </div>
+    <div class="wiki-collage-overlay">
       <div class="wiki-collage-head">
         <div class="wiki-collage-title">
           <p class="wiki-collage-eyebrow">The wiki</p>
@@ -248,14 +253,9 @@
         </div>
         <div class="wiki-collage-copy">
           <p class="wiki-collage-lead">Every sample clip in the Real-Time-Manim wiki, reduced to a single frame. <strong>351 demos</strong> — cameras, mobjects, animations, text, graphs, 3D and utilities — in one picture.</p>
-          <p class="wiki-collage-caption">351 clips · one frame each · open full size</p>
+          <p class="wiki-collage-caption">351 clips · one frame each · <a class="wiki-collage-fullsize" href="../../assets/images/wiki-feature-collage.jpg?v=2" target="_blank" rel="noopener">open full size</a></p>
         </div>
       </div>
-      <figure class="wiki-collage-figure">
-        <a class="wiki-collage-link" href="../../assets/images/wiki-feature-collage.jpg?v=2" target="_blank" rel="noopener" aria-label="Open the full-size 351-frame collage">
-          <img class="wiki-collage-image" src="../../assets/images/wiki-feature-collage.jpg?v=2" alt="A grid of 351 frames, one from every sample clip in the Real-Time-Manim wiki" width="3416" height="1578" decoding="async">
-        </a>
-      </figure>
     </div>
   </section>
 

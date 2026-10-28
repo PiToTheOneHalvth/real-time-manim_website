@@ -921,21 +921,56 @@ a:focus-visible, button:focus-visible {
   .wiki-architecture-section .architecture-graph { border-color: rgba(245, 245, 245, .20); }
 }
 
-/* Sixth and last page: one frame from every wiki sample clip, stitched into a
-   single mosaic. The text is static; only the image carries the scale. */
+/* Sixth and last page: a full-screen mosaic of one frame from every wiki
+   sample clip. The copy floats on top; the frame tiles emerge one by one. */
 .wiki-collage-section {
   position: relative;
+  height: 100svh;
   min-height: 100svh;
-  padding: calc(var(--taskbar-h) + clamp(10px, 1.4svh, 18px)) var(--pad) clamp(24px, 3.6svh, 36px);
-  display: flex;
-  align-items: stretch;
+  padding: 0;
+  overflow: hidden;
   border-top: 1px solid var(--hairline);
+  background: #050505;
 }
-.wiki-collage-inner {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: clamp(12px, 1.8svh, 20px);
+.wiki-collage-stage {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background: #050505;
+}
+.wiki-collage-grid {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: max(100vw, calc(100svh * 2.1648));
+  aspect-ratio: 3416 / 1578;
+  transform: translate(-50%, -50%);
+  background: #050505;
+}
+.wiki-collage-tile {
+  position: absolute;
+  display: block;
+  background-repeat: no-repeat;
+  opacity: 0;
+  transform: translateY(16px) scale(.9);
+  transition: opacity 560ms ease, transform 680ms cubic-bezier(.2, .7, .2, 1);
+  transition-delay: var(--d, 0ms);
+  will-change: opacity, transform;
+}
+.wiki-collage-section.is-revealed .wiki-collage-tile {
+  opacity: 1;
+  transform: none;
+}
+.wiki-collage-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  padding: calc(var(--taskbar-h) + clamp(16px, 2.4svh, 28px)) var(--pad) clamp(24px, 4svh, 48px);
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, .88) 0, rgba(0, 0, 0, .55) 30%, rgba(0, 0, 0, 0) 64%),
+    linear-gradient(90deg, rgba(0, 0, 0, .42), rgba(0, 0, 0, 0) 58%);
 }
 .wiki-collage-head {
   display: grid;
@@ -948,7 +983,7 @@ a:focus-visible, button:focus-visible {
   font-size: calc(11 * var(--unit));
   letter-spacing: .22em;
   text-transform: uppercase;
-  color: rgba(245, 245, 245, .45);
+  color: rgba(245, 245, 245, .55);
 }
 .wiki-collage-heading {
   margin: 0;
@@ -956,6 +991,7 @@ a:focus-visible, button:focus-visible {
   font-weight: 700;
   line-height: .98;
   letter-spacing: -.03em;
+  text-shadow: 0 2px 24px rgba(0, 0, 0, .45);
 }
 .wiki-collage-copy {
   max-width: 30em;
@@ -965,6 +1001,7 @@ a:focus-visible, button:focus-visible {
   margin: 0;
   font-size: var(--lead);
   line-height: 1.4;
+  text-shadow: 0 1px 16px rgba(0, 0, 0, .5);
 }
 .wiki-collage-lead strong {
   font-weight: 700;
@@ -975,39 +1012,29 @@ a:focus-visible, button:focus-visible {
   font-size: clamp(9px, calc(11 * var(--unit)), 12px);
   letter-spacing: .12em;
   text-transform: uppercase;
-  color: rgba(245, 245, 245, .45);
+  color: rgba(245, 245, 245, .55);
 }
-.wiki-collage-figure {
-  margin: 0;
-  display: flex;
-  align-items: flex-start;
-  min-height: 0;
-}
-.wiki-collage-link {
-  display: block;
-  width: 100%;
+.wiki-collage-fullsize {
+  color: rgba(245, 245, 245, .82);
   text-decoration: none;
+  border-bottom: 1px solid rgba(245, 245, 245, .38);
+  pointer-events: auto;
+  transition: color 160ms ease, border-color 160ms ease;
 }
-.wiki-collage-link:focus-visible {
+.wiki-collage-fullsize:hover {
+  color: #ffffff;
+  border-color: rgba(245, 245, 245, .9);
+}
+.wiki-collage-fullsize:focus-visible {
   outline: 2px solid var(--foreground);
   outline-offset: 3px;
 }
-.wiki-collage-link:hover .wiki-collage-image {
-  border-color: rgba(245, 245, 245, .32);
-}
-.wiki-collage-image {
-  display: block;
-  width: 100%;
-  height: auto;
-  border: 1px solid rgba(245, 245, 245, .14);
-  background: #141414;
-  transition: border-color 160ms ease;
-}
 @media (max-width: 900px) {
-  .wiki-collage-section {
-    min-height: 100svh;
-    display: block;
-    padding-bottom: var(--section-y);
+  .wiki-collage-overlay {
+    padding-top: calc(var(--taskbar-h) + 22px);
+    background:
+      linear-gradient(180deg, rgba(0, 0, 0, .9) 0, rgba(0, 0, 0, .62) 42%, rgba(0, 0, 0, 0) 74%),
+      linear-gradient(90deg, rgba(0, 0, 0, .3), rgba(0, 0, 0, 0) 70%);
   }
   .wiki-collage-head {
     grid-template-columns: minmax(0, 1fr);
@@ -1018,6 +1045,14 @@ a:focus-visible, button:focus-visible {
     max-width: var(--measure);
   }
 }
+@media (prefers-reduced-motion: reduce) {
+  .wiki-collage-tile {
+    transition: none;
+    opacity: 1;
+    transform: none;
+  }
+}
+
 
 .slogan-pin {
   position: sticky;
