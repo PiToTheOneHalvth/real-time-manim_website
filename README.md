@@ -29,8 +29,8 @@ The Real-Time Manim desktop page is implemented with its own stylesheet
 (`assets/css/real-time-manim.css`) and clipboard script
 (`assets/js/real-time-manim.js`). The live homepage currently runs: the hero
 opening, the top-bar hand-off, the stack section, the export page, the live wiki
-architecture graph, the particle geometry stage, and the final wiki-collage
-page. The stack's Python/C/Vulkan marks are assembled by
+architecture graph, the full-screen collage, and the particle geometry stage
+last. The stack's Python/C/Vulkan marks are assembled by
 `assets/js/stack-particles.js` from `assets/images/python.svg`,
 `assets/images/c.svg` and `assets/images/vulkan.svg`; the three marks are
 enlarged and overlap (Python tilted top-left, C centre-right, Vulkan V
@@ -61,31 +61,33 @@ RTM Wiki manifest (cdn.jsdelivr.net, with raw.githubusercontent.com as the
 mirror) and render the interactive note map with search, drag/zoom, refresh,
 recenter, fullscreen, hover tooltips and the right-click local graph. The graph
 page exposes its last frame dots as `window.rtmArchDots()`.
-`assets/js/shape-particles.js` then continues the same batch into the fifth
-page: it takes the architecture frame dots (falling back to the export list or
-the stack on a deep link) and flies them into a large wireframe torus and seven
-smaller solids and flat figures (cube, sphere, pyramid, octahedron, circle,
-triangle, hexagon) placed at random. They turn, draw a faint mesh, a dust ring
-orbits the torus, and the whole field is scrubbed by the scroll wheel, ending at
-the stage release. The architecture graph fades via `is-handing-off` as the
-shape figures take over. The sixth and last page is a full-screen collage:
+`assets/js/shape-particles.js` closes the run on the sixth and last page, after
+the collage: it takes the architecture frame dots (falling back to the export
+list or the stack on a deep link) and flies them into a large wireframe torus and
+seven smaller solids and flat figures (cube, sphere, pyramid, octahedron,
+circle, triangle, hexagon) placed at random. They turn, draw a faint mesh, a dust
+ring orbits the torus, and the whole field is scrubbed by the scroll wheel,
+ending at the stage release. The architecture graph fades via `is-handing-off`
+as the shape figures take over. The fifth page is a full-screen collage:
 `assets/images/feature-collage.jpg`, a 3416×1578 mosaic of 351 frames — one
 from every sample clip in the RTM wiki — arranged 21×17. Each clip was sampled
 at four points (18/38/58/78%), scored for non-black content, and the best frame
 kept; failed CDN loads were retried and fall back to raw.githubusercontent.com.
 The six unused cells at the end of the grid are a closing label block, not empty
 frames. `assets/js/collage-reveal.js` slices the JPEG into its 21×17 cells and
-fades the tiles in over the whole page in a random bottom-up order — opacity
-only, no scale or translate. The copy is a static overlay on top, centred, with
-no background scrim — just text shadows. The headline uses a Magic UI-style
-two-layer morph (`assets/js/collage-morph.js`): every feature / test / demo, one
-frame, cross-fading through blur and opacity with a 1.2s hold. The eyebrow and
-lead say test suite/tests, and the caption links to the full-size JPEG.
+scrubs the tiles with the scroll: the page pins for one extra screen, every cell
+has a random bottom-biased threshold, and only opacity changes — no scale or
+translate. Scrolling up fades the tiles out again. The copy is a static overlay
+on top, centred, with no background scrim — just text shadows. The headline uses
+a Magic UI-style two-layer morph (`assets/js/collage-morph.js`): every feature /
+test / demo, one frame, cross-fading through blur and opacity with a 1.2s hold.
+The eyebrow and lead say test suite/tests, and the caption links to the full-size
+JPEG.
 `assets/js/scroll-snap.js` adds a gentle magnetic settle at the opening,
 the stack content (40px from the top), the export content (96px from the top,
 below the open bar), the architecture page, the particle stage fully in view,
-the stage release, the collage page and the page bottom; it only acts after the
-wheel stops within ~150px of one of those. The particle background is
+the stage release and the page bottom; it only acts after the wheel stops within
+~150px of one of those. The particle background is
 `assets/js/network-background.js`, wheel speed is capped by
 `assets/js/scroll-speed.js` (and wheel events inside the graph are left to D3 so
 zoom and page scroll do not fight), and the magnetic settle is
