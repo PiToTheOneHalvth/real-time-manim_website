@@ -17,7 +17,7 @@
   const GAP = 2;
   const MARGIN = 8;
   const src = new URL(
-    grid.dataset.image || '../../assets/images/wiki-feature-collage.jpg?v=2',
+    grid.dataset.image || '../../assets/images/feature-collage.jpg?v=2',
     document.baseURI,
   ).href;
 

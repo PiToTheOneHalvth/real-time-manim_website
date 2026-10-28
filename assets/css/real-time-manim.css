@@ -1003,6 +1003,22 @@ a:focus-visible, button:focus-visible {
   text-align: center;
   text-shadow: 0 1px 2px rgba(0, 0, 0, .9), 0 2px 28px rgba(0, 0, 0, .85);
 }
+.wiki-collage-morph {
+  display: inline-grid;
+  place-items: center;
+}
+.wiki-collage-morph-word {
+  grid-area: 1 / 1;
+  display: block;
+  white-space: nowrap;
+  filter: blur(0);
+  opacity: 1;
+  will-change: filter, opacity;
+}
+.wiki-collage-morph-word + .wiki-collage-morph-word {
+  filter: blur(100px);
+  opacity: 0;
+}
 .wiki-collage-copy {
   max-width: 38em;
 }

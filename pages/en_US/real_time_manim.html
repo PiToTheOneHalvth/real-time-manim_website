@@ -20,6 +20,7 @@
   <script src="../../assets/js/vendor/d3.v7.min.js" defer></script>
   <script src="../../assets/js/architecture-graph.js" defer></script>
   <script src="../../assets/js/collage-reveal.js" defer></script>
+  <script src="../../assets/js/collage-morph.js" defer></script>
 </head>
 <body>
   <canvas id="network-background" class="network-background" aria-hidden="true"></canvas>
@@ -243,17 +244,22 @@
        reveal one by one over the page, with the copy on top. -->
   <section class="wiki-collage-section" aria-labelledby="collage-heading">
     <div class="wiki-collage-stage" aria-hidden="true">
-      <div class="wiki-collage-grid" data-image="../../assets/images/wiki-feature-collage.jpg?v=2"></div>
+      <div class="wiki-collage-grid" data-image="../../assets/images/feature-collage.jpg?v=2"></div>
     </div>
     <div class="wiki-collage-overlay">
       <div class="wiki-collage-head">
         <div class="wiki-collage-title">
-          <p class="wiki-collage-eyebrow">The wiki</p>
-          <h2 class="wiki-collage-heading" id="collage-heading">Every feature, one frame.</h2>
+          <p class="wiki-collage-eyebrow">The test suite</p>
+          <h2 class="wiki-collage-heading" id="collage-heading" aria-label="Every feature, one frame.">
+            <span class="wiki-collage-morph" aria-hidden="true">
+              <span class="wiki-collage-morph-word">Every feature, one frame.</span>
+              <span class="wiki-collage-morph-word">Every test, one frame.</span>
+            </span>
+          </h2>
         </div>
         <div class="wiki-collage-copy">
           <p class="wiki-collage-lead">351 sample clips from the test suite — a lot of tests, one frame each. Cameras, mobjects, animations, text, graphs, 3D and utilities, all working.</p>
-          <p class="wiki-collage-caption">351 tests · one frame each · <a class="wiki-collage-fullsize" href="../../assets/images/wiki-feature-collage.jpg?v=2" target="_blank" rel="noopener">open full size</a></p>
+          <p class="wiki-collage-caption">351 tests · one frame each · <a class="wiki-collage-fullsize" href="../../assets/images/feature-collage.jpg?v=2" target="_blank" rel="noopener">open full size</a></p>
         </div>
       </div>
     </div>
