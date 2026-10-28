@@ -60,7 +60,11 @@ is the wiki architecture graph, back from the old homepage:
 RTM Wiki manifest (cdn.jsdelivr.net, with raw.githubusercontent.com as the
 mirror) and render the interactive note map with search, drag/zoom, refresh,
 recenter, fullscreen, hover tooltips and the right-click local graph. The graph
-page exposes its last frame dots as `window.rtmArchDots()`.
+page exposes its last frame dots as `window.rtmArchDots()`. Both particle scenes
+also run on phones: the narrow layout stacks the copy, monitor/list and graph,
+and the fixed particle canvases follow the live DOM rects, so the monitor bezel
+and graph frame stay aligned at any width. Only `prefers-reduced-motion` removes
+the canvases.
 `assets/js/shape-particles.js` closes the run on the sixth and last page, after
 the collage: it takes the architecture frame dots (falling back to the export
 list or the stack on a deep link) and flies them into a large wireframe torus and
