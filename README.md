@@ -80,9 +80,10 @@ kept; failed CDN loads were retried and fall back to raw.githubusercontent.com.
 The six unused cells at the end of the grid are a closing label block, not empty
 frames. `assets/js/collage-reveal.js` slices the JPEG into its 21×17 cells and
 scrubs the tiles with the scroll: the page pins for one extra screen, every cell
-has a random bottom-biased threshold, and only opacity changes — no scale or
-translate. Scrolling up fades the tiles out again. The copy is a static overlay
-on top, centred, with no background scrim — just text shadows. The headline uses
+has a random slot in the sequence with no row or column leading, and only opacity
+changes — no scale or translate. Scrolling up fades the tiles out again. The copy
+is a static overlay on top, centred, with no background scrim — just text shadows.
+The headline uses
 a Magic UI-style two-layer morph (`assets/js/collage-morph.js`): every feature /
 test / demo, one frame, cross-fading through blur and opacity with a 1.2s hold.
 The eyebrow and lead say test suite/tests, and the caption links to the full-size
