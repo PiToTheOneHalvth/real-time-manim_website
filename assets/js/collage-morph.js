@@ -14,7 +14,7 @@
   ];
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
   const MORPH = 1.5;
-  const COOL = 0.5;
+  const COOL = 1.2;
 
   const set = (el, f) => {
     el.style.filter = `blur(${Math.min(8 / f - 8, 100)}px)`;
