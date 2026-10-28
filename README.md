@@ -76,7 +76,9 @@ kept; failed CDN loads were retried and fall back to raw.githubusercontent.com.
 The six unused cells at the end of the grid are a closing label block, not empty
 frames. `assets/js/collage-reveal.js` slices the JPEG into its 21×17 cells and
 lets the tiles surface one by one over the whole page; the copy is a static
-overlay on top, with an `open full size` link to the JPEG.
+overlay on top, centred, with no background scrim — just text shadows — and an
+`open full size` link. It reads “351 sample clips from the test suite — a lot of
+tests, one frame each.”
 `assets/js/scroll-snap.js` adds a gentle magnetic settle at the opening,
 the stack content (40px from the top), the export content (96px from the top,
 below the open bar), the architecture page, the particle stage fully in view,
