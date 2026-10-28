@@ -68,13 +68,15 @@ smaller solids and flat figures (cube, sphere, pyramid, octahedron, circle,
 triangle, hexagon) placed at random. They turn, draw a faint mesh, a dust ring
 orbits the torus, and the whole field is scrubbed by the scroll wheel, ending at
 the stage release. The architecture graph fades via `is-handing-off` as the
-shape figures take over. The sixth and last page is a static collage:
+shape figures take over. The sixth and last page is a full-screen collage:
 `assets/images/wiki-feature-collage.jpg`, a 3416×1578 mosaic of 351 frames — one
 from every sample clip in the RTM wiki — arranged 21×17. Each clip was sampled
 at four points (18/38/58/78%), scored for non-black content, and the best frame
 kept; failed CDN loads were retried and fall back to raw.githubusercontent.com.
 The six unused cells at the end of the grid are a closing label block, not empty
-frames; clicking the image opens the full-size JPEG.
+frames. `assets/js/collage-reveal.js` slices the JPEG into its 21×17 cells and
+lets the tiles surface one by one over the whole page; the copy is a static
+overlay on top, with an `open full size` link to the JPEG.
 `assets/js/scroll-snap.js` adds a gentle magnetic settle at the opening,
 the stack content (40px from the top), the export content (96px from the top,
 below the open bar), the architecture page, the particle stage fully in view,
