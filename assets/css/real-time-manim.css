@@ -972,7 +972,7 @@ a:focus-visible, button:focus-visible {
 }
 .wiki-collage-caption {
   margin: .9em 0 0;
-  font-size: calc(11 * var(--unit));
+  font-size: clamp(9px, calc(11 * var(--unit)), 12px);
   letter-spacing: .12em;
   text-transform: uppercase;
   color: rgba(245, 245, 245, .45);
