@@ -1,8 +1,8 @@
-// The fifth page: slice the generated collage into its 21x17 frame cells and
-// scrub their opacity from the scroll position. The page pins for one extra
-// screen, so scrolling down fades the tiles in one by one in a random order
-// with no row or column bias, and scrolling back up fades them out again. No
-// transforms, no timers: the wheel is the only clock.
+// The fifth and last page: slice the generated collage into its 21x17 frame
+// cells and scrub their opacity from the scroll position. The page pins for two
+// extra screens, so scrolling down fades the tiles in one by one in a random
+// order with no row or column bias, and scrolling back up fades them out again.
+// No transforms, no timers: the wheel is the only clock.
 (() => {
   const section = document.querySelector('.wiki-collage-section');
   if (!section) return;

@@ -7,7 +7,6 @@
   const canvas = section.querySelector('.architecture-particles');
   const graph = section.querySelector('.architecture-graph');
   const exportSection = document.querySelector('.export-section');
-  const shapeSection = document.querySelector('.shape-section');
   if (!canvas || !graph) return;
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
@@ -37,7 +36,6 @@
   let formStart = 0;
   let frame = 0;
   let lastScrollY = typeof window.scrollY === 'number' ? window.scrollY : 0;
-  let lastDots = [];
   let lastBox = { w: 0, h: 0 };
 
   function resizeCanvas() {
@@ -177,11 +175,11 @@
   }
 
   function captureSeeds() {
-    // The export page is the previous resting place; the shape page and stack
-    // are fallbacks if someone deep-links in from the other direction.
+    // The export page is the previous resting place; the stack is the fallback
+    // if someone deep-links in from the other direction.
     const exportDots = window.rtmExportDots ? window.rtmExportDots() : [];
-    const shapeDots = window.rtmShapeDots ? window.rtmShapeDots() : [];
-    const dots = exportDots.length ? exportDots : shapeDots;
+    const stackDots = window.rtmStackDots ? window.rtmStackDots() : [];
+    const dots = exportDots.length ? exportDots : stackDots;
     seeds = particles.map((_, i) => {
       if (!dots.length) return [random(0, width), -random(0, height * .5)];
       const dot = dots[i % dots.length];
@@ -207,7 +205,6 @@
     }
 
     for (const bucket of buckets) bucket.length = 0;
-    lastDots = [];
     ctx.globalCompositeOperation = 'lighter';
     ctx.clearRect(0, 0, width, height);
 
@@ -234,7 +231,6 @@
       if (alpha < .03) continue;
       const index = Math.min(BUCKETS - 1, Math.max(0, Math.round(alpha * (BUCKETS - 1))));
       buckets[index].push(x, y, point.s);
-      lastDots.push([x, y]);
     }
 
     ctx.fillStyle = 'rgba(245, 245, 245, .032)';
@@ -297,7 +293,6 @@
   function reset() {
     state = 'idle';
     section.classList.remove('is-active', 'is-handing-off');
-    if (shapeSection) shapeSection.classList.remove('is-handing-off');
     if (exportSection) exportSection.classList.remove('is-handing-off');
     ctx.clearRect(0, 0, width, height);
   }
@@ -337,9 +332,6 @@
       if (buildFrame() && state === 'frame') paint(performance.now());
     }).observe(graph);
   }
-
-  // The shape page starts from these exact frame dots.
-  window.rtmArchDots = () => lastDots;
 
   resizeCanvas();
   onScroll();
