@@ -2,11 +2,11 @@
 //
 // The page has a few places that read best when they sit exactly in the
 // viewport: the opening, the stack content, the export content, the wiki
-// architecture page, the particle stage fully in view, and the stage release
-// (the page bottom). After the wheel/keyboard stops, if the page is within SNAP
-// px of one of those, it glides to it over a short ease instead of
-// hard-snapping. Any new wheel/touch/key press cancels the glide; reduced motion
-// opts out entirely.
+// architecture page, the particle stage fully in view, the stage release, the
+// collage page and the page bottom. After the wheel/keyboard stops, if the page
+// is within SNAP px of one of those, it glides to it over a short ease instead
+// of hard-snapping. Any new wheel/touch/key press cancels the glide; reduced
+// motion opts out entirely.
 (() => {
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
   const stack = document.querySelector('.stack-section');
@@ -14,6 +14,7 @@
   const shape = document.querySelector('.shape-section');
   const stage = shape ? shape.querySelector('.shape-stage') : null;
   const architecture = document.querySelector('.wiki-architecture-section');
+  const collage = document.querySelector('.wiki-collage-section');
   const points = [];
   let frame = 0;
   let idle = 0;
@@ -61,6 +62,10 @@
     }
     if (architecture) {
       add(architecture.getBoundingClientRect().top + window.scrollY);
+    }
+    if (collage) {
+      add(collage.getBoundingClientRect().top + window.scrollY);
+      add(maxScroll());
     }
     points.sort((a, b) => a - b);
   }
