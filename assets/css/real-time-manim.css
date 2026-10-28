@@ -1248,6 +1248,11 @@ a:focus-visible, button:focus-visible {
   border-radius: 12px;
   background: #101010;
   overflow: hidden;
+  transition: border-color 220ms ease, box-shadow 220ms ease;
+}
+.architecture-graph.is-wheel-active {
+  border-color: rgba(245, 245, 245, .44);
+  box-shadow: 0 0 0 1px rgba(245, 245, 245, .06), 0 0 30px rgba(245, 245, 245, .055);
 }
 .architecture-graph-toolbar {
   position: absolute;

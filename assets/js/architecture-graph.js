@@ -16,6 +16,31 @@
   const manifestPath = root.dataset.manifestPath || 'manifest.json';
   const viewport = root.querySelector('.architecture-graph-viewport');
   const svg = d3.select(root.querySelector('.architecture-graph-viewport > svg'));
+
+  // Wheel zoom is armed only by a click on the graph window. A click or a
+  // wheel anywhere outside disarms it, so the page owns the wheel again until
+  // the graph is clicked once more. The class is the handshake with
+  // scroll-speed.js, which lets the page scroll over an unarmed graph.
+  let wheelActive = false;
+  const setWheelActive = next => {
+    if (wheelActive === next) return;
+    wheelActive = next;
+    root.classList.toggle('is-wheel-active', next);
+  };
+  const allowZoomEvent = event => {
+    if (event.type === 'wheel') return wheelActive;
+    return (!event.ctrlKey || event.type === 'wheel') && !event.button;
+  };
+  document.addEventListener('pointerdown', event => {
+    setWheelActive(root.contains(event.target));
+  }, true);  document.addEventListener('wheel', event => {
+    if (!root.contains(event.target)) setWheelActive(false);
+  }, { capture: true, passive: true });
+  window.addEventListener('scroll', () => setWheelActive(false), { passive: true });
+  window.addEventListener('blur', () => setWheelActive(false));
+  window.addEventListener('message', event => {
+    if (event.data && event.data.type === 'wiki-mindmap-focus-reset') setWheelActive(false);
+  });
   const world = svg.append('g');
   const edgeLayer = world.append('g').attr('class', 'architecture-graph-edges');
   const nodeLayer = world.append('g').attr('class', 'architecture-graph-nodes');
@@ -793,7 +818,7 @@
     // the graph's absolute drawn scale (see localLabelShown) — every zoom
     // event re-evaluates it, and every resize step does too, so the wheel
     // and the corner grips both move the crossing point.
-    const localZoom = d3.zoom().scaleExtent([.5, 6]).on('zoom', event => {
+    const localZoom = d3.zoom().scaleExtent([.5, 6]).filter(allowZoomEvent).on('zoom', event => {
       localWorld.attr('transform', event.transform);
       syncLocalLabels(event.transform.k);
     });
@@ -1245,7 +1270,7 @@
     labelOverlay.attr('viewBox', `0 0 ${width} ${height}`);
     cancelGraphJelly();
     graphView = d3.zoomIdentity;
-    zoom = d3.zoom().on('zoom', event => {
+    zoom = d3.zoom().filter(allowZoomEvent).on('zoom', event => {
       const raw = event.transform;
       // Cap the raw accumulator BEFORE mapping, so a single cap-crossing
       // event cannot stretch the visual scale past the capped depth (and

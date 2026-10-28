@@ -1321,6 +1321,13 @@
     document.documentElement.style.setProperty('--wiki-scrollbar-gap', `${gap}px`);
   }
 
+  function resetMindmapFocus() {
+    const frame = mindmapFrame ? mindmapFrame.querySelector('iframe') : null;
+    if (frame && frame.contentWindow) {
+      frame.contentWindow.postMessage({ type: 'wiki-mindmap-focus-reset' }, '*');
+    }
+  }
+
   function closeMindmap() {
     if (!mindmap || mindmap.hidden) return;
     mindmap.hidden = true;
@@ -1328,6 +1335,9 @@
     // A graph that is still loading when the panel closes should not keep a
     // hidden animation (or a pending reveal) running.
     hideMindmapLoader();
+    // The iframe stays alive between openings; drop its wheel focus so opening
+    // the panel again starts with the page in charge of the wheel.
+    resetMindmapFocus();
   }
 
   function openMindmap() {
@@ -1357,6 +1367,18 @@
     if (mindmapClose) mindmapClose.addEventListener('click', closeMindmap);
     mindmap.addEventListener('click', event => { if (event.target === mindmap) closeMindmap(); });
     window.addEventListener('keydown', event => { if (event.key === 'Escape') closeMindmap(); });
+    // The parent page is outside the graph too: a press or wheel on the panel
+    // chrome (or anywhere behind it) should drop the iframe's wheel focus.
+    document.addEventListener('pointerdown', event => {
+      if (!mindmap || mindmap.hidden) return;
+      if (event.target instanceof Element && event.target.closest('iframe')) return;
+      resetMindmapFocus();
+    }, true);
+    document.addEventListener('wheel', event => {
+      if (!mindmap || mindmap.hidden) return;
+      if (event.target instanceof Element && event.target.closest('iframe')) return;
+      resetMindmapFocus();
+    }, { capture: true, passive: true });
     // The graph's iframe owns focus after any interaction: it forwards Escape
     // to close the panel, and reports when it has finished drawing.
     window.addEventListener('message', event => {
