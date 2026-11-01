@@ -411,14 +411,16 @@
         });
       }
       // A missing file or a blocked autoplay can leave play() pending; if no
-      // frame is on screen shortly after, run the demo collapse instead.
+      // frame is on screen after a generous wait, run the demo collapse
+      // instead. A later `playing` cancels this fallback, so a slow start
+      // cannot collapse a clip that is actually playing.
       clearTimeout(videoCheck);
       videoCheck = setTimeout(() => {
         if (state === 'screen' && !section.classList.contains('is-playing')) {
           videoBroken = true;
           scheduleDemo();
         }
-      }, 1800);
+      }, 3500);
     } else {
       scheduleDemo();
     }
@@ -504,17 +506,31 @@
   }
 
   if (video) {
+    // The poster/first frame is enough to retire the dashed slot as soon as
+    // the clip has metadata; the monitor should never show the old placeholder
+    // while the particle TV is forming.
+    const markVideoReady = () => {
+      if (videoBroken) return;
+      section.classList.add('video-ready');
+    };
+    if (video.readyState >= 1) markVideoReady();
+    video.addEventListener('loadedmetadata', markVideoReady);
+    video.addEventListener('canplay', markVideoReady);
     video.addEventListener('ended', finish);
     video.addEventListener('playing', () => {
       clearTimeout(videoCheck);
+      clearTimeout(demoTimer);
       videoCheck = 0;
+      demoTimer = 0;
+      videoBroken = false;
+      section.classList.add('video-ready');
       if (state === 'screen') {
         section.classList.add('is-playing', 'has-played');
       }
     });
     video.addEventListener('error', () => {
       videoBroken = true;
-      section.classList.remove('is-playing');
+      section.classList.remove('is-playing', 'has-played', 'video-ready');
       if (state === 'screen') scheduleDemo();
     });
   }

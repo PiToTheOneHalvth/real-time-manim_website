@@ -665,6 +665,7 @@ a:focus-visible, button:focus-visible {
   transform: scale(1.015);
   transition: opacity 420ms ease, transform 900ms ease;
 }
+.export-section.video-ready .export-video,
 .export-section.is-playing .export-video,
 .export-section.has-played .export-video {
   opacity: 1;
@@ -683,7 +684,8 @@ a:focus-visible, button:focus-visible {
   background: radial-gradient(circle at 50% 46%, rgba(245, 245, 245, .055), transparent 62%);
   color: rgba(245, 245, 245, .52);
 }
-.export-section.is-playing .export-placeholder { opacity: 0; }
+.export-section.video-ready .export-placeholder,
+.export-section.is-playing .export-placeholder,
 .export-section.has-played .export-placeholder { opacity: 0; }
 .export-placeholder-mark {
   width: calc(46 * var(--unit));
