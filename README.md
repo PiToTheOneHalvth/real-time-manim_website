@@ -41,15 +41,15 @@ export page reuses them. The marks form from the hero's big M, and
 `assets/js/export-particles.js` continues the same batch: it takes the settled
 stack dots (`window.rtmStackDots()`), flies them right into a monitor built from
 its own normalized point set (bezel, chin, neck, base, LED), and leaves the
-screen interior to a real DOM video slot. The clip belongs at
-`assets/videos/export-window.mp4`; until it is supplied, the screen shows a
-dashed "Video slot" placeholder with that path. When the clip ends the monitor
-compresses from both sides into a horizontal line, the video fades, and the line
-unfolds into the nine export routes from `wiki/agent/runtime.md`:
+screen interior to a real DOM video slot. The clip is
+`assets/videos/export-window.mp4` (1920×1080, 60 fps, 12 s, muted, no audio):
+when it ends the monitor compresses from both sides into a horizontal line, the
+video fades, and the line unfolds into the nine export routes from
+`wiki/agent/runtime.md`:
 `fast_record_scene`, `record_scene`, `start_record`/`stop_record`,
 `enable_fast_record`, `Timeline.render_mp4`, `FrameServer.export_frames`,
 `FrameServer.save_frame`, `FramePreview` and `export_srt`. Without a clip the
-page demonstrates the same collapse on a short timer, and
+page still demonstrates the same collapse on a short timer, and
 `window.rtmExportDots()` exposes the final list dots.
 `assets/js/architecture-particles.js` continues the same batch into the fourth
 page: it takes those dots, slides them down, and closes them into a two-ring
