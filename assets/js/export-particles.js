@@ -440,6 +440,7 @@
     videoCheck = 0;
     if (video) video.pause();
     section.classList.remove('is-playing');
+    if (video && !videoBroken && video.currentTime > 0) section.classList.add('has-played');
     section.classList.add('is-collapsing');
     if (reduced.matches) {
       state = 'collapsing';
@@ -485,7 +486,7 @@
     }
     state = 'idle';
     startedVideo = false;
-    section.classList.remove('is-active', 'is-collapsing', 'is-listing', 'is-list', 'is-screen', 'is-playing', 'is-handing-off');
+    section.classList.remove('is-active', 'is-collapsing', 'is-listing', 'is-list', 'is-screen', 'is-playing', 'is-handing-off', 'has-played');
     if (stackSection) stackSection.classList.remove('is-exporting');
     ctx.clearRect(0, 0, width, height);
   }
@@ -507,7 +508,9 @@
     video.addEventListener('playing', () => {
       clearTimeout(videoCheck);
       videoCheck = 0;
-      if (state === 'screen') section.classList.add('is-playing');
+      if (state === 'screen') {
+        section.classList.add('is-playing', 'has-played');
+      }
     });
     video.addEventListener('error', () => {
       videoBroken = true;
